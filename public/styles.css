@@ -17,9 +17,28 @@
   --good: #58c98a;
   --bad: #e5695e;
   --focus: #7aa7e8;
+  --topbar-bg: rgba(12, 15, 20, 0.9);
   --radius: 10px;
   --font-display: "Space Grotesk", sans-serif;
   --font-body: "Karla", sans-serif;
+}
+
+/* Light theme — same ember accent, flipped surfaces. Toggled by JS setting
+   data-theme="light" on <html>; default (no attribute) stays dark. */
+html[data-theme="light"] {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface-2: #eceff4;
+  --border: #d7dde6;
+  --ink: #1a2230;
+  --ink-2: #556072;
+  --ink-3: #8592a4;
+  --accent: #c25f1e;
+  --accent-hover: #d9722e;
+  --good: #2f9e64;
+  --bad: #cf453b;
+  --focus: #2f6fd0;
+  --topbar-bg: rgba(245, 247, 250, 0.92);
 }
 
 * { box-sizing: border-box; }
@@ -51,7 +70,7 @@ button { font-family: inherit; }
   gap: 28px;
   padding: 14px 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(12, 15, 20, 0.9);
+  background: var(--topbar-bg);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -80,6 +99,23 @@ button { font-family: inherit; }
 }
 .tab-btn:hover { color: var(--ink); background: var(--surface); }
 .tab-btn.is-active { color: var(--ink); background: var(--surface-2); border-color: var(--border); }
+
+.theme-toggle {
+  margin-left: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.theme-toggle:hover { border-color: var(--ink-3); }
 
 /* ---------- Panels & hero ---------- */
 main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 96px; }

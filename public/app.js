@@ -863,6 +863,25 @@ $('#revenue-toggle').querySelectorAll('button').forEach((b) => {
   });
 });
 
+// ---------------------------------------------------------------- theme
+
+const THEME_KEY = 'forge-theme';
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const btn = $('#theme-toggle');
+  if (btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
+}
+
+// Restore the saved choice on load (default dark).
+applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
+
+$('#theme-toggle').addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
+
 // ---------------------------------------------------------------- boot
 
 document.addEventListener('keydown', (e) => {
