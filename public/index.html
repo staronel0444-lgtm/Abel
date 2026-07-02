@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Karla:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">⌁</span> Forge</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn is-active" data-tab="build">Build</button>
+      <button class="tab-btn" data-tab="multi">Multi-page</button>
+      <button class="tab-btn" data-tab="leads">Lead Finder</button>
+      <button class="tab-btn" data-tab="history">History</button>
+      <button class="tab-btn" data-tab="clients">Clients</button>
+      <button class="tab-btn" data-tab="revenue">Revenue</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ Section 1: Single Page Builder ============ -->
+    <section class="panel is-active" id="panel-build">
+      <div class="hero">
+        <h1>What should we build?</h1>
+        <p class="hero-sub">Describe the business or landing page. One prompt in, one complete site out.</p>
+        <div class="prompt-box">
+          <textarea id="build-prompt" class="autogrow" rows="3" maxlength="6000"
+            placeholder="A single-page website for Riverside Plumbing in Worcester, MA — 24/7 emergency service, licensed &amp; insured, 4.8 stars on Google, call (508) 555-0114 for a free quote…"></textarea>
+          <div class="prompt-actions">
+            <span class="hint" id="build-hint"></span>
+            <button class="btn btn-primary" id="build-generate">Generate site</button>
+          </div>
+        </div>
+        <p class="inline-error" id="build-error" hidden></p>
+      </div>
+
+      <div class="loading" id="build-loading" hidden>
+        <div class="spinner"></div>
+        <p id="build-status">Generating your site — this usually takes a minute or two…</p>
+      </div>
+
+      <div class="result" id="build-result" hidden>
+        <div class="toolbar">
+          <button class="btn" id="build-preview-link">Get preview link</button>
+          <button class="btn" id="build-copy">Copy HTML</button>
+          <button class="btn" id="build-download">Download HTML</button>
+          <span class="link-output" id="build-link-output" hidden></span>
+        </div>
+        <iframe id="build-frame" class="site-frame" title="Generated site preview" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+
+      <details class="preview-manager" id="preview-manager">
+        <summary>Preview links</summary>
+        <div id="preview-list" class="preview-list"><p class="muted">No preview links yet.</p></div>
+      </details>
+    </section>
+
+    <!-- ============ Section 2: Multi-Page Builder ============ -->
+    <section class="panel" id="panel-multi">
+      <div class="hero hero-compact">
+        <h1>Multi-page site</h1>
+        <p class="hero-sub">One prompt, several linked pages — a shared brand pass keeps styling, tone, and nav consistent across all of them.</p>
+        <div class="prompt-box">
+          <textarea id="multi-prompt" class="autogrow" rows="3" maxlength="6000"
+            placeholder="A website for Golden Hammer Roofing in Worcester, MA — family-owned since 1998, free inspections, financing available…"></textarea>
+          <div class="page-picker" id="multi-pages">
+            <label class="page-chip"><input type="checkbox" value="index.html" data-title="Home" checked disabled> Home</label>
+            <label class="page-chip"><input type="checkbox" value="about.html" data-title="About" checked> About</label>
+            <label class="page-chip"><input type="checkbox" value="services.html" data-title="Services" checked> Services</label>
+            <label class="page-chip"><input type="checkbox" value="contact.html" data-title="Contact" checked> Contact</label>
+            <label class="page-chip"><input type="checkbox" value="gallery.html" data-title="Gallery"> Gallery</label>
+            <label class="page-chip"><input type="checkbox" value="reviews.html" data-title="Reviews"> Reviews</label>
+          </div>
+          <div class="prompt-actions">
+            <span class="hint" id="multi-hint"></span>
+            <button class="btn btn-primary" id="multi-generate">Generate site</button>
+          </div>
+        </div>
+        <p class="inline-error" id="multi-error" hidden></p>
+      </div>
+
+      <div class="loading" id="multi-loading" hidden>
+        <div class="spinner"></div>
+        <p id="multi-status">Working…</p>
+        <div class="page-progress" id="multi-progress"></div>
+      </div>
+
+      <div class="result" id="multi-result" hidden>
+        <div class="toolbar">
+          <div class="page-tabs" id="multi-tabs"></div>
+          <button class="btn" id="multi-preview-link">Get preview link</button>
+          <button class="btn" id="multi-download">Download page</button>
+          <span class="link-output" id="multi-link-output" hidden></span>
+        </div>
+        <iframe id="multi-frame" class="site-frame" title="Generated site preview" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+    </section>
+
+    <!-- ============ Section 3: Lead Finder ============ -->
+    <section class="panel" id="panel-leads">
+      <div class="hero hero-compact">
+        <h1>Lead Finder</h1>
+        <p class="hero-sub">Find nearby businesses with no website. Every result is remembered in History.</p>
+        <form class="lead-search" id="lead-form">
+          <input type="text" id="lead-zip" placeholder="ZIP code or address" required maxlength="120" autocomplete="postal-code">
+          <select id="lead-niche">
+            <option value="electrician">Electrician</option>
+            <option value="plumber">Plumber</option>
+            <option value="auto body shop">Auto body shop</option>
+            <option value="landscaper">Landscaper</option>
+            <option value="HVAC contractor">HVAC</option>
+            <option value="roofer">Roofer</option>
+            <option value="general contractor">General contractor</option>
+            <option value="__other">Other…</option>
+          </select>
+          <input type="text" id="lead-niche-other" placeholder="Custom niche" maxlength="80" hidden>
+          <button class="btn btn-primary" type="submit" id="lead-search-btn">Search</button>
+        </form>
+      </div>
+
+      <div class="loading" id="lead-loading" hidden>
+        <div class="spinner"></div>
+        <p>Searching nearby businesses…</p>
+      </div>
+      <p class="inline-error" id="lead-error" hidden></p>
+      <div class="empty" id="lead-empty" hidden>
+        <h3>No leads found nearby</h3>
+        <p>Every business we found already has a website (or was already decided). Try a different ZIP or niche.</p>
+      </div>
+      <p class="muted stats-line" id="lead-stats" hidden></p>
+      <div class="card-grid" id="lead-results"></div>
+    </section>
+
+    <!-- ============ Section 3b: View History ============ -->
+    <section class="panel" id="panel-history">
+      <div class="panel-head">
+        <div>
+          <h1>History</h1>
+          <p class="hero-sub">Every business ever seen in Lead Finder — decided or not. Click one to reopen its full card.</p>
+        </div>
+        <button class="btn" id="history-refresh">Refresh</button>
+      </div>
+      <div class="empty" id="history-empty" hidden>
+        <h3>Nothing here yet</h3>
+        <p>Run a search in Lead Finder — every result lands here automatically.</p>
+      </div>
+      <div class="history-list" id="history-list"></div>
+    </section>
+
+    <!-- ============ Section 4: Client Dashboard ============ -->
+    <section class="panel" id="panel-clients">
+      <div class="panel-head">
+        <div>
+          <h1>Clients</h1>
+          <p class="hero-sub">Every lead marked Yes lands here. The due list below is your monthly reminder.</p>
+        </div>
+        <button class="btn" id="client-add">Add client</button>
+      </div>
+      <div class="due-box" id="clients-due" hidden></div>
+      <div class="empty" id="clients-empty" hidden>
+        <h3>No clients yet</h3>
+        <p>Close your first deal in Lead Finder — mark a lead “Yes” and it lands here.</p>
+      </div>
+      <div class="client-list" id="clients-list"></div>
+    </section>
+
+    <!-- ============ Section 5: Revenue Dashboard ============ -->
+    <section class="panel" id="panel-revenue">
+      <div class="panel-head">
+        <div>
+          <h1>Revenue</h1>
+          <p class="hero-sub">Upfront fees from closed deals plus monthly maintenance collected.</p>
+        </div>
+      </div>
+      <div class="window-toggle" id="revenue-toggle">
+        <button data-window="24h">24 hours</button>
+        <button data-window="week">Week</button>
+        <button data-window="month" class="is-active">Month</button>
+        <button data-window="6months">6 months</button>
+        <button data-window="year">Year</button>
+        <button data-window="all">All time</button>
+      </div>
+      <div class="stat-tile">
+        <span class="stat-label">Total revenue</span>
+        <span class="stat-value" id="revenue-value">$0</span>
+        <span class="stat-delta" id="revenue-delta" hidden></span>
+        <div class="stat-breakdown">
+          <div class="stat-row"><span>Upfront</span><strong id="revenue-upfront">$0</strong></div>
+          <div class="stat-row"><span>Monthly maintenance</span><strong id="revenue-monthly">$0</strong></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Client form modal (Yes-flow + add + edit) -->
+  <div class="modal-backdrop" id="client-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="client-modal-title">
+      <h2 id="client-modal-title">New client</h2>
+      <p class="muted" id="client-modal-sub"></p>
+      <form id="client-form">
+        <input type="hidden" id="cf-id">
+        <input type="hidden" id="cf-place-id">
+        <label>Company name <input type="text" id="cf-company" required maxlength="200"></label>
+        <label>Owner / contact name <input type="text" id="cf-owner" maxlength="200"></label>
+        <div class="form-row">
+          <label>Email <input type="email" id="cf-email" maxlength="200"></label>
+          <label>Phone <input type="tel" id="cf-phone" maxlength="40"></label>
+        </div>
+        <label>Address <input type="text" id="cf-address" maxlength="300"></label>
+        <div class="form-row">
+          <label>Amount paid upfront ($) <input type="number" id="cf-amount" min="0" step="0.01" value="0"></label>
+          <label>Monthly maintenance fee ($) <input type="number" id="cf-monthly" min="0" step="0.01" value="0"></label>
+        </div>
+        <label>Close date <input type="date" id="cf-close-date" required></label>
+        <p class="inline-error" id="client-form-error" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="btn" id="client-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="client-form-submit">Save client</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- History detail modal (full lead card) -->
+  <div class="modal-backdrop" id="detail-modal" hidden>
+    <div class="modal modal-card" role="dialog" aria-modal="true">
+      <button class="modal-close" id="detail-close" aria-label="Close">×</button>
+      <div id="detail-card"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

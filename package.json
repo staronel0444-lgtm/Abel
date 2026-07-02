@@ -1,0 +1,18 @@
+{
+  "name": "forge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Forge — prompt-to-website builder with lead finder, client dashboard, revenue dashboard, and shareable preview links. Cloudflare Pages + Functions + D1.",
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "deploy": "wrangler pages deploy",
+    "db:schema": "wrangler d1 execute forge-db --remote --file=schema.sql",
+    "db:schema:local": "wrangler d1 execute forge-db --local --file=schema.sql"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

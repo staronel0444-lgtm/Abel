@@ -1,0 +1,28 @@
+# Forge — Cloudflare Pages project config.
+#
+# One Pages project hosts everything: the static frontend (public/), the
+# serverless proxy (functions/), and the D1 database binding used by
+# Lead Finder, Clients, Revenue, and Preview Links.
+#
+# Setup (once):
+#   npx wrangler d1 create forge-db
+#   → paste the returned database_id below
+#   npx wrangler d1 execute forge-db --remote --file=schema.sql
+#   npx wrangler pages secret put ANTHROPIC_API_KEY
+#   npx wrangler pages secret put GOOGLE_PLACES_API_KEY
+#
+# GOOGLE_PLACES_API_KEY: Google Cloud Console → enable "Places API (New)"
+# → Credentials → create an API key → restrict it to Places API (New).
+# Billing must be enabled on the project even to use the free tier.
+
+name = "forge"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "forge-db"
+# Replace with the id printed by `npx wrangler d1 create forge-db`.
+# Local dev (`npm run dev`) works with the placeholder — it uses a local DB.
+database_id = "00000000-0000-0000-0000-000000000000"

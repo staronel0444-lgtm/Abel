@@ -1,0 +1,14 @@
+# Copy to .dev.vars for local development (`npm run dev`).
+# .dev.vars is gitignored — never commit real keys.
+
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+GOOGLE_PLACES_API_KEY=your-places-key-here
+
+# Optional dev-only mocks — DO NOT set these in production.
+# MOCK_PLACES=1 returns canned business results without calling Google.
+# MOCK_ANTHROPIC=1 returns a canned HTML page without calling Anthropic.
+#MOCK_PLACES=1
+#MOCK_ANTHROPIC=1
+
+# Optional model override (defaults to claude-opus-4-8).
+#ANTHROPIC_MODEL=claude-opus-4-8
