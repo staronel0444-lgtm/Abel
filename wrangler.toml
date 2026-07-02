@@ -25,4 +25,4 @@ binding = "DB"
 database_name = "forge-db"
 # Replace with the id printed by `npx wrangler d1 create forge-db`.
 # Local dev (`npm run dev`) works with the placeholder — it uses a local DB.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "22a574cf-297f-42d6-a26e-678970889022"
