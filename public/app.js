@@ -186,7 +186,8 @@ async function loadSites() {
           <div class="site-card-title">${escapeHtml(p.title || '(untitled site)')}</div>
           <div class="site-card-meta">${p.kind === 'multi' ? 'multi-page' : 'single page'} · ${escapeHtml(formatDate(p.createdAt))}</div>
           <div class="site-card-actions">
-            <button class="btn btn-sm" data-act="open">Open</button>
+            <button class="btn btn-sm btn-primary" data-act="edit">Edit</button>
+            <button class="btn btn-sm" data-act="view">View</button>
             <button class="btn btn-sm" data-act="copy">Copy link</button>
             <button class="btn btn-sm btn-danger" data-act="delete">Delete</button>
           </div>
@@ -204,18 +205,31 @@ async function loadSites() {
           loadSites();
         } catch (err) { toast(err.message, true); }
       });
-      card.querySelector('[data-act="open"]').addEventListener('click', async () => {
-        if (kind === 'multi') { window.open(url, '_blank', 'noopener'); return; }
+      // View = open the live saved page in a new tab (read-only).
+      card.querySelector('[data-act="view"]').addEventListener('click', () => window.open(url, '_blank', 'noopener'));
+
+      // Edit = load the saved site back into its builder, where the Refine
+      // box and the Desktop/Mobile toggle are available.
+      card.querySelector('[data-act="edit"]').addEventListener('click', async () => {
         try {
-          const html = await (await fetch(url)).text();
-          buildState.html = html;
-          buildState.placeId = null;
-          $('#build-frame').srcdoc = html;
-          $('#build-result').hidden = false;
-          $('#build-link-output').hidden = true;
-          switchTab('build');
-          toast('Opened in Build — edit or refine it, then save a new link');
-        } catch { toast('Could not open this site', true); }
+          const data = await api(`/api/previews/${id}`);
+          if (data.kind === 'multi') {
+            openMultiInBuilder(data.pages);
+            toast('Opened in Multi-page — refine any page, flip to Mobile, then save a new link');
+          } else {
+            buildState.html = data.html;
+            buildState.placeId = null;
+            $('#build-frame').srcdoc = data.html;
+            $('#build-frame').classList.remove('is-mobile');
+            $('#build-device').querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.device === 'desktop'));
+            $('#build-result').hidden = false;
+            $('#build-link-output').hidden = true;
+            switchTab('build');
+            toast('Opened in Build — refine it or flip to Mobile, then save a new link');
+          }
+        } catch (err) {
+          toast(err.message, true);
+        }
       });
     });
   } catch (err) {
@@ -339,6 +353,29 @@ function renderMultiResult() {
   });
   $('#multi-result').hidden = false;
   showMultiPage('index.html');
+}
+
+const PAGE_TITLES = {
+  'index.html': 'Home', 'about.html': 'About', 'services.html': 'Services',
+  'contact.html': 'Contact', 'gallery.html': 'Gallery', 'reviews.html': 'Reviews',
+};
+function titleForFile(f) {
+  return PAGE_TITLES[f] || f.replace(/\.html$/i, '').replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Load a saved multi-page site back into the Multi-page builder so it can be
+// refined page by page (index.html first, then the rest).
+function openMultiInBuilder(pages) {
+  const files = Object.keys(pages || {}).filter((f) => pages[f]);
+  if (!files.length) { toast('This site has no pages to edit', true); return; }
+  const ordered = ['index.html', ...files.filter((f) => f !== 'index.html')].filter((f) => pages[f]);
+  multiState.pages = pages;
+  multiState.defs = ordered.map((f) => ({ filename: f, title: titleForFile(f) }));
+  multiState.placeId = null;
+  $('#multi-error').hidden = true;
+  $('#multi-link-output').hidden = true;
+  renderMultiResult();
+  switchTab('multi');
 }
 
 async function generateMulti(prompt) {
@@ -900,6 +937,36 @@ $('#build-refine-btn').addEventListener('click', async () => {
     $('#build-refine-input').value = '';
     $('#build-link-output').hidden = true; // any earlier link now points at the old version
     toast('Change applied — save a new link to share this version');
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
+// Multi-page: refine the page currently being viewed.
+$('#multi-refine-btn').addEventListener('click', async () => {
+  const instruction = $('#multi-refine-input').value.trim();
+  const cur = multiState.current;
+  if (!cur || !multiState.pages[cur]) { toast('Generate or open a site first', true); return; }
+  if (!instruction) { toast('Type what you want changed first', true); return; }
+
+  const btn = $('#multi-refine-btn');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Refining…';
+  try {
+    const res = await api('/api/generate', {
+      method: 'POST',
+      body: { mode: 'refine', html: multiState.pages[cur], instruction },
+    });
+    multiState.pages[cur] = res.html;
+    showMultiPage(cur);
+    $('#multi-refine-input').value = '';
+    $('#multi-link-output').hidden = true;
+    const title = multiState.defs.find((d) => d.filename === cur)?.title || cur;
+    toast(`“${title}” updated — save a new link to share it`);
   } catch (err) {
     toast(err.message, true);
   } finally {
