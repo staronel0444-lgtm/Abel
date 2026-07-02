@@ -90,7 +90,7 @@ function downloadFile(filename, content) {
 
 // ---------------------------------------------------------------- tabs
 
-const panels = ['build', 'multi', 'leads', 'history', 'clients', 'revenue'];
+const panels = ['build', 'multi', 'sites', 'leads', 'history', 'clients', 'revenue', 'invoice'];
 
 function switchTab(name) {
   for (const p of panels) {
@@ -99,9 +99,11 @@ function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach((b) => {
     b.classList.toggle('is-active', b.dataset.tab === name);
   });
+  if (name === 'sites') loadSites();
   if (name === 'history') loadHistory();
   if (name === 'clients') loadClients();
   if (name === 'revenue') loadRevenue();
+  if (name === 'invoice') initInvoice();
 }
 
 document.querySelectorAll('.tab-btn').forEach((b) => {
@@ -166,48 +168,62 @@ async function createPreview(payload, outputEl) {
     <a href="${escapeHtml(res.url)}" target="_blank" rel="noopener">${escapeHtml(fullUrl)}</a>
     <button class="btn btn-sm" data-copy="${escapeHtml(fullUrl)}">Copy</button>`;
   outputEl.querySelector('[data-copy]').addEventListener('click', (e) => copyText(e.target.dataset.copy));
-  loadPreviewList();
+  loadSites();
   return res;
 }
 
-async function loadPreviewList() {
-  const box = $('#preview-list');
+// My Sites gallery — backed by the same saved previews, shown as live
+// thumbnails with open-in-builder / copy / delete.
+async function loadSites() {
+  const grid = $('#sites-grid');
   try {
     const { previews } = await api('/api/previews');
-    if (!previews.length) {
-      box.innerHTML = '<p class="muted">No preview links yet.</p>';
-      return;
-    }
-    box.innerHTML = previews.map((p) => `
-      <div class="preview-row" data-id="${escapeHtml(p.id)}">
-        <span class="p-title">${escapeHtml(p.title || '(untitled site)')}</span>
-        <span class="p-meta">${p.kind === 'multi' ? 'multi-page' : 'single page'} · ${escapeHtml(formatDate(p.createdAt))}</span>
-        <span class="spacer"></span>
-        <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener">Open</a>
-        <button class="btn btn-sm" data-act="copy">Copy link</button>
-        <button class="btn btn-sm btn-danger" data-act="delete">Delete</button>
+    $('#sites-empty').hidden = previews.length > 0;
+    grid.innerHTML = previews.map((p) => `
+      <div class="site-card" data-id="${escapeHtml(p.id)}" data-kind="${escapeHtml(p.kind)}" data-url="${escapeHtml(p.url)}">
+        <div class="site-thumb"><iframe src="${escapeHtml(p.url)}" scrolling="no" tabindex="-1" title="preview"></iframe></div>
+        <div class="site-card-body">
+          <div class="site-card-title">${escapeHtml(p.title || '(untitled site)')}</div>
+          <div class="site-card-meta">${p.kind === 'multi' ? 'multi-page' : 'single page'} · ${escapeHtml(formatDate(p.createdAt))}</div>
+          <div class="site-card-actions">
+            <button class="btn btn-sm" data-act="open">Open</button>
+            <button class="btn btn-sm" data-act="copy">Copy link</button>
+            <button class="btn btn-sm btn-danger" data-act="delete">Delete</button>
+          </div>
+        </div>
       </div>`).join('');
-    box.querySelectorAll('.preview-row').forEach((row) => {
-      const id = row.dataset.id;
-      const url = location.origin + (previews.find((p) => p.id === id)?.url || '');
-      row.querySelector('[data-act="copy"]').addEventListener('click', () => copyText(url));
-      row.querySelector('[data-act="delete"]').addEventListener('click', async () => {
-        if (!confirm('Delete this preview link? Anyone holding the URL will lose access.')) return;
+    grid.querySelectorAll('.site-card').forEach((card) => {
+      const { id, kind, url } = card.dataset;
+      const full = location.origin + url;
+      card.querySelector('[data-act="copy"]').addEventListener('click', () => copyText(full));
+      card.querySelector('[data-act="delete"]').addEventListener('click', async () => {
+        if (!confirm('Delete this saved site and its link? Anyone holding the link will lose access.')) return;
         try {
           await api(`/api/previews/${id}`, { method: 'DELETE' });
-          toast('Preview link deleted');
-          loadPreviewList();
+          toast('Deleted');
+          loadSites();
         } catch (err) { toast(err.message, true); }
       });
+      card.querySelector('[data-act="open"]').addEventListener('click', async () => {
+        if (kind === 'multi') { window.open(url, '_blank', 'noopener'); return; }
+        try {
+          const html = await (await fetch(url)).text();
+          buildState.html = html;
+          buildState.placeId = null;
+          $('#build-frame').srcdoc = html;
+          $('#build-result').hidden = false;
+          $('#build-link-output').hidden = true;
+          switchTab('build');
+          toast('Opened in Build — edit or refine it, then save a new link');
+        } catch { toast('Could not open this site', true); }
+      });
     });
-  } catch {
-    box.innerHTML = '<p class="muted">Could not load preview links.</p>';
+  } catch (err) {
+    grid.innerHTML = `<p class="inline-error">${escapeHtml(err.message)}</p>`;
   }
 }
 
-$('#preview-manager').addEventListener('toggle', (e) => {
-  if (e.target.open) loadPreviewList();
-});
+$('#sites-refresh').addEventListener('click', loadSites);
 
 // ------------------------------------------------- Section 1: single page
 
@@ -861,6 +877,161 @@ $('#revenue-toggle').querySelectorAll('button').forEach((b) => {
     $('#revenue-toggle').querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x === b));
     loadRevenue();
   });
+});
+
+// ------------------------------------------------- Refine (edit in place)
+
+$('#build-refine-btn').addEventListener('click', async () => {
+  const instruction = $('#build-refine-input').value.trim();
+  if (!buildState.html) { toast('Generate a site first', true); return; }
+  if (!instruction) { toast('Type what you want changed first', true); return; }
+
+  const btn = $('#build-refine-btn');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Refining…';
+  try {
+    const res = await api('/api/generate', {
+      method: 'POST',
+      body: { mode: 'refine', html: buildState.html, instruction },
+    });
+    buildState.html = res.html;
+    $('#build-frame').srcdoc = res.html;
+    $('#build-refine-input').value = '';
+    $('#build-link-output').hidden = true; // any earlier link now points at the old version
+    toast('Change applied — save a new link to share this version');
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+});
+
+// ------------------------------------------------- Device preview toggle
+
+function wireDevice(toggleId, frameId) {
+  const toggle = $(toggleId);
+  if (!toggle) return;
+  toggle.querySelectorAll('button').forEach((b) => {
+    b.addEventListener('click', () => {
+      toggle.querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x === b));
+      $(frameId).classList.toggle('is-mobile', b.dataset.device === 'mobile');
+    });
+  });
+}
+wireDevice('#build-device', '#build-frame');
+wireDevice('#multi-device', '#multi-frame');
+
+// ------------------------------------------------- Proposal / Invoice
+
+const INVOICE_FROM_KEY = 'forge-invoice-from';
+let invoiceDocHtml = '';
+
+async function initInvoice() {
+  if (!$('#inv-date').value) $('#inv-date').value = localToday();
+  try {
+    const saved = JSON.parse(localStorage.getItem(INVOICE_FROM_KEY) || '{}');
+    if (saved.name && !$('#inv-from-name').value) $('#inv-from-name').value = saved.name;
+    if (saved.contact && !$('#inv-from-contact').value) $('#inv-from-contact').value = saved.contact;
+  } catch { /* ignore */ }
+
+  if (!clientState.clients.length) {
+    try { await loadClients(); } catch { /* ignore */ }
+  }
+  const sel = $('#inv-client');
+  const chosen = sel.value;
+  sel.innerHTML = '<option value="">— none —</option>' +
+    clientState.clients.map((c) => `<option value="${c.id}">${escapeHtml(c.companyName)}</option>`).join('');
+  sel.value = chosen;
+}
+
+$('#inv-client').addEventListener('change', () => {
+  const c = clientState.clients.find((x) => x.id === Number($('#inv-client').value));
+  if (!c) return;
+  $('#inv-to-name').value = c.companyName;
+  $('#inv-to-contact').value = c.ownerName || '';
+  $('#inv-to-email').value = c.email || c.phone || '';
+  $('#inv-upfront').value = c.amountPaid || 0;
+  $('#inv-monthly').value = c.monthlyFee || 0;
+});
+
+function buildInvoiceDoc(d) {
+  const heading = d.type === 'invoice' ? 'Invoice' : 'Proposal';
+  const rows = [];
+  if (d.upfront > 0) rows.push(['One-time', escapeHtml(d.desc), money(d.upfront)]);
+  if (d.monthly > 0) rows.push(['Recurring', 'Website maintenance &amp; hosting', `${money(d.monthly)} / month`]);
+  if (!rows.length) rows.push(['One-time', escapeHtml(d.desc), money(0)]);
+  const rowHtml = rows.map((r) => `<tr><td class="k">${r[0]}</td><td>${r[1]}</td><td class="amt">${r[2]}</td></tr>`).join('');
+  const dueLine = d.upfront > 0 ? `<div class="due">Due today: <strong>${money(d.upfront)}</strong></div>` : '';
+  const notes = d.notes ? `<div class="notes"><h4>Notes</h4><p>${escapeHtml(d.notes).replace(/\n/g, '<br>')}</p></div>` : '';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>${heading} — ${escapeHtml(d.toName)}</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;background:#fff;margin:0;padding:48px;line-height:1.5}
+  .doc{max-width:720px;margin:0 auto}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #c2410c;padding-bottom:18px;margin-bottom:26px}
+  .brand{font-size:1.4rem;font-weight:bold}
+  .brand small{display:block;font-size:0.8rem;color:#666;font-weight:normal;margin-top:4px}
+  h1{font-size:1.9rem;margin:0;color:#c2410c;letter-spacing:0.02em;text-align:right}
+  .meta{text-align:right;font-size:0.9rem;color:#555;margin-top:4px}
+  .parties{margin-bottom:26px;font-size:0.95rem}
+  .parties h4{margin:0 0 4px;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:#999}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}
+  th,td{text-align:left;padding:11px 10px;border-bottom:1px solid #e6e6e6}
+  th{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:#999}
+  td.k{color:#999;font-size:0.82rem;width:96px}
+  td.amt,th.amt{text-align:right;white-space:nowrap;font-weight:bold}
+  .due{text-align:right;font-size:1.1rem;margin-top:8px}
+  .notes{margin-top:26px;font-size:0.9rem;color:#444}
+  .notes h4{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:#999;margin:0 0 6px}
+  .foot{margin-top:44px;padding-top:16px;border-top:1px solid #e6e6e6;font-size:0.85rem;color:#999;text-align:center}
+  @media print{body{padding:0}}
+</style></head><body><div class="doc">
+  <div class="top">
+    <div class="brand">${escapeHtml(d.fromName)}${d.fromContact ? `<small>${escapeHtml(d.fromContact)}</small>` : ''}</div>
+    <div><h1>${heading}</h1><div class="meta">${escapeHtml(formatDate(d.date))}</div></div>
+  </div>
+  <div class="parties">
+    <h4>${d.type === 'invoice' ? 'Bill to' : 'Prepared for'}</h4>
+    ${escapeHtml(d.toName)}${d.toContact ? `<br>${escapeHtml(d.toContact)}` : ''}${d.toEmail ? `<br>${escapeHtml(d.toEmail)}` : ''}
+  </div>
+  <table><thead><tr><th>Type</th><th>Description</th><th class="amt">Amount</th></tr></thead><tbody>${rowHtml}</tbody></table>
+  ${dueLine}
+  ${notes}
+  <div class="foot">Thank you for your business.</div>
+</div></body></html>`;
+}
+
+$('#invoice-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const data = {
+    type: $('#inv-type').value,
+    date: $('#inv-date').value || localToday(),
+    fromName: $('#inv-from-name').value.trim() || 'Your Business',
+    fromContact: $('#inv-from-contact').value.trim(),
+    toName: $('#inv-to-name').value.trim() || 'Client',
+    toContact: $('#inv-to-contact').value.trim(),
+    toEmail: $('#inv-to-email').value.trim(),
+    desc: $('#inv-desc').value.trim() || 'Website design & setup',
+    upfront: Number($('#inv-upfront').value || 0),
+    monthly: Number($('#inv-monthly').value || 0),
+    notes: $('#inv-notes').value.trim(),
+  };
+  localStorage.setItem(INVOICE_FROM_KEY, JSON.stringify({ name: data.fromName, contact: data.fromContact }));
+  invoiceDocHtml = buildInvoiceDoc(data);
+  $('#inv-frame').srcdoc = invoiceDocHtml;
+  $('#invoice-output').hidden = false;
+  $('#invoice-output').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+$('#inv-print').addEventListener('click', () => {
+  const w = $('#inv-frame').contentWindow;
+  if (w) { w.focus(); w.print(); }
+});
+$('#inv-download').addEventListener('click', () => {
+  if (invoiceDocHtml) downloadFile(`${$('#inv-type').value}.html`, invoiceDocHtml);
 });
 
 // ---------------------------------------------------------------- theme

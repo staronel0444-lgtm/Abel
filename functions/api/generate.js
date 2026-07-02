@@ -30,7 +30,17 @@ function validatePages(pages) {
 
 export const onRequestPost = handle(async ({ request, env }) => {
   const body = await readJson(request);
-  const mode = body.mode === 'brand' ? 'brand' : 'page';
+  const mode = body.mode === 'brand' ? 'brand' : body.mode === 'refine' ? 'refine' : 'page';
+
+  // Refine: edit an existing page from a plain-language instruction.
+  if (mode === 'refine') {
+    const html = requireString(body, 'html', { max: 300000 });
+    if (!/<html/i.test(html)) throw new HttpError(400, 'html must be a complete HTML document');
+    const instruction = requireString(body, 'instruction', { max: 2000 });
+    const result = await generate(env, { mode, html, instruction });
+    return json({ html: result.text, usage: result.usage, model: result.model });
+  }
+
   const prompt = requireString(body, 'prompt', { max: 6000 });
   const context = typeof body.context === 'string' ? body.context.slice(0, 2000) : '';
 

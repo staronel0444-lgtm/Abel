@@ -15,10 +15,12 @@
     <nav class="tabs" role="tablist">
       <button class="tab-btn is-active" data-tab="build">Build</button>
       <button class="tab-btn" data-tab="multi">Multi-page</button>
+      <button class="tab-btn" data-tab="sites">My Sites</button>
       <button class="tab-btn" data-tab="leads">Lead Finder</button>
       <button class="tab-btn" data-tab="history">History</button>
       <button class="tab-btn" data-tab="clients">Clients</button>
       <button class="tab-btn" data-tab="revenue">Revenue</button>
+      <button class="tab-btn" data-tab="invoice">Invoice</button>
     </nav>
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light or dark mode" title="Toggle light / dark mode">🌙</button>
   </header>
@@ -46,7 +48,16 @@
       </div>
 
       <div class="result" id="build-result" hidden>
+        <div class="refine-bar">
+          <input type="text" id="build-refine-input" maxlength="2000"
+            placeholder="Describe a change — e.g. “make the red deeper and add a financing section”">
+          <button class="btn btn-primary" id="build-refine-btn">Refine</button>
+        </div>
         <div class="toolbar">
+          <div class="device-toggle" id="build-device">
+            <button data-device="desktop" class="is-active">Desktop</button>
+            <button data-device="mobile">Mobile</button>
+          </div>
           <button class="btn" id="build-preview-link">Get preview link</button>
           <button class="btn" id="build-copy">Copy HTML</button>
           <button class="btn" id="build-download">Download HTML</button>
@@ -54,11 +65,6 @@
         </div>
         <iframe id="build-frame" class="site-frame" title="Generated site preview" sandbox="allow-scripts allow-same-origin"></iframe>
       </div>
-
-      <details class="preview-manager" id="preview-manager">
-        <summary>Preview links</summary>
-        <div id="preview-list" class="preview-list"><p class="muted">No preview links yet.</p></div>
-      </details>
     </section>
 
     <!-- ============ Section 2: Multi-Page Builder ============ -->
@@ -94,6 +100,10 @@
       <div class="result" id="multi-result" hidden>
         <div class="toolbar">
           <div class="page-tabs" id="multi-tabs"></div>
+          <div class="device-toggle" id="multi-device">
+            <button data-device="desktop" class="is-active">Desktop</button>
+            <button data-device="mobile">Mobile</button>
+          </div>
           <button class="btn" id="multi-preview-link">Get preview link</button>
           <button class="btn" id="multi-download">Download page</button>
           <span class="link-output" id="multi-link-output" hidden></span>
@@ -193,6 +203,77 @@
         <div class="stat-breakdown">
           <div class="stat-row"><span>Upfront</span><strong id="revenue-upfront">$0</strong></div>
           <div class="stat-row"><span>Monthly maintenance</span><strong id="revenue-monthly">$0</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ My Sites gallery ============ -->
+    <section class="panel" id="panel-sites">
+      <div class="panel-head">
+        <div>
+          <h1>My Sites</h1>
+          <p class="hero-sub">Every site you've saved a link for. Open one to keep editing, copy its link, or delete it.</p>
+        </div>
+        <button class="btn" id="sites-refresh">Refresh</button>
+      </div>
+      <div class="empty" id="sites-empty" hidden>
+        <h3>No saved sites yet</h3>
+        <p>Generate a site on the Build tab and click “Get preview link” — it saves here automatically.</p>
+      </div>
+      <div class="sites-grid" id="sites-grid"></div>
+    </section>
+
+    <!-- ============ Proposal / Invoice generator ============ -->
+    <section class="panel" id="panel-invoice">
+      <div class="panel-head">
+        <div>
+          <h1>Proposal / Invoice</h1>
+          <p class="hero-sub">Fill it in, generate a clean document, then print to PDF or download. No AI cost — it's instant and free.</p>
+        </div>
+      </div>
+      <div class="invoice-editor">
+        <form class="invoice-form" id="invoice-form">
+          <div class="form-row">
+            <label>Document type
+              <select id="inv-type">
+                <option value="proposal">Proposal</option>
+                <option value="invoice">Invoice</option>
+              </select>
+            </label>
+            <label>Date <input type="date" id="inv-date"></label>
+          </div>
+          <label>Load from a client (optional)
+            <select id="inv-client"><option value="">— none —</option></select>
+          </label>
+          <fieldset>
+            <legend>From (you)</legend>
+            <div class="form-row">
+              <label>Your business name <input type="text" id="inv-from-name" maxlength="120" placeholder="Abel Web Studio"></label>
+              <label>Your email / phone <input type="text" id="inv-from-contact" maxlength="160"></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>To (client)</legend>
+            <div class="form-row">
+              <label>Client business <input type="text" id="inv-to-name" maxlength="160"></label>
+              <label>Contact name <input type="text" id="inv-to-contact" maxlength="160"></label>
+            </div>
+            <label>Client email / phone <input type="text" id="inv-to-email" maxlength="160"></label>
+          </fieldset>
+          <label>Work description <input type="text" id="inv-desc" maxlength="200" placeholder="Custom one-page website — design &amp; setup"></label>
+          <div class="form-row">
+            <label>Upfront amount ($) <input type="number" id="inv-upfront" min="0" step="0.01" value="0"></label>
+            <label>Monthly maintenance ($) <input type="number" id="inv-monthly" min="0" step="0.01" value="0"></label>
+          </div>
+          <label>Notes (optional) <textarea id="inv-notes" rows="2" maxlength="600"></textarea></label>
+          <button type="submit" class="btn btn-primary">Generate document</button>
+        </form>
+        <div class="invoice-output" id="invoice-output" hidden>
+          <div class="toolbar">
+            <button class="btn" id="inv-print">Print / Save as PDF</button>
+            <button class="btn" id="inv-download">Download</button>
+          </div>
+          <iframe id="inv-frame" class="site-frame" title="Document preview"></iframe>
         </div>
       </div>
     </section>

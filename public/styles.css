@@ -603,6 +603,106 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 }
 .toast.toast-error { border-color: var(--bad); }
 
+/* ---------- Refine bar ---------- */
+.refine-bar { display: flex; gap: 10px; margin-bottom: 12px; }
+.refine-bar input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+}
+.refine-bar input:focus { outline: none; border-color: var(--accent); }
+
+/* ---------- Device (desktop/mobile) toggle ---------- */
+.device-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+#build-device { margin-right: auto; }
+.device-toggle button {
+  background: var(--surface);
+  border: 0;
+  color: var(--ink-2);
+  padding: 7px 14px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.device-toggle button.is-active { background: var(--surface-2); color: var(--ink); }
+.site-frame.is-mobile {
+  max-width: 402px;
+  margin: 0 auto;
+  display: block;
+  border-radius: 22px;
+}
+
+/* ---------- My Sites gallery ---------- */
+.sites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+}
+.site-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.site-thumb {
+  position: relative;
+  height: 170px;
+  overflow: hidden;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+.site-thumb iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1180px;
+  height: 820px;
+  transform: scale(0.32);
+  transform-origin: top left;
+  border: 0;
+  pointer-events: none;
+}
+.site-card-body { padding: 12px 14px; }
+.site-card-title { font-weight: 700; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-card-meta { color: var(--ink-3); font-size: 0.82rem; margin-bottom: 10px; }
+.site-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- Invoice / proposal ---------- */
+.invoice-form {
+  max-width: 640px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+}
+.invoice-form > label,
+.invoice-form fieldset { display: block; margin-bottom: 12px; }
+.invoice-form label { font-size: 0.9rem; color: var(--ink-2); }
+.invoice-form input,
+.invoice-form select,
+.invoice-form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+}
+.invoice-form fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.invoice-form legend { color: var(--ink-3); font-size: 0.78rem; padding: 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+.invoice-output { margin-top: 20px; }
+
 @media (max-width: 640px) {
   .hero h1 { font-size: 2rem; }
   .form-row { grid-template-columns: 1fr; }

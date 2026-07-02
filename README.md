@@ -14,7 +14,11 @@ database, and the shareable site previews.
 | **View History** | History tab | Every business ever returned by a search, with its current status (Yes / No / undecided). Click an entry to reopen the full card and make or change a decision. Never auto-clears. |
 | **Client Dashboard** | Clients tab | One card per client with a **due-this-month** list on top (this visible list *is* the v1 reminder system) and a one-tap "mark this month paid" action. Edit any field; delete a record if a deal falls through (the business becomes searchable again). |
 | **Revenue Dashboard** | Revenue tab | Total revenue for a selected window (24h / week / month / 6 months / year / all-time): upfront fees (by close date) + monthly maintenance collected (by when each month was marked paid), with a breakdown and an up/down trend vs the prior equivalent period. |
-| **Preview Links** | "Get preview link" on any result | Generated sites are stored in D1 and served view-only at `/preview/<id>` (multi-page: `/preview/<id>/about.html` etc.) on the same domain. No AI branding, no expiration — links live until deleted from the "Preview links" list on the Build tab. |
+| **Preview Links** | "Get preview link" on any result | Generated sites are stored in D1 and served view-only at `/preview/<id>` (multi-page: `/preview/<id>/about.html` etc.) on the same domain. No AI branding, no expiration — links live until deleted from the My Sites tab. |
+| **Refine** | box under a generated single-page site | Edit an existing page from a plain-language instruction (e.g. "make the red deeper, add a financing section") instead of regenerating from scratch — the model is told to change only what's asked and keep the rest. One Claude call per refine, same `stop_reason` truncation handling. |
+| **Mobile preview** | Desktop / Mobile toggle above any result | Constrains the preview to phone width so you can check the mobile view before sending — most local-business traffic is on phones. |
+| **My Sites** | My Sites tab | A visual gallery of every saved site (backed by the previews table) with live thumbnails: open a single-page site back into the builder to keep editing, copy its link, or delete it. |
+| **Proposal / Invoice** | Invoice tab | A no-AI, instant, client-side generator: fill a short form (optionally pre-filled from a client) and get a clean printable proposal or invoice to Print-to-PDF or download. Remembers your own business name/contact in the browser. |
 
 ## Architecture
 
