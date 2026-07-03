@@ -11,8 +11,25 @@
 
 import { handle, json, readJson, requireString, HttpError } from '../../lib/http.js';
 import { generate } from '../../lib/anthropic.js';
+import { signToken } from '../../lib/token.js';
+import { injectForms } from '../../lib/forminject.js';
 
 const MAX_PAGES = 8;
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+// If the caller supplied a "notify email", wire the page's contact form(s) to
+// Forge by injecting the handler script with a signed token. If email isn't
+// configured on the server (no signing secret), leave the page untouched.
+async function wireForms(env, request, html, notifyEmail) {
+  const email = typeof notifyEmail === 'string' ? notifyEmail.trim() : '';
+  if (!email || !EMAIL_RE.test(email)) return html;
+  const secret = env.FORM_SIGNING_SECRET || env.RESEND_API_KEY;
+  if (!secret) return html;
+  const business = (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] || '').trim().slice(0, 120);
+  const token = await signToken(secret, { e: email, b: business });
+  const origin = new URL(request.url).origin;
+  return injectForms(html, token, `${origin}/api/contact`);
+}
 
 function validatePages(pages) {
   if (!Array.isArray(pages) || pages.length === 0 || pages.length > MAX_PAGES) {
@@ -38,7 +55,8 @@ export const onRequestPost = handle(async ({ request, env }) => {
     if (!/<html/i.test(html)) throw new HttpError(400, 'html must be a complete HTML document');
     const instruction = requireString(body, 'instruction', { max: 2000 });
     const result = await generate(env, { mode, html, instruction });
-    return json({ html: result.text, usage: result.usage, model: result.model });
+    const wired = await wireForms(env, request, result.text, body.notifyEmail);
+    return json({ html: wired, usage: result.usage, model: result.model });
   }
 
   const prompt = requireString(body, 'prompt', { max: 6000 });
@@ -61,5 +79,6 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const brand = typeof body.brand === 'string' ? body.brand.slice(0, 4000) : '';
 
   const result = await generate(env, { mode, prompt, context, brand, page, pages });
-  return json({ html: result.text, usage: result.usage, model: result.model });
+  const wired = await wireForms(env, request, result.text, body.notifyEmail);
+  return json({ html: wired, usage: result.usage, model: result.model });
 });

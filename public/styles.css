@@ -603,6 +603,20 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 }
 .toast.toast-error { border-color: var(--bad); }
 
+/* ---------- Notify-email input (contact form destination) ---------- */
+.notify-input {
+  width: 100%;
+  margin-top: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font: inherit;
+}
+.notify-input::placeholder { color: var(--ink-3); }
+.notify-input:focus { outline: none; border-color: var(--accent); }
+
 /* ---------- Refine bar ---------- */
 .refine-bar { display: flex; gap: 10px; margin-bottom: 12px; }
 .refine-bar input {

@@ -34,6 +34,8 @@
         <div class="prompt-box">
           <textarea id="build-prompt" class="autogrow" rows="3" maxlength="6000"
             placeholder="A single-page website for Riverside Plumbing in Worcester, MA — 24/7 emergency service, licensed &amp; insured, 4.8 stars on Google, call (508) 555-0114 for a free quote…"></textarea>
+          <input type="email" id="build-notify-email" class="notify-input" maxlength="200"
+            placeholder="📬 Optional: email to receive contact-form submissions (yours or the client's)">
           <div class="prompt-actions">
             <span class="hint" id="build-hint"></span>
             <button class="btn btn-primary" id="build-generate">Generate site</button>
@@ -83,6 +85,8 @@
             <label class="page-chip"><input type="checkbox" value="gallery.html" data-title="Gallery"> Gallery</label>
             <label class="page-chip"><input type="checkbox" value="reviews.html" data-title="Reviews"> Reviews</label>
           </div>
+          <input type="email" id="multi-notify-email" class="notify-input" maxlength="200"
+            placeholder="📬 Optional: email to receive contact-form submissions (yours or the client's)">
           <div class="prompt-actions">
             <span class="hint" id="multi-hint"></span>
             <button class="btn btn-primary" id="multi-generate">Generate site</button>

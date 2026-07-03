@@ -88,6 +88,16 @@ function downloadFile(filename, content) {
   URL.revokeObjectURL(a.href);
 }
 
+// Carry a site's injected contact-form wiring across a refine when we don't
+// have the notify email on hand (e.g. after opening a saved site to edit).
+const FORMS_BLOCK_RE = /<!--forge-forms-start-->[\s\S]*?<!--forge-forms-end-->/;
+function preserveForms(oldHtml, newHtml) {
+  const m = FORMS_BLOCK_RE.exec(oldHtml || '');
+  if (!m) return newHtml;
+  const cleaned = String(newHtml).replace(new RegExp(FORMS_BLOCK_RE.source, 'g'), '');
+  return cleaned.includes('</body>') ? cleaned.replace('</body>', `${m[0]}</body>`) : cleaned + m[0];
+}
+
 // ---------------------------------------------------------------- tabs
 
 const panels = ['build', 'multi', 'sites', 'leads', 'history', 'clients', 'revenue', 'invoice'];
@@ -241,7 +251,7 @@ $('#sites-refresh').addEventListener('click', loadSites);
 
 // ------------------------------------------------- Section 1: single page
 
-const buildState = { html: null, placeId: null };
+const buildState = { html: null, placeId: null, notifyEmail: '' };
 
 async function generateSingle(prompt, placeId = null) {
   const errEl = $('#build-error');
@@ -251,14 +261,16 @@ async function generateSingle(prompt, placeId = null) {
   $('#build-loading').hidden = false;
   $('#build-generate').disabled = true;
 
+  const notifyEmail = ($('#build-notify-email')?.value || '').trim();
   try {
     const context = extractKeywords(prompt);
     const res = await api('/api/generate', {
       method: 'POST',
-      body: { mode: 'page', prompt, context },
+      body: { mode: 'page', prompt, context, notifyEmail },
     });
     buildState.html = res.html;
     buildState.placeId = placeId;
+    buildState.notifyEmail = notifyEmail;
     $('#build-frame').srcdoc = res.html;
     $('#build-result').hidden = false;
     toast('Site generated');
@@ -303,7 +315,7 @@ $('#build-download').addEventListener('click', () => buildState.html && download
 
 // ------------------------------------------------- Section 2: multi-page
 
-const multiState = { pages: {}, defs: [], current: null, placeId: null };
+const multiState = { pages: {}, defs: [], current: null, placeId: null, notifyEmail: '' };
 
 function selectedPageDefs() {
   const defs = [{ filename: 'index.html', title: 'Home' }];
@@ -389,6 +401,8 @@ async function generateMulti(prompt) {
   const defs = selectedPageDefs();
   const statuses = {};
   setProgress(defs, statuses);
+  const notifyEmail = ($('#multi-notify-email')?.value || '').trim();
+  multiState.notifyEmail = notifyEmail;
 
   try {
     // Pass 1 — one shared brand/style summary for the whole site.
@@ -405,7 +419,7 @@ async function generateMulti(prompt) {
     const results = await Promise.allSettled(defs.map((page) =>
       api('/api/generate', {
         method: 'POST',
-        body: { mode: 'page', prompt, context, brand: brandRes.brand, page, pages: defs },
+        body: { mode: 'page', prompt, context, brand: brandRes.brand, page, pages: defs, notifyEmail },
       }).then((res) => {
         statuses[page.filename] = 'done';
         setProgress(defs, statuses);
@@ -930,10 +944,13 @@ $('#build-refine-btn').addEventListener('click', async () => {
   try {
     const res = await api('/api/generate', {
       method: 'POST',
-      body: { mode: 'refine', html: buildState.html, instruction },
+      body: { mode: 'refine', html: buildState.html, instruction, notifyEmail: buildState.notifyEmail || '' },
     });
-    buildState.html = res.html;
-    $('#build-frame').srcdoc = res.html;
+    // If the server didn't re-wire forms (no notify email on hand), keep the
+    // existing form wiring from the previous version.
+    const newHtml = buildState.notifyEmail ? res.html : preserveForms(buildState.html, res.html);
+    buildState.html = newHtml;
+    $('#build-frame').srcdoc = newHtml;
     $('#build-refine-input').value = '';
     $('#build-link-output').hidden = true; // any earlier link now points at the old version
     toast('Change applied — save a new link to share this version');
@@ -959,9 +976,9 @@ $('#multi-refine-btn').addEventListener('click', async () => {
   try {
     const res = await api('/api/generate', {
       method: 'POST',
-      body: { mode: 'refine', html: multiState.pages[cur], instruction },
+      body: { mode: 'refine', html: multiState.pages[cur], instruction, notifyEmail: multiState.notifyEmail || '' },
     });
-    multiState.pages[cur] = res.html;
+    multiState.pages[cur] = multiState.notifyEmail ? res.html : preserveForms(multiState.pages[cur], res.html);
     showMultiPage(cur);
     $('#multi-refine-input').value = '';
     $('#multi-link-output').hidden = true;

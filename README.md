@@ -19,6 +19,7 @@ database, and the shareable site previews.
 | **Mobile preview** | Desktop / Mobile toggle above any result | Constrains the preview to phone width so you can check the mobile view before sending — most local-business traffic is on phones. |
 | **My Sites** | My Sites tab | A visual gallery of every saved site (backed by the previews table) with live thumbnails: open a single-page site back into the builder to keep editing, copy its link, or delete it. |
 | **Proposal / Invoice** | Invoice tab | A no-AI, instant, client-side generator: fill a short form (optionally pre-filled from a client) and get a clean printable proposal or invoice to Print-to-PDF or download. Remembers your own business name/contact in the browser. |
+| **Contact-form alerts** | "email for form submissions" field on Build/Multi | When you enter a notify email, the generated site's contact/quote form is wired to Forge: a visitor submission emails that address the lead's details. Uses HMAC-signed tokens (no open relay), a honeypot for bots, and `POST /api/contact` with permissive CORS so it works even when the site is hosted on a client's own domain. Requires `RESEND_API_KEY` (Resend free tier); to deliver to arbitrary client inboxes, verify a domain in Resend and set `MAIL_FROM`. |
 
 ## Architecture
 
