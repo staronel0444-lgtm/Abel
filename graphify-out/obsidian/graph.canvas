@@ -1,0 +1,2822 @@
+{
+  "nodes": [
+    {
+      "id": "g0",
+      "type": "group",
+      "label": "AI Site Generation",
+      "x": 0,
+      "y": 0,
+      "width": 1100,
+      "height": 520,
+      "color": "1"
+    },
+    {
+      "id": "n_lib_forminject_block_re",
+      "type": "file",
+      "file": "BLOCK_RE.md",
+      "x": 20,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_multi_page_builder",
+      "type": "file",
+      "file": "Multi-Page Builder.md",
+      "x": 220,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_refine",
+      "type": "file",
+      "file": "Refine (edit existing page).md",
+      "x": 420,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_single_page_builder",
+      "type": "file",
+      "file": "Single Page Builder.md",
+      "x": 620,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_anthropic",
+      "type": "file",
+      "file": "anthropic.js.md",
+      "x": 820,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_anthropic_buildsystem",
+      "type": "file",
+      "file": "buildSystem().md",
+      "x": 20,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_anthropic_buildusermessage",
+      "type": "file",
+      "file": "buildUserMessage().md",
+      "x": 220,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_anthropic_extracthtml",
+      "type": "file",
+      "file": "extractHtml().md",
+      "x": 420,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_forminject",
+      "type": "file",
+      "file": "forminject.js.md",
+      "x": 620,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_anthropic_generate",
+      "type": "file",
+      "file": "generate().md",
+      "x": 820,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_generate",
+      "type": "file",
+      "file": "generate.js.md",
+      "x": 20,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_forminject_injectforms",
+      "type": "file",
+      "file": "injectForms().md",
+      "x": 220,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_anthropic_mapanthropicerror",
+      "type": "file",
+      "file": "mapAnthropicError().md",
+      "x": 420,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_anthropic_mockgenerate",
+      "type": "file",
+      "file": "mockGenerate().md",
+      "x": 620,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_generate_onrequestpost",
+      "type": "file",
+      "file": "onRequestPost_2.md",
+      "x": 820,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_stop_reason_truncation",
+      "type": "file",
+      "file": "stop_reason truncation handling.md",
+      "x": 20,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_forminject_stripforms",
+      "type": "file",
+      "file": "stripForms().md",
+      "x": 220,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_generate_validatepages",
+      "type": "file",
+      "file": "validatePages().md",
+      "x": 420,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_generate_wireforms",
+      "type": "file",
+      "file": "wireForms().md",
+      "x": 620,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g1",
+      "type": "group",
+      "label": "Lead Prompt & Proposal UI",
+      "x": 1180,
+      "y": 0,
+      "width": 1100,
+      "height": 520,
+      "color": "2"
+    },
+    {
+      "id": "n_public_app_page_titles",
+      "type": "file",
+      "file": "PAGE_TITLES.md",
+      "x": 1200,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_proposal_invoice",
+      "type": "file",
+      "file": "Proposal  Invoice generator.md",
+      "x": 1400,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_trade_keywords",
+      "type": "file",
+      "file": "TRADE_KEYWORDS.md",
+      "x": 1600,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_window_labels",
+      "type": "file",
+      "file": "WINDOW_LABELS.md",
+      "x": 1800,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app",
+      "type": "file",
+      "file": "app.js.md",
+      "x": 2000,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_buildleadprompt",
+      "type": "file",
+      "file": "buildLeadPrompt().md",
+      "x": 1200,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_buildstate",
+      "type": "file",
+      "file": "buildState.md",
+      "x": 1400,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_clientstate",
+      "type": "file",
+      "file": "clientState.md",
+      "x": 1600,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_downloadfile",
+      "type": "file",
+      "file": "downloadFile().md",
+      "x": 1800,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_leadcardhtml",
+      "type": "file",
+      "file": "leadCardHtml().md",
+      "x": 2000,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_leadstate",
+      "type": "file",
+      "file": "leadState.md",
+      "x": 1200,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_moneyfmt",
+      "type": "file",
+      "file": "moneyFmt.md",
+      "x": 1400,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_moneyfmtcents",
+      "type": "file",
+      "file": "moneyFmtCents.md",
+      "x": 1600,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_multistate",
+      "type": "file",
+      "file": "multiState.md",
+      "x": 1800,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_panels",
+      "type": "file",
+      "file": "panels.md",
+      "x": 2000,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_preserveforms",
+      "type": "file",
+      "file": "preserveForms().md",
+      "x": 1200,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_renderleadresults",
+      "type": "file",
+      "file": "renderLeadResults().md",
+      "x": 1400,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_titleforfile",
+      "type": "file",
+      "file": "titleForFile().md",
+      "x": 1600,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_wireleadcard",
+      "type": "file",
+      "file": "wireLeadCard().md",
+      "x": 1800,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g2",
+      "type": "group",
+      "label": "Site Builder Frontend",
+      "x": 2360,
+      "y": 0,
+      "width": 880,
+      "height": 520,
+      "color": "3"
+    },
+    {
+      "id": "n_home_user_abel_public_app",
+      "type": "file",
+      "file": "unnamed.md",
+      "x": 2380,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_applytheme",
+      "type": "file",
+      "file": "applyTheme().md",
+      "x": 2580,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_copytext",
+      "type": "file",
+      "file": "copyText().md",
+      "x": 2780,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_extractkeywords",
+      "type": "file",
+      "file": "extractKeywords().md",
+      "x": 2980,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_generatemulti",
+      "type": "file",
+      "file": "generateMulti().md",
+      "x": 2380,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_generatesingle",
+      "type": "file",
+      "file": "generateSingle().md",
+      "x": 2580,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_openhistorydetail",
+      "type": "file",
+      "file": "openHistoryDetail().md",
+      "x": 2780,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_openmultiinbuilder",
+      "type": "file",
+      "file": "openMultiInBuilder().md",
+      "x": 2980,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_rendermultiresult",
+      "type": "file",
+      "file": "renderMultiResult().md",
+      "x": 2380,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_resolveniche",
+      "type": "file",
+      "file": "resolveNiche().md",
+      "x": 2580,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_selectedpagedefs",
+      "type": "file",
+      "file": "selectedPageDefs().md",
+      "x": 2780,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_setprogress",
+      "type": "file",
+      "file": "setProgress().md",
+      "x": 2980,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_showmultipage",
+      "type": "file",
+      "file": "showMultiPage().md",
+      "x": 2380,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_toast",
+      "type": "file",
+      "file": "toast().md",
+      "x": 2580,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_wiredevice",
+      "type": "file",
+      "file": "wireDevice().md",
+      "x": 2780,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_withnavshim",
+      "type": "file",
+      "file": "withNavShim().md",
+      "x": 2980,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g3",
+      "type": "group",
+      "label": "Package Manifest & Scripts",
+      "x": 3320,
+      "y": 0,
+      "width": 880,
+      "height": 520,
+      "color": "4"
+    },
+    {
+      "id": "n_package_dependencies_anthropic_ai_sdk",
+      "type": "file",
+      "file": "@anthropic-aisdk.md",
+      "x": 3340,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_scripts_db_schema",
+      "type": "file",
+      "file": "dbschema.md",
+      "x": 3540,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_scripts_db_schema_local",
+      "type": "file",
+      "file": "dbschemalocal.md",
+      "x": 3740,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_dependencies",
+      "type": "file",
+      "file": "dependencies.md",
+      "x": 3940,
+      "y": 80,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_scripts_deploy",
+      "type": "file",
+      "file": "deploy.md",
+      "x": 3340,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_description",
+      "type": "file",
+      "file": "description.md",
+      "x": 3540,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_scripts_dev",
+      "type": "file",
+      "file": "dev.md",
+      "x": 3740,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_devdependencies",
+      "type": "file",
+      "file": "devDependencies.md",
+      "x": 3940,
+      "y": 160,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_name",
+      "type": "file",
+      "file": "name.md",
+      "x": 3340,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package",
+      "type": "file",
+      "file": "package.json.md",
+      "x": 3540,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_private",
+      "type": "file",
+      "file": "private.md",
+      "x": 3740,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_scripts",
+      "type": "file",
+      "file": "scripts.md",
+      "x": 3940,
+      "y": 240,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_version",
+      "type": "file",
+      "file": "version.md",
+      "x": 3340,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_package_devdependencies_wrangler",
+      "type": "file",
+      "file": "wrangler.md",
+      "x": 3540,
+      "y": 320,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g4",
+      "type": "group",
+      "label": "Preview Storage & Serving",
+      "x": 0,
+      "y": 600,
+      "width": 880,
+      "height": 520,
+      "color": "5"
+    },
+    {
+      "id": "n_functions_preview_path_html_headers",
+      "type": "file",
+      "file": "HTML_HEADERS.md",
+      "x": 20,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_my_sites",
+      "type": "file",
+      "file": "My Sites gallery.md",
+      "x": 220,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_preview_links",
+      "type": "file",
+      "file": "Preview Links.md",
+      "x": 420,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_preview_path",
+      "type": "file",
+      "file": "path.js.md",
+      "x": 620,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_previews_index_extracttitle",
+      "type": "file",
+      "file": "extractTitle().md",
+      "x": 20,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_id",
+      "type": "file",
+      "file": "id.js_2.md",
+      "x": 220,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_previews_index",
+      "type": "file",
+      "file": "index.js_1.md",
+      "x": 420,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_preview_path_notfound",
+      "type": "file",
+      "file": "notFound().md",
+      "x": 620,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_previews_index_onrequestget",
+      "type": "file",
+      "file": "onRequestGet_3.md",
+      "x": 20,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_preview_path_onrequestget",
+      "type": "file",
+      "file": "onRequestGet().md",
+      "x": 220,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_previews_index_onrequestpost",
+      "type": "file",
+      "file": "onRequestPost_5.md",
+      "x": 420,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_preview_path_page",
+      "type": "file",
+      "file": "page().md",
+      "x": 620,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_id_randomid",
+      "type": "file",
+      "file": "randomId().md",
+      "x": 20,
+      "y": 920,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g5",
+      "type": "group",
+      "label": "Places Search & Product Overview",
+      "x": 1180,
+      "y": 600,
+      "width": 880,
+      "height": 520,
+      "color": "6"
+    },
+    {
+      "id": "n_readme_client_dashboard",
+      "type": "file",
+      "file": "Client Dashboard.md",
+      "x": 1200,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_serverless_proxy",
+      "type": "file",
+      "file": "Cloudflare Pages Functions proxy.md",
+      "x": 1400,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_d1_database",
+      "type": "file",
+      "file": "D1 database.md",
+      "x": 1600,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_places_field_mask",
+      "type": "file",
+      "file": "FIELD_MASK.md",
+      "x": 1800,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_forge",
+      "type": "file",
+      "file": "Forge (prompt-to-website builder).md",
+      "x": 1200,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_lead_finder",
+      "type": "file",
+      "file": "Lead Finder.md",
+      "x": 1400,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_revenue_dashboard",
+      "type": "file",
+      "file": "Revenue Dashboard.md",
+      "x": 1600,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_view_history",
+      "type": "file",
+      "file": "View History.md",
+      "x": 1800,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_places_humanizetype",
+      "type": "file",
+      "file": "humanizeType().md",
+      "x": 1200,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_places_mockplaces",
+      "type": "file",
+      "file": "mockPlaces().md",
+      "x": 1400,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_places",
+      "type": "file",
+      "file": "places.js.md",
+      "x": 1600,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_places_searchplaces",
+      "type": "file",
+      "file": "searchPlaces().md",
+      "x": 1800,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_places_shapeplace",
+      "type": "file",
+      "file": "shapePlace().md",
+      "x": 1200,
+      "y": 920,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g6",
+      "type": "group",
+      "label": "Client CRUD API",
+      "x": 2360,
+      "y": 600,
+      "width": 880,
+      "height": 420,
+      "color": "1"
+    },
+    {
+      "id": "n_functions_api_clients_id",
+      "type": "file",
+      "file": "id.js.md",
+      "x": 2380,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_getclient",
+      "type": "file",
+      "file": "getClient().md",
+      "x": 2580,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_index",
+      "type": "file",
+      "file": "index.js.md",
+      "x": 2780,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_onrequestdelete",
+      "type": "file",
+      "file": "onRequestDelete.md",
+      "x": 2980,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_index_onrequestget",
+      "type": "file",
+      "file": "onRequestGet.md",
+      "x": 2380,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_index_onrequestpost",
+      "type": "file",
+      "file": "onRequestPost_1.md",
+      "x": 2580,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_onrequestput",
+      "type": "file",
+      "file": "onRequestPut.md",
+      "x": 2780,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_index_parseclosedate",
+      "type": "file",
+      "file": "parseCloseDate().md",
+      "x": 2980,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_parseid",
+      "type": "file",
+      "file": "parseId().md",
+      "x": 2380,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_index_parsemoney",
+      "type": "file",
+      "file": "parseMoney().md",
+      "x": 2580,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_index_shapeclient",
+      "type": "file",
+      "file": "shapeClient().md",
+      "x": 2780,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g7",
+      "type": "group",
+      "label": "Leads & History API",
+      "x": 3320,
+      "y": 600,
+      "width": 880,
+      "height": 420,
+      "color": "2"
+    },
+    {
+      "id": "n_functions_api_leads_decision",
+      "type": "file",
+      "file": "decision.js.md",
+      "x": 3340,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_http_handle",
+      "type": "file",
+      "file": "handle().md",
+      "x": 3540,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_history",
+      "type": "file",
+      "file": "history.js.md",
+      "x": 3740,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_http",
+      "type": "file",
+      "file": "http.js.md",
+      "x": 3940,
+      "y": 680,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_http_json",
+      "type": "file",
+      "file": "json().md",
+      "x": 3340,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_history_onrequestget",
+      "type": "file",
+      "file": "onRequestGet_1.md",
+      "x": 3540,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_leads_decision_onrequestpost",
+      "type": "file",
+      "file": "onRequestPost_3.md",
+      "x": 3740,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_leads_search_onrequestpost",
+      "type": "file",
+      "file": "onRequestPost_4.md",
+      "x": 3940,
+      "y": 760,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_http_readjson",
+      "type": "file",
+      "file": "readJson().md",
+      "x": 3340,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_http_requirestring",
+      "type": "file",
+      "file": "requireString().md",
+      "x": 3540,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_leads_search",
+      "type": "file",
+      "file": "search.js.md",
+      "x": 3740,
+      "y": 840,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g8",
+      "type": "group",
+      "label": "Contact Form & Email Alerts",
+      "x": 0,
+      "y": 1200,
+      "width": 880,
+      "height": 420,
+      "color": "3"
+    },
+    {
+      "id": "n_functions_api_contact_cors",
+      "type": "file",
+      "file": "CORS.md",
+      "x": 20,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_contact_form_alerts",
+      "type": "file",
+      "file": "Contact-form alerts.md",
+      "x": 220,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_readme_hmac_tokens",
+      "type": "file",
+      "file": "HMAC-signed contact tokens.md",
+      "x": 420,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_contact",
+      "type": "file",
+      "file": "contact.js.md",
+      "x": 620,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_email",
+      "type": "file",
+      "file": "email.js.md",
+      "x": 20,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_email_esc",
+      "type": "file",
+      "file": "esc().md",
+      "x": 220,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_contact_onrequestoptions",
+      "type": "file",
+      "file": "onRequestOptions().md",
+      "x": 420,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_contact_onrequestpost",
+      "type": "file",
+      "file": "onRequestPost().md",
+      "x": 620,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_email_sendleademail",
+      "type": "file",
+      "file": "sendLeadEmail().md",
+      "x": 20,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_contact_withcors",
+      "type": "file",
+      "file": "withCors().md",
+      "x": 220,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g9",
+      "type": "group",
+      "label": "Client Dashboard Frontend",
+      "x": 1180,
+      "y": 1200,
+      "width": 880,
+      "height": 420,
+      "color": "4"
+    },
+    {
+      "id": "n_public_app_buildinvoicedoc",
+      "type": "file",
+      "file": "buildInvoiceDoc().md",
+      "x": 1200,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_formatdate",
+      "type": "file",
+      "file": "formatDate().md",
+      "x": 1400,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_formatmonth",
+      "type": "file",
+      "file": "formatMonth().md",
+      "x": 1600,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_isduethismonth",
+      "type": "file",
+      "file": "isDueThisMonth().md",
+      "x": 1800,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_localcurrentmonth",
+      "type": "file",
+      "file": "localCurrentMonth().md",
+      "x": 1200,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_localtoday",
+      "type": "file",
+      "file": "localToday().md",
+      "x": 1400,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_markpaid",
+      "type": "file",
+      "file": "markPaid().md",
+      "x": 1600,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_money",
+      "type": "file",
+      "file": "money().md",
+      "x": 1800,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_openclientmodal",
+      "type": "file",
+      "file": "openClientModal().md",
+      "x": 1200,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_renderclients",
+      "type": "file",
+      "file": "renderClients().md",
+      "x": 1400,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g10",
+      "type": "group",
+      "label": "Frontend Data Loading & Tabs",
+      "x": 2360,
+      "y": 1200,
+      "width": 660,
+      "height": 420,
+      "color": "5"
+    },
+    {
+      "id": "n_public_app_api",
+      "type": "file",
+      "file": "api().md",
+      "x": 2380,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_createpreview",
+      "type": "file",
+      "file": "createPreview().md",
+      "x": 2580,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_escapehtml",
+      "type": "file",
+      "file": "escapeHtml().md",
+      "x": 2780,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_initinvoice",
+      "type": "file",
+      "file": "initInvoice().md",
+      "x": 2380,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_loadclients",
+      "type": "file",
+      "file": "loadClients().md",
+      "x": 2580,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_loadhistory",
+      "type": "file",
+      "file": "loadHistory().md",
+      "x": 2780,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_loadrevenue",
+      "type": "file",
+      "file": "loadRevenue().md",
+      "x": 2380,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_loadsites",
+      "type": "file",
+      "file": "loadSites().md",
+      "x": 2580,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_public_app_switchtab",
+      "type": "file",
+      "file": "switchTab().md",
+      "x": 2780,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g11",
+      "type": "group",
+      "label": "Monthly Payment Tracking API",
+      "x": 3320,
+      "y": 1200,
+      "width": 660,
+      "height": 420,
+      "color": "6"
+    },
+    {
+      "id": "n_functions_api_clients_id_payments_currentmonth",
+      "type": "file",
+      "file": "currentMonth().md",
+      "x": 3340,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_payments_onrequestdelete",
+      "type": "file",
+      "file": "onRequestDelete_1.md",
+      "x": 3540,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_payments_onrequestpost",
+      "type": "file",
+      "file": "onRequestPost.md",
+      "x": 3740,
+      "y": 1280,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_payments_paidmonths",
+      "type": "file",
+      "file": "paidMonths().md",
+      "x": 3340,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_payments_parseid",
+      "type": "file",
+      "file": "parseId()_1.md",
+      "x": 3540,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_payments_parsemonth",
+      "type": "file",
+      "file": "parseMonth().md",
+      "x": 3740,
+      "y": 1360,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_payments",
+      "type": "file",
+      "file": "payments.js.md",
+      "x": 3340,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_clients_id_payments_synclastpaidmonth",
+      "type": "file",
+      "file": "syncLastPaidMonth().md",
+      "x": 3540,
+      "y": 1440,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g12",
+      "type": "group",
+      "label": "Preview Item Get/Delete API",
+      "x": 0,
+      "y": 1700,
+      "width": 660,
+      "height": 400,
+      "color": "1"
+    },
+    {
+      "id": "n_lib_http_httperror_constructor",
+      "type": "file",
+      "file": ".constructor().md",
+      "x": 20,
+      "y": 1780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_lib_http_httperror",
+      "type": "file",
+      "file": "HttpError.md",
+      "x": 220,
+      "y": 1780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_previews_id",
+      "type": "file",
+      "file": "id.js_1.md",
+      "x": 420,
+      "y": 1780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_previews_id_onrequestdelete",
+      "type": "file",
+      "file": "onRequestDelete_2.md",
+      "x": 20,
+      "y": 1860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_previews_id_onrequestget",
+      "type": "file",
+      "file": "onRequestGet_2.md",
+      "x": 220,
+      "y": 1860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_previews_id_validid",
+      "type": "file",
+      "file": "validId().md",
+      "x": 420,
+      "y": 1860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "g13",
+      "type": "group",
+      "label": "Revenue Aggregation API",
+      "x": 1180,
+      "y": 1700,
+      "width": 660,
+      "height": 400,
+      "color": "2"
+    },
+    {
+      "id": "n_functions_api_revenue_window_days",
+      "type": "file",
+      "file": "WINDOW_DAYS.md",
+      "x": 1200,
+      "y": 1780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_revenue_onrequestget",
+      "type": "file",
+      "file": "onRequestGet_4.md",
+      "x": 1400,
+      "y": 1780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_revenue",
+      "type": "file",
+      "file": "revenue.js.md",
+      "x": 1600,
+      "y": 1780,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_revenue_sqldatetime",
+      "type": "file",
+      "file": "sqlDatetime().md",
+      "x": 1200,
+      "y": 1860,
+      "width": 180,
+      "height": 60
+    },
+    {
+      "id": "n_functions_api_revenue_sums",
+      "type": "file",
+      "file": "sums().md",
+      "x": 1400,
+      "y": 1860,
+      "width": 180,
+      "height": 60
+    }
+  ],
+  "edges": [
+    {
+      "id": "e_functions_api_clients_id_functions_api_clients_id_getclient",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_functions_api_clients_id_getclient",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_functions_api_clients_id_onrequestdelete",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_functions_api_clients_id_onrequestdelete",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_functions_api_clients_id_onrequestput",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_functions_api_clients_id_onrequestput",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_functions_api_clients_id_parseid",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_functions_api_clients_id_parseid",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_functions_api_clients_index",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_functions_api_clients_index",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_functions_api_clients_index_parseclosedate",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_functions_api_clients_index_parseclosedate",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_functions_api_clients_index_parsemoney",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_functions_api_clients_index_parsemoney",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_functions_api_clients_index_shapeclient",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_functions_api_clients_index_shapeclient",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_lib_http",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_lib_http_handle",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_lib_http_httperror",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_lib_http_json",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_lib_http_readjson",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_lib_http_readjson",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_readme_client_dashboard",
+      "fromNode": "n_functions_api_clients_id",
+      "toNode": "n_readme_client_dashboard",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_functions_api_clients_id_payments_currentmonth",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_functions_api_clients_id_payments_currentmonth",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_functions_api_clients_id_payments_onrequestdelete",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_functions_api_clients_id_payments_onrequestdelete",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_functions_api_clients_id_payments_onrequestpost",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_functions_api_clients_id_payments_onrequestpost",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_functions_api_clients_id_payments_paidmonths",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_functions_api_clients_id_payments_paidmonths",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_functions_api_clients_id_payments_parseid",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_functions_api_clients_id_payments_parseid",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_functions_api_clients_id_payments_parsemonth",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_functions_api_clients_id_payments_parsemonth",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_functions_api_clients_id_payments_synclastpaidmonth",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_functions_api_clients_id_payments_synclastpaidmonth",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_lib_http",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_lib_http_handle",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_lib_http_httperror",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_lib_http_json",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_lib_http_readjson",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_lib_http_readjson",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_readme_client_dashboard",
+      "fromNode": "n_functions_api_clients_id_payments",
+      "toNode": "n_readme_client_dashboard",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_clients_id_payments_currentmonth_functions_api_clients_id_payments_parsemonth",
+      "fromNode": "n_functions_api_clients_id_payments_currentmonth",
+      "toNode": "n_functions_api_clients_id_payments_parsemonth",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_functions_api_clients_index_onrequestget",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_functions_api_clients_index_onrequestget",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_functions_api_clients_index_onrequestpost",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_functions_api_clients_index_onrequestpost",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_functions_api_clients_index_parseclosedate",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_functions_api_clients_index_parseclosedate",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_functions_api_clients_index_parsemoney",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_functions_api_clients_index_parsemoney",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_functions_api_clients_index_shapeclient",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_functions_api_clients_index_shapeclient",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_lib_http",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_lib_http_handle",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_lib_http_httperror",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_lib_http_json",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_lib_http_readjson",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_lib_http_readjson",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_lib_http_requirestring",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_lib_http_requirestring",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_clients_index_readme_client_dashboard",
+      "fromNode": "n_functions_api_clients_index",
+      "toNode": "n_readme_client_dashboard",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_contact_functions_api_contact_cors",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_functions_api_contact_cors",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_functions_api_contact_onrequestoptions",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_functions_api_contact_onrequestoptions",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_functions_api_contact_onrequestpost",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_functions_api_contact_onrequestpost",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_functions_api_contact_withcors",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_functions_api_contact_withcors",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_lib_email",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_lib_email",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_lib_email_sendleademail",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_lib_email_sendleademail",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_lib_http",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_lib_http_httperror",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_lib_http_json",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_lib_http_readjson",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_lib_http_readjson",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_readme_contact_form_alerts",
+      "fromNode": "n_functions_api_contact",
+      "toNode": "n_readme_contact_form_alerts",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_contact_withcors_functions_api_contact_onrequestoptions",
+      "fromNode": "n_functions_api_contact_withcors",
+      "toNode": "n_functions_api_contact_onrequestoptions",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_withcors_functions_api_contact_onrequestpost",
+      "fromNode": "n_functions_api_contact_withcors",
+      "toNode": "n_functions_api_contact_onrequestpost",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_onrequestpost_lib_email_sendleademail",
+      "fromNode": "n_functions_api_contact_onrequestpost",
+      "toNode": "n_lib_email_sendleademail",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_onrequestpost_lib_http_json",
+      "fromNode": "n_functions_api_contact_onrequestpost",
+      "toNode": "n_lib_http_json",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_contact_onrequestpost_lib_http_readjson",
+      "fromNode": "n_functions_api_contact_onrequestpost",
+      "toNode": "n_lib_http_readjson",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_functions_api_generate_onrequestpost",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_functions_api_generate_onrequestpost",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_functions_api_generate_validatepages",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_functions_api_generate_validatepages",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_functions_api_generate_wireforms",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_functions_api_generate_wireforms",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_anthropic",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_anthropic",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_anthropic_generate",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_anthropic_generate",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_forminject",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_forminject",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_forminject_injectforms",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_forminject_injectforms",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_http",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_http_handle",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_http_httperror",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_http_json",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_http_readjson",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_http_readjson",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_lib_http_requirestring",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_lib_http_requirestring",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_generate_readme_multi_page_builder",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_readme_multi_page_builder",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_generate_readme_refine",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_readme_refine",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_generate_readme_single_page_builder",
+      "fromNode": "n_functions_api_generate",
+      "toNode": "n_readme_single_page_builder",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_generate_wireforms_lib_forminject_injectforms",
+      "fromNode": "n_functions_api_generate_wireforms",
+      "toNode": "n_lib_forminject_injectforms",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_history_functions_api_history_onrequestget",
+      "fromNode": "n_functions_api_history",
+      "toNode": "n_functions_api_history_onrequestget",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_history_lib_http",
+      "fromNode": "n_functions_api_history",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_history_lib_http_handle",
+      "fromNode": "n_functions_api_history",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_history_lib_http_json",
+      "fromNode": "n_functions_api_history",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_history_readme_view_history",
+      "fromNode": "n_functions_api_history",
+      "toNode": "n_readme_view_history",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_leads_decision_functions_api_leads_decision_onrequestpost",
+      "fromNode": "n_functions_api_leads_decision",
+      "toNode": "n_functions_api_leads_decision_onrequestpost",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_decision_lib_http",
+      "fromNode": "n_functions_api_leads_decision",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_decision_lib_http_handle",
+      "fromNode": "n_functions_api_leads_decision",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_decision_lib_http_httperror",
+      "fromNode": "n_functions_api_leads_decision",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_decision_lib_http_json",
+      "fromNode": "n_functions_api_leads_decision",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_decision_lib_http_readjson",
+      "fromNode": "n_functions_api_leads_decision",
+      "toNode": "n_lib_http_readjson",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_decision_lib_http_requirestring",
+      "fromNode": "n_functions_api_leads_decision",
+      "toNode": "n_lib_http_requirestring",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_decision_readme_lead_finder",
+      "fromNode": "n_functions_api_leads_decision",
+      "toNode": "n_readme_lead_finder",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_functions_api_leads_search_onrequestpost",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_functions_api_leads_search_onrequestpost",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_lib_http",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_lib_http_handle",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_lib_http_json",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_lib_http_readjson",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_lib_http_readjson",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_lib_http_requirestring",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_lib_http_requirestring",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_lib_places",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_lib_places",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_lib_places_searchplaces",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_lib_places_searchplaces",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_leads_search_readme_lead_finder",
+      "fromNode": "n_functions_api_leads_search",
+      "toNode": "n_readme_lead_finder",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_previews_id_functions_api_previews_id_onrequestdelete",
+      "fromNode": "n_functions_api_previews_id",
+      "toNode": "n_functions_api_previews_id_onrequestdelete",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_id_functions_api_previews_id_onrequestget",
+      "fromNode": "n_functions_api_previews_id",
+      "toNode": "n_functions_api_previews_id_onrequestget",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_id_functions_api_previews_id_validid",
+      "fromNode": "n_functions_api_previews_id",
+      "toNode": "n_functions_api_previews_id_validid",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_id_lib_http",
+      "fromNode": "n_functions_api_previews_id",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_id_lib_http_handle",
+      "fromNode": "n_functions_api_previews_id",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_id_lib_http_httperror",
+      "fromNode": "n_functions_api_previews_id",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_id_lib_http_json",
+      "fromNode": "n_functions_api_previews_id",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_id_readme_preview_links",
+      "fromNode": "n_functions_api_previews_id",
+      "toNode": "n_readme_preview_links",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_functions_api_previews_index_extracttitle",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_functions_api_previews_index_extracttitle",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_functions_api_previews_index_onrequestget",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_functions_api_previews_index_onrequestget",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_functions_api_previews_index_onrequestpost",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_functions_api_previews_index_onrequestpost",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_lib_http",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_lib_http_handle",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_lib_http_httperror",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_lib_http_json",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_lib_http_readjson",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_lib_http_readjson",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_lib_id",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_lib_id",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_lib_id_randomid",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_lib_id_randomid",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_readme_my_sites",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_readme_my_sites",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_previews_index_readme_preview_links",
+      "fromNode": "n_functions_api_previews_index",
+      "toNode": "n_readme_preview_links",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_api_revenue_functions_api_revenue_onrequestget",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_functions_api_revenue_onrequestget",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_revenue_functions_api_revenue_sqldatetime",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_functions_api_revenue_sqldatetime",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_revenue_functions_api_revenue_sums",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_functions_api_revenue_sums",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_revenue_functions_api_revenue_window_days",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_functions_api_revenue_window_days",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_revenue_lib_http",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_revenue_lib_http_handle",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_lib_http_handle",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_revenue_lib_http_httperror",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_revenue_lib_http_json",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_lib_http_json",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_api_revenue_readme_revenue_dashboard",
+      "fromNode": "n_functions_api_revenue",
+      "toNode": "n_readme_revenue_dashboard",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_preview_path_functions_preview_path_html_headers",
+      "fromNode": "n_functions_preview_path",
+      "toNode": "n_functions_preview_path_html_headers",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_preview_path_functions_preview_path_notfound",
+      "fromNode": "n_functions_preview_path",
+      "toNode": "n_functions_preview_path_notfound",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_preview_path_functions_preview_path_onrequestget",
+      "fromNode": "n_functions_preview_path",
+      "toNode": "n_functions_preview_path_onrequestget",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_preview_path_functions_preview_path_page",
+      "fromNode": "n_functions_preview_path",
+      "toNode": "n_functions_preview_path_page",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_preview_path_readme_preview_links",
+      "fromNode": "n_functions_preview_path",
+      "toNode": "n_readme_preview_links",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_functions_preview_path_page_functions_preview_path_notfound",
+      "fromNode": "n_functions_preview_path_page",
+      "toNode": "n_functions_preview_path_notfound",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_preview_path_page_functions_preview_path_onrequestget",
+      "fromNode": "n_functions_preview_path_page",
+      "toNode": "n_functions_preview_path_onrequestget",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_functions_preview_path_notfound_functions_preview_path_onrequestget",
+      "fromNode": "n_functions_preview_path_notfound",
+      "toNode": "n_functions_preview_path_onrequestget",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_lib_anthropic_buildsystem",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_lib_anthropic_buildsystem",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_lib_anthropic_buildusermessage",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_lib_anthropic_buildusermessage",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_lib_anthropic_extracthtml",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_lib_anthropic_extracthtml",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_lib_anthropic_generate",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_lib_anthropic_generate",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_lib_anthropic_mapanthropicerror",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_lib_anthropic_mapanthropicerror",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_lib_anthropic_mockgenerate",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_lib_anthropic_mockgenerate",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_lib_http",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_lib_http_httperror",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_readme_serverless_proxy",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_readme_serverless_proxy",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_lib_anthropic_readme_single_page_builder",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_readme_single_page_builder",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_lib_anthropic_readme_stop_reason_truncation",
+      "fromNode": "n_lib_anthropic",
+      "toNode": "n_readme_stop_reason_truncation",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_lib_anthropic_buildsystem_lib_anthropic_generate",
+      "fromNode": "n_lib_anthropic_buildsystem",
+      "toNode": "n_lib_anthropic_generate",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_buildusermessage_lib_anthropic_generate",
+      "fromNode": "n_lib_anthropic_buildusermessage",
+      "toNode": "n_lib_anthropic_generate",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_extracthtml_lib_anthropic_generate",
+      "fromNode": "n_lib_anthropic_extracthtml",
+      "toNode": "n_lib_anthropic_generate",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_generate_lib_anthropic_mapanthropicerror",
+      "fromNode": "n_lib_anthropic_generate",
+      "toNode": "n_lib_anthropic_mapanthropicerror",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_anthropic_generate_lib_anthropic_mockgenerate",
+      "fromNode": "n_lib_anthropic_generate",
+      "toNode": "n_lib_anthropic_mockgenerate",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_email_lib_email_esc",
+      "fromNode": "n_lib_email",
+      "toNode": "n_lib_email_esc",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_email_lib_email_sendleademail",
+      "fromNode": "n_lib_email",
+      "toNode": "n_lib_email_sendleademail",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_email_lib_http",
+      "fromNode": "n_lib_email",
+      "toNode": "n_lib_http",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_email_lib_http_httperror",
+      "fromNode": "n_lib_email",
+      "toNode": "n_lib_http_httperror",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_email_readme_contact_form_alerts",
+      "fromNode": "n_lib_email",
+      "toNode": "n_readme_contact_form_alerts",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_lib_email_esc_lib_email_sendleademail",
+      "fromNode": "n_lib_email_esc",
+      "toNode": "n_lib_email_sendleademail",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_forminject_lib_forminject_block_re",
+      "fromNode": "n_lib_forminject",
+      "toNode": "n_lib_forminject_block_re",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_forminject_lib_forminject_injectforms",
+      "fromNode": "n_lib_forminject",
+      "toNode": "n_lib_forminject_injectforms",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_forminject_lib_forminject_stripforms",
+      "fromNode": "n_lib_forminject",
+      "toNode": "n_lib_forminject_stripforms",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_forminject_readme_contact_form_alerts",
+      "fromNode": "n_lib_forminject",
+      "toNode": "n_readme_contact_form_alerts",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_lib_forminject_stripforms_lib_forminject_injectforms",
+      "fromNode": "n_lib_forminject_stripforms",
+      "toNode": "n_lib_forminject_injectforms",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_lib_http_handle",
+      "fromNode": "n_lib_http",
+      "toNode": "n_lib_http_handle",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_lib_http_httperror",
+      "fromNode": "n_lib_http",
+      "toNode": "n_lib_http_httperror",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_lib_http_json",
+      "fromNode": "n_lib_http",
+      "toNode": "n_lib_http_json",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_lib_http_readjson",
+      "fromNode": "n_lib_http",
+      "toNode": "n_lib_http_readjson",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_lib_http_requirestring",
+      "fromNode": "n_lib_http",
+      "toNode": "n_lib_http_requirestring",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_lib_places",
+      "fromNode": "n_lib_http",
+      "toNode": "n_lib_places",
+      "label": "imports_from [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_httperror_lib_http_httperror_constructor",
+      "fromNode": "n_lib_http_httperror",
+      "toNode": "n_lib_http_httperror_constructor",
+      "label": "method [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_httperror_lib_places",
+      "fromNode": "n_lib_http_httperror",
+      "toNode": "n_lib_places",
+      "label": "imports [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_http_json_lib_http_readjson",
+      "fromNode": "n_lib_http_json",
+      "toNode": "n_lib_http_readjson",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_id_lib_id_randomid",
+      "fromNode": "n_lib_id",
+      "toNode": "n_lib_id_randomid",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_places_lib_places_field_mask",
+      "fromNode": "n_lib_places",
+      "toNode": "n_lib_places_field_mask",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_places_lib_places_humanizetype",
+      "fromNode": "n_lib_places",
+      "toNode": "n_lib_places_humanizetype",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_places_lib_places_mockplaces",
+      "fromNode": "n_lib_places",
+      "toNode": "n_lib_places_mockplaces",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_places_lib_places_searchplaces",
+      "fromNode": "n_lib_places",
+      "toNode": "n_lib_places_searchplaces",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_places_lib_places_shapeplace",
+      "fromNode": "n_lib_places",
+      "toNode": "n_lib_places_shapeplace",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_places_readme_lead_finder",
+      "fromNode": "n_lib_places",
+      "toNode": "n_readme_lead_finder",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_lib_places_readme_serverless_proxy",
+      "fromNode": "n_lib_places",
+      "toNode": "n_readme_serverless_proxy",
+      "label": "references [INFERRED]"
+    },
+    {
+      "id": "e_lib_places_searchplaces_lib_places_mockplaces",
+      "fromNode": "n_lib_places_searchplaces",
+      "toNode": "n_lib_places_mockplaces",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_lib_places_searchplaces_lib_places_shapeplace",
+      "fromNode": "n_lib_places_searchplaces",
+      "toNode": "n_lib_places_shapeplace",
+      "label": "indirect_call [INFERRED]"
+    },
+    {
+      "id": "e_lib_places_shapeplace_lib_places_humanizetype",
+      "fromNode": "n_lib_places_shapeplace",
+      "toNode": "n_lib_places_humanizetype",
+      "label": "calls [EXTRACTED]"
+    },
+    {
+      "id": "e_package_package_dependencies",
+      "fromNode": "n_package",
+      "toNode": "n_package_dependencies",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_package_description",
+      "fromNode": "n_package",
+      "toNode": "n_package_description",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_package_devdependencies",
+      "fromNode": "n_package",
+      "toNode": "n_package_devdependencies",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_package_name",
+      "fromNode": "n_package",
+      "toNode": "n_package_name",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_package_private",
+      "fromNode": "n_package",
+      "toNode": "n_package_private",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_package_scripts",
+      "fromNode": "n_package",
+      "toNode": "n_package_scripts",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_package_version",
+      "fromNode": "n_package",
+      "toNode": "n_package_version",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_scripts_package_scripts_db_schema",
+      "fromNode": "n_package_scripts",
+      "toNode": "n_package_scripts_db_schema",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_scripts_package_scripts_db_schema_local",
+      "fromNode": "n_package_scripts",
+      "toNode": "n_package_scripts_db_schema_local",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_scripts_package_scripts_deploy",
+      "fromNode": "n_package_scripts",
+      "toNode": "n_package_scripts_deploy",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_scripts_package_scripts_dev",
+      "fromNode": "n_package_scripts",
+      "toNode": "n_package_scripts_dev",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_dependencies_package_dependencies_anthropic_ai_sdk",
+      "fromNode": "n_package_dependencies",
+      "toNode": "n_package_dependencies_anthropic_ai_sdk",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_package_devdependencies_package_devdependencies_wrangler",
+      "fromNode": "n_package_devdependencies",
+      "toNode": "n_package_devdependencies_wrangler",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_public_app_home_user_abel_public_app",
+      "fromNode": "n_public_app",
+      "toNode": "n_home_user_abel_public_app",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_public_app_public_app_api",
+      "fromNode": "n_public_app",
+      "toNode": "n_public_app_api",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_public_app_public_app_applytheme",
+      "fromNode": "n_public_app",
+      "toNode": "n_public_app_applytheme",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_public_app_public_app_buildinvoicedoc",
+      "fromNode": "n_public_app",
+      "toNode": "n_public_app_buildinvoicedoc",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_public_app_public_app_buildleadprompt",
+      "fromNode": "n_public_app",
+      "toNode": "n_public_app_buildleadprompt",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_public_app_public_app_buildstate",
+      "fromNode": "n_public_app",
+      "toNode": "n_public_app_buildstate",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_public_app_public_app_clientstate",
+      "fromNode": "n_public_app",
+      "toNode": "n_public_app_clientstate",
+      "label": "contains [EXTRACTED]"
+    },
+    {
+      "id": "e_public_app_public_app_copytext",
+      "fromNode": "n_public_app",
+      "toNode": "n_public_app_copytext",
+      "label": "contains [EXTRACTED]"
+    }
+  ]
+}
