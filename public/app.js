@@ -975,15 +975,18 @@ $('#traffic-refresh')?.addEventListener('click', loadTraffic);
 
 // ------------------------------------------------- Refine (edit in place)
 
-$('#build-refine-btn').addEventListener('click', async () => {
-  const instruction = $('#build-refine-input').value.trim();
+// One-click polish pass: adds animations/hover/scroll-reveal without touching
+// the content — the "Make it interactive" button runs this preset refine.
+const ENHANCE_INSTRUCTION =
+  'Add tasteful interactivity and visual polish WITHOUT changing the wording, images, colors, or overall layout: smooth scroll-reveal animations as sections enter the viewport, subtle hover effects on buttons, links, cards, and images, a sticky header that condenses slightly on scroll, and gentle transitions throughout. Keep it elegant and fast — no gaudy or distracting motion and no autoplay audio. Honor prefers-reduced-motion for accessibility, and keep all existing text and structure intact.';
+
+async function runBuildRefine(instruction, btn, busyLabel) {
   if (!buildState.html) { toast('Generate a site first', true); return; }
   if (!instruction) { toast('Type what you want changed first', true); return; }
 
-  const btn = $('#build-refine-btn');
   const label = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Refining…';
+  btn.textContent = busyLabel;
   if (!buildState.siteId) buildState.siteId = extractSiteId(buildState.html) || newSiteId();
   try {
     const res = await api('/api/generate', {
@@ -995,7 +998,6 @@ $('#build-refine-btn').addEventListener('click', async () => {
     const newHtml = buildState.notifyEmail ? res.html : preserveForms(buildState.html, res.html);
     buildState.html = newHtml;
     $('#build-frame').srcdoc = newHtml;
-    $('#build-refine-input').value = '';
     $('#build-link-output').hidden = true; // any earlier link now points at the old version
     toast('Change applied — save a new link to share this version');
   } catch (err) {
@@ -1004,6 +1006,16 @@ $('#build-refine-btn').addEventListener('click', async () => {
     btn.disabled = false;
     btn.textContent = label;
   }
+}
+
+$('#build-refine-btn').addEventListener('click', () => {
+  const instruction = $('#build-refine-input').value.trim();
+  if (!instruction) { toast('Type what you want changed first', true); return; }
+  runBuildRefine(instruction, $('#build-refine-btn'), 'Refining…').then(() => { $('#build-refine-input').value = ''; });
+});
+
+$('#build-enhance')?.addEventListener('click', () => {
+  runBuildRefine(ENHANCE_INSTRUCTION, $('#build-enhance'), 'Enhancing…');
 });
 
 // Multi-page: refine the page currently being viewed.
