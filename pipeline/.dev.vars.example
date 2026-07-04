@@ -1,0 +1,7 @@
+# Copy to .dev.vars and fill in. .dev.vars is gitignored.
+
+# Server-side Anthropic key — used by every agent stage. Required.
+ANTHROPIC_API_KEY=
+
+# Optional model override. Defaults to claude-opus-4-8.
+# ANTHROPIC_MODEL=claude-opus-4-8

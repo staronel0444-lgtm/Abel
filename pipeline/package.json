@@ -1,0 +1,17 @@
+{
+  "name": "pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pipeline — a deployable app that runs the 5-agent website-building pipeline (prompt engineer, website generator, design enhancer, QA auditor, live call assistant) from one form. Cloudflare Pages + Functions.",
+  "scripts": {
+    "dev": "wrangler pages dev",
+    "deploy": "wrangler pages deploy",
+    "test": "node scripts/test.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

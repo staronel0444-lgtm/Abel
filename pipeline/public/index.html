@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pipeline — Automated Website Builder</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>⚙️</text></svg>" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="top">
+  <h1>Pipe<span>line</span></h1>
+  <div class="muted">5 agents · one form → finished website</div>
+  <div class="tabs">
+    <button class="tab active" data-tab="build">Build</button>
+    <button class="tab" data-tab="call">Live Call Assist</button>
+  </div>
+</header>
+
+<!-- ============ BUILD TAB ============ -->
+<main id="tab-build">
+  <div class="grid">
+    <!-- input column -->
+    <section>
+      <div class="card">
+        <h2>Business information</h2>
+        <div class="row">
+          <div><label>Business name *</label><input id="businessName" placeholder="Rivera &amp; Sons Plumbing" /></div>
+          <div><label>Service type *</label><input id="serviceType" placeholder="Emergency plumbing" /></div>
+        </div>
+        <div class="row">
+          <div><label>Phone</label><input id="phone" placeholder="(512) 555-0142" /></div>
+          <div><label>Address / area</label><input id="address" placeholder="Austin, TX" /></div>
+        </div>
+        <label>Google reviews (paste full text)</label>
+        <textarea id="reviews" placeholder="5★ Maria: Showed up in 30 min and fixed it fast...&#10;5★ Tom: Fair price, super clean work..."></textarea>
+        <label>Competitor website URLs (one per line)</label>
+        <textarea id="competitors" placeholder="acmeplumbingatx.com&#10;https://competitor2.com"></textarea>
+        <button class="primary" id="run">Build the website →</button>
+        <div class="muted" id="run-note" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <h2>Pipeline</h2>
+        <div class="steps" id="steps"></div>
+      </div>
+    </section>
+
+    <!-- output column -->
+    <section>
+      <div class="card" id="out-empty">
+        <h2>Result</h2>
+        <p class="muted">Fill in the business info and press <strong>Build the website</strong>. The five agents run in order — brief → generate → enhance → QA — and the finished site previews here.</p>
+      </div>
+
+      <div class="card hidden" id="out-preview">
+        <h2>Finished website — live preview</h2>
+        <div class="preview-bar">
+          <button class="ghost" id="v-desktop">Desktop</button>
+          <button class="ghost" id="v-mobile">Mobile</button>
+          <span class="spacer"></span>
+          <button class="ghost" id="open-tab">Open in new tab ↗</button>
+          <button class="ghost" id="dl-single">Download single-page</button>
+          <button class="ghost hidden" id="dl-multi">Download multi-page</button>
+        </div>
+        <div class="frame-wrap" id="frame-wrap"><iframe class="preview" id="preview" title="preview"></iframe></div>
+      </div>
+
+      <div class="card hidden" id="out-qa">
+        <h2>QA report</h2>
+        <div id="qa-body"></div>
+      </div>
+
+      <div class="card hidden" id="out-brief">
+        <h2>Website brief (from the prompt engineer)</h2>
+        <div class="brief" id="brief"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ============ LIVE CALL TAB ============ -->
+<main id="tab-call" class="hidden">
+  <div class="grid">
+    <section>
+      <div class="card">
+        <h2>Call context</h2>
+        <p class="muted" style="margin-top:0">Auto-filled from your last build. Add pricing / timeline the assistant should know — it stays strictly factual to this.</p>
+        <textarea id="callContext" class="call-context" placeholder="Business: ... | Site built: single-page with hero, services, testimonials, contact. Price: $500 upfront + $50/mo. Timeline: live in 3 days."></textarea>
+        <div class="muted" style="margin-top:8px">The assistant never speaks — it only shows short suggestions you can say.</div>
+      </div>
+    </section>
+    <section>
+      <div class="card">
+        <h2>Live conversation</h2>
+        <div class="transcript" id="transcript">
+          <div class="muted">Type what the client says (or use the mic) and press Enter — a suggested reply appears instantly.</div>
+        </div>
+        <div class="call-input">
+          <button class="ghost mic" id="mic" title="Start/stop voice capture">🎤</button>
+          <input id="clientSays" placeholder="What did the client just say?" />
+          <button class="ghost" id="send">Send</button>
+        </div>
+        <div class="muted" id="mic-note" style="margin-top:8px"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

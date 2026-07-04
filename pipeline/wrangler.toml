@@ -1,0 +1,17 @@
+# Pipeline — Cloudflare Pages project config. Separate from Forge.
+#
+# One Pages project hosts the static console (public/) and the agent pipeline
+# (functions/). No database — each build runs in the browser session and is
+# kept in localStorage; sites are downloaded or opened in a new tab.
+#
+# Setup (once):
+#   npm install
+#   npx wrangler pages secret put ANTHROPIC_API_KEY
+#
+# Deploy:  npm run deploy
+# Local:   cp .dev.vars.example .dev.vars  (add your key)  &&  npm run dev
+
+name = "pipeline"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "public"
