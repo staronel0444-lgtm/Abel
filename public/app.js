@@ -1137,11 +1137,265 @@ $('#theme-toggle').addEventListener('click', () => {
   applyTheme(next);
 });
 
+// ------------------------------------------------- Download all (.zip)
+// Minimal, dependency-free ZIP writer (store method, no compression). Local
+// business sites are tiny, so skipping compression keeps the code small and
+// the output is a fully valid .zip every OS opens.
+
+function crc32(bytes) {
+  let crc = ~0;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+  }
+  return ~crc >>> 0;
+}
+function concatBytes(parts) {
+  let len = 0;
+  for (const p of parts) len += p.length;
+  const out = new Uint8Array(len);
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+function makeZip(files) {
+  const u16 = (n) => new Uint8Array([n & 255, (n >> 8) & 255]);
+  const u32 = (n) => new Uint8Array([n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255]);
+  const DOS_TIME = 0;
+  const DOS_DATE = ((2021 - 1980) << 9) | (1 << 5) | 1; // 2021-01-01, a valid date so Windows is happy
+  const enc = new TextEncoder();
+  const locals = [];
+  const central = [];
+  let offset = 0;
+  for (const f of files) {
+    const name = enc.encode(f.name);
+    const data = f.bytes;
+    const crc = crc32(data);
+    const local = concatBytes([
+      u32(0x04034b50), u16(20), u16(0), u16(0), u16(DOS_TIME), u16(DOS_DATE),
+      u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0),
+      name, data,
+    ]);
+    locals.push(local);
+    central.push(concatBytes([
+      u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(DOS_TIME), u16(DOS_DATE),
+      u32(crc), u32(data.length), u32(data.length), u16(name.length),
+      u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset), name,
+    ]));
+    offset += local.length;
+  }
+  const centralBytes = concatBytes(central);
+  const eocd = concatBytes([
+    u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+    u32(centralBytes.length), u32(offset), u16(0),
+  ]);
+  return concatBytes([...locals, centralBytes, eocd]);
+}
+function downloadBytes(filename, bytes, type) {
+  const blob = new Blob([bytes], { type: type || 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+const btnDownloadAll = $('#multi-download-all');
+if (btnDownloadAll) {
+  btnDownloadAll.addEventListener('click', () => {
+    const names = Object.keys(multiState.pages || {}).filter((n) => multiState.pages[n]);
+    if (!names.length) { toast('Generate a site first', true); return; }
+    const enc = new TextEncoder();
+    const files = names.map((n) => ({ name: n, bytes: enc.encode(multiState.pages[n]) }));
+    downloadBytes('site.zip', makeZip(files), 'application/zip');
+    toast(`Downloaded all ${files.length} pages as site.zip`);
+  });
+}
+
+// ------------------------------------------------- Replace photos
+// Swap stock images for the client's real photos, entirely in the browser.
+// Uploaded files are shrunk with a canvas so the page stays small/fast, then
+// embedded as a data URI so the site stays self-contained after download.
+
+function fileToResizedDataUrl(file, maxDim) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const scale = maxDim / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    img.src = url;
+  });
+}
+
+function replaceImageAt(index, newSrc) {
+  const doc = new DOMParser().parseFromString(buildState.html, 'text/html');
+  const imgs = doc.querySelectorAll('img');
+  if (!imgs[index]) return;
+  imgs[index].setAttribute('src', newSrc);
+  const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+  buildState.html = html;
+  $('#build-frame').srcdoc = html;
+  $('#build-link-output').hidden = true;
+  toast('Photo replaced — save a new link to share this version');
+  openPhotos();
+}
+
+function openPhotos() {
+  if (!buildState.html) { toast('Generate a site first', true); return; }
+  const doc = new DOMParser().parseFromString(buildState.html, 'text/html');
+  const imgs = Array.from(doc.querySelectorAll('img'));
+  const list = $('#photos-list');
+  if (!imgs.length) {
+    list.innerHTML = '<p class="muted">This site doesn\'t use any &lt;img&gt; photos to swap — its images may be CSS backgrounds. You can ask for a photo with the Refine box instead.</p>';
+  } else {
+    list.innerHTML = imgs.map((img, i) => `
+      <div class="photo-row">
+        <img class="photo-thumb" src="${escapeHtml(img.getAttribute('src') || '')}" alt="" loading="lazy">
+        <div class="photo-ctl">
+          <div class="photo-alt">${escapeHtml(img.getAttribute('alt') || '(no description)')}</div>
+          <label class="btn btn-sm btn-primary">Upload a photo<input type="file" accept="image/*" hidden data-i="${i}"></label>
+          <input type="url" class="photo-url" placeholder="…or paste an image link + press Enter" data-i="${i}">
+        </div>
+      </div>`).join('');
+    list.querySelectorAll('input[type=file]').forEach((inp) => {
+      inp.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const dataUrl = await fileToResizedDataUrl(file, 1600);
+          replaceImageAt(Number(inp.dataset.i), dataUrl);
+        } catch { toast('Could not read that image file', true); }
+      });
+    });
+    list.querySelectorAll('input.photo-url').forEach((inp) => {
+      inp.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        const u = inp.value.trim();
+        if (u) replaceImageAt(Number(inp.dataset.i), u);
+      });
+    });
+  }
+  $('#photos-modal').hidden = false;
+}
+
+const btnPhotos = $('#build-photos');
+if (btnPhotos) btnPhotos.addEventListener('click', openPhotos);
+$('#photos-close')?.addEventListener('click', () => { $('#photos-modal').hidden = true; });
+$('#photos-modal')?.addEventListener('click', (e) => {
+  if (e.target === $('#photos-modal')) $('#photos-modal').hidden = true;
+});
+
+// ------------------------------------------------- Client handoff sheet
+// A printable "how your website works" doc to hand a client at delivery.
+// Pure client-side (no AI cost), pulls your own name/contact from the same
+// place the invoice tool saves it.
+
+function businessNameFromHtml(html) {
+  const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(html || '');
+  return (m ? m[1] : '').trim().replace(/\s+/g, ' ') || 'Your new website';
+}
+function buildHandoffDoc(businessName) {
+  let from = { name: 'Your web designer', contact: '' };
+  try {
+    const saved = JSON.parse(localStorage.getItem(INVOICE_FROM_KEY) || '{}');
+    if (saved.name) from = { name: saved.name, contact: saved.contact || '' };
+  } catch { /* ignore */ }
+  const contactLine = from.contact
+    ? `${escapeHtml(from.name)} — ${escapeHtml(from.contact)}`
+    : escapeHtml(from.name);
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your website — quick guide</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;background:#fff;margin:0;padding:48px;line-height:1.6}
+  .doc{max-width:720px;margin:0 auto}
+  h1{color:#c2410c;font-size:1.9rem;margin:0 0 4px;border-bottom:3px solid #c2410c;padding-bottom:14px}
+  .sub{color:#666;margin:0 0 26px}
+  h2{font-size:1.15rem;margin:26px 0 6px}
+  p{margin:6px 0}
+  ol{margin:6px 0 6px 20px}
+  .box{background:#f7f4f0;border:1px solid #e6ddd3;border-radius:8px;padding:16px 18px;margin:14px 0}
+  .foot{margin-top:40px;padding-top:16px;border-top:1px solid #e6e6e6;color:#666;font-size:0.9rem}
+  @media print{body{padding:0}}
+</style></head><body><div class="doc">
+  <h1>${escapeHtml(businessName)}</h1>
+  <p class="sub">A quick guide to your new website — please keep this handy.</p>
+
+  <h2>📬 Your contact form</h2>
+  <p>When someone fills out the contact form on your site, the message is emailed straight to you — no app or login needed.</p>
+  <div class="box">
+    <strong>One-time setup (important):</strong> the very first time your form is used, you'll get a single email titled <em>"Confirm your email"</em>. Click the button inside it once to switch your form on. After that, every message arrives automatically. If you don't see it, check your spam folder.
+  </div>
+
+  <h2>📱 Sharing your site</h2>
+  <p>Your website works on phones, tablets, and computers. Share the link on your Google listing, Facebook, business cards, and anywhere customers find you.</p>
+
+  <h2>✏️ Need a change?</h2>
+  <p>Want to update your hours, add a photo, change your prices, or add a page? Just reach out — changes are quick and easy.</p>
+  <div class="box">Your website was built and is maintained by:<br><strong>${contactLine}</strong></div>
+
+  <div class="foot">Thank you for your business. Here's to more customers finding you online. 🚀</div>
+</div></body></html>`;
+}
+function openHandoff(businessName) {
+  const doc = buildHandoffDoc(businessName);
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(doc); w.document.close(); toast('Client sheet opened — Print or Save as PDF to hand over'); }
+  else { downloadFile('client-website-guide.html', doc); toast('Client sheet downloaded'); }
+}
+$('#build-handoff')?.addEventListener('click', () => {
+  if (!buildState.html) { toast('Generate a site first', true); return; }
+  openHandoff(businessNameFromHtml(buildState.html));
+});
+$('#multi-handoff')?.addEventListener('click', () => {
+  const home = multiState.pages && multiState.pages['index.html'];
+  if (!home) { toast('Generate a site first', true); return; }
+  openHandoff(businessNameFromHtml(home));
+});
+
+// ------------------------------------------------- Go Live helper
+function openInfo(bodyHtml) {
+  $('#info-body').innerHTML = bodyHtml;
+  $('#info-modal').hidden = false;
+}
+$('#golive-btn')?.addEventListener('click', () => openInfo(`
+  <h2>🚀 Putting a finished site online</h2>
+  <p class="muted">The 5 steps to take a site you've sold and make it live on the internet.</p>
+  <ol class="golive-steps">
+    <li><strong>Get the files.</strong> Open the site and click <em>Download HTML</em> (or <em>Download all (.zip)</em> for a multi-page site).</li>
+    <li><strong>Get the domain.</strong> Either use the client's existing domain, or buy one — easiest inside Cloudflare (Domain Registration), sold at cost.</li>
+    <li><strong>Upload the files.</strong> In Cloudflare → <em>Workers &amp; Pages</em> → <em>Create</em> → <em>Pages</em> → <em>Upload assets</em>. Drag the file(s) in and deploy — it goes live on a free <em>*.pages.dev</em> link.</li>
+    <li><strong>Connect the domain.</strong> In that project → <em>Custom domains</em> → <em>Set up a domain</em> → type the client's domain. If it was bought at Cloudflare, this is basically one click.</li>
+    <li><strong>Done.</strong> It's on the real internet. Each new client = repeat these 5 steps in a new project.</li>
+  </ol>
+  <p class="muted" style="margin-top:14px">Stuck on a real one? Come back and I'll walk you through it screen by screen.</p>
+`));
+$('#info-close')?.addEventListener('click', () => { $('#info-modal').hidden = true; });
+$('#info-modal')?.addEventListener('click', (e) => {
+  if (e.target === $('#info-modal')) $('#info-modal').hidden = true;
+});
+
 // ---------------------------------------------------------------- boot
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     $('#client-modal').hidden = true;
     $('#detail-modal').hidden = true;
+    $('#photos-modal').hidden = true;
+    $('#info-modal').hidden = true;
   }
 });

@@ -717,7 +717,53 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 .invoice-form legend { color: var(--ink-3); font-size: 0.78rem; padding: 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
 .invoice-output { margin-top: 20px; }
 
+/* ---- Go Live header button ---- */
+.golive-btn { white-space: nowrap; }
+
+/* ---- Info / Go Live modal body ---- */
+#info-body h2 { margin: 0 0 6px; font-size: 1.3rem; }
+.golive-steps { margin: 12px 0 0; padding-left: 20px; }
+.golive-steps li { margin-bottom: 12px; line-height: 1.5; }
+.golive-steps em { color: var(--accent); font-style: normal; font-weight: 600; }
+
+/* ---- Photo replacement modal ---- */
+.photos-list { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; }
+.photo-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 14px;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+.photo-thumb {
+  width: 96px; height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.photo-ctl { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.photo-alt { color: var(--ink-2); font-size: 0.85rem; }
+.photo-ctl .btn-sm { align-self: flex-start; cursor: pointer; }
+.photo-url {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.photo-url:focus { outline: none; border-color: var(--accent); }
+
 @media (max-width: 640px) {
+  .golive-btn { display: none; }
+  .photo-row { grid-template-columns: 64px 1fr; }
+  .photo-thumb { width: 64px; height: 48px; }
   .hero h1 { font-size: 2rem; }
   .form-row { grid-template-columns: 1fr; }
   .history-row { grid-template-columns: 1fr auto; }

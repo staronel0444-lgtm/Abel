@@ -22,6 +22,7 @@
       <button class="tab-btn" data-tab="revenue">Revenue</button>
       <button class="tab-btn" data-tab="invoice">Invoice</button>
     </nav>
+    <button class="btn btn-sm golive-btn" id="golive-btn" title="How to put a finished site online">🚀 Go Live</button>
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light or dark mode" title="Toggle light / dark mode">🌙</button>
   </header>
 
@@ -61,8 +62,10 @@
             <button data-device="mobile">Mobile</button>
           </div>
           <button class="btn" id="build-preview-link">Get preview link</button>
+          <button class="btn" id="build-photos">🖼️ Photos</button>
           <button class="btn" id="build-copy">Copy HTML</button>
           <button class="btn" id="build-download">Download HTML</button>
+          <button class="btn" id="build-handoff">📄 Client sheet</button>
           <span class="link-output" id="build-link-output" hidden></span>
         </div>
         <iframe id="build-frame" class="site-frame" title="Generated site preview" sandbox="allow-scripts allow-same-origin"></iframe>
@@ -115,6 +118,8 @@
           </div>
           <button class="btn" id="multi-preview-link">Get preview link</button>
           <button class="btn" id="multi-download">Download page</button>
+          <button class="btn" id="multi-download-all">Download all (.zip)</button>
+          <button class="btn" id="multi-handoff">📄 Client sheet</button>
           <span class="link-output" id="multi-link-output" hidden></span>
         </div>
         <iframe id="multi-frame" class="site-frame" title="Generated site preview" sandbox="allow-scripts allow-same-origin"></iframe>
@@ -322,6 +327,24 @@
     <div class="modal modal-card" role="dialog" aria-modal="true">
       <button class="modal-close" id="detail-close" aria-label="Close">×</button>
       <div id="detail-card"></div>
+    </div>
+  </div>
+
+  <!-- Photo replacement modal -->
+  <div class="modal-backdrop" id="photos-modal" hidden>
+    <div class="modal modal-card" role="dialog" aria-modal="true" aria-labelledby="photos-title">
+      <button class="modal-close" id="photos-close" aria-label="Close">×</button>
+      <h2 id="photos-title">Swap in the client's real photos</h2>
+      <p class="muted">Upload a photo from your computer or paste a link to replace any stock image. Photos are shrunk automatically so the site stays fast.</p>
+      <div class="photos-list" id="photos-list"></div>
+    </div>
+  </div>
+
+  <!-- Go Live helper modal (static checklist) -->
+  <div class="modal-backdrop" id="info-modal" hidden>
+    <div class="modal modal-card" role="dialog" aria-modal="true" aria-labelledby="info-title">
+      <button class="modal-close" id="info-close" aria-label="Close">×</button>
+      <div id="info-body"></div>
     </div>
   </div>
 
