@@ -16,3 +16,8 @@ GOOGLE_PLACES_API_KEY=your-places-key-here
 # Note: the generated sites' contact forms are self-contained (they open the
 # visitor's email app addressed to the client), so no email service, API key,
 # or signing secret is needed for them anymore.
+
+# Optional app password lock. Set FORGE_PASSWORD to require a login page before
+# anyone can open the Forge app. Leaving it unset means no lock (open app).
+# Public paths (/preview/* and /api/pv) stay open either way so client links work.
+#FORGE_PASSWORD=choose-a-password

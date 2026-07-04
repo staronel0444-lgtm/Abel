@@ -27,6 +27,7 @@ database, and the shareable site previews.
 | **Client sheet** | 📄 Client sheet on a result | Generates a printable "how your website works" guide for the client (contact-form activation step, how to request changes, your contact info from the invoice tool) — pure client-side, no AI cost. |
 | **Go Live helper** | 🚀 Go Live in the header | An in-app checklist walking through putting a finished site on a domain (download → domain → Cloudflare Pages upload → custom domain). |
 | **Visitor counter** | Traffic tab | Every generated site carries a tiny beacon that pings `/api/pv` on load; per-site visit counts (across preview links *and* the client's hosted copy) are stored in the `site_views` table and shown in the Traffic tab — proof to show a client their site is working. Counts once per browser session; the beacon fails silently if Forge is unreachable, never affecting the client's site. Requires the `site_views` table (re-run `schema.sql`). |
+| **Password lock** | login page | A `functions/_middleware.js` gate protects the whole app with a password you set in `FORGE_PASSWORD`. Unauthenticated visitors get a self-contained login page; a correct password sets a signed, HttpOnly cookie (HMAC keyed by the password, 30-day session). **Public paths are exempt** — `/preview/*` (client sites) and `/api/pv` (the visitor beacon) — so shared links keep working. **The gate is disabled unless `FORGE_PASSWORD` is set**, so the app stays open until you choose to lock it. No Cloudflare Access, no card, no database. |
 
 ## Architecture
 
@@ -105,6 +106,7 @@ production.**
 | `ANTHROPIC_API_KEY` | yes | server-side only, via `wrangler pages secret` |
 | `GOOGLE_PLACES_API_KEY` | yes | server-side only |
 | `ANTHROPIC_MODEL` | no | defaults to `claude-opus-4-8` |
+| `FORGE_PASSWORD` | no | set it to lock the app behind a login page; unset = no lock |
 | `MOCK_PLACES`, `MOCK_ANTHROPIC` | no | dev-only canned responses |
 
 ## Deliberate scope decisions (v1)
