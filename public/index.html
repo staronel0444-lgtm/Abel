@@ -20,6 +20,7 @@
       <button class="tab-btn" data-tab="history">History</button>
       <button class="tab-btn" data-tab="clients">Clients</button>
       <button class="tab-btn" data-tab="revenue">Revenue</button>
+      <button class="tab-btn" data-tab="traffic">Traffic</button>
       <button class="tab-btn" data-tab="invoice">Invoice</button>
     </nav>
     <button class="btn btn-sm golive-btn" id="golive-btn" title="How to put a finished site online">🚀 Go Live</button>
@@ -219,6 +220,23 @@
           <div class="stat-row"><span>Monthly maintenance</span><strong id="revenue-monthly">$0</strong></div>
         </div>
       </div>
+    </section>
+
+    <!-- ============ Traffic (visitor counts) ============ -->
+    <section class="panel" id="panel-traffic">
+      <div class="panel-head">
+        <div>
+          <h1>Traffic</h1>
+          <p class="hero-sub">How many visits each site you've built has gotten — proof to show a client their site is working. Counts across preview links and their live site.</p>
+        </div>
+        <button class="btn" id="traffic-refresh">Refresh</button>
+      </div>
+      <p class="muted stats-line" id="traffic-total" hidden></p>
+      <div class="empty" id="traffic-empty" hidden>
+        <h3>No visits yet</h3>
+        <p>Once a site you built is live and someone opens it, its visits show up here. (New sites start counting automatically.)</p>
+      </div>
+      <div class="traffic-list" id="traffic-list"></div>
     </section>
 
     <!-- ============ My Sites gallery ============ -->

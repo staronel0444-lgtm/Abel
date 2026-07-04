@@ -98,9 +98,20 @@ function preserveForms(oldHtml, newHtml) {
   return cleaned.includes('</body>') ? cleaned.replace('</body>', `${m[0]}</body>`) : cleaned + m[0];
 }
 
+// A stable per-site id, used for the visitor counter beacon. Kept across
+// refines so a site's view count doesn't reset when it's edited.
+const ANALYTICS_ID_RE = /forge-analytics-start-->[\s\S]*?var S=("|')((?:\\.|[^"'\\])*?)\1/;
+function newSiteId() {
+  try { return crypto.randomUUID(); } catch { return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+}
+function extractSiteId(html) {
+  const m = ANALYTICS_ID_RE.exec(html || '');
+  return m ? m[2] : '';
+}
+
 // ---------------------------------------------------------------- tabs
 
-const panels = ['build', 'multi', 'sites', 'leads', 'history', 'clients', 'revenue', 'invoice'];
+const panels = ['build', 'multi', 'sites', 'leads', 'history', 'clients', 'revenue', 'invoice', 'traffic'];
 
 function switchTab(name) {
   for (const p of panels) {
@@ -114,6 +125,7 @@ function switchTab(name) {
   if (name === 'clients') loadClients();
   if (name === 'revenue') loadRevenue();
   if (name === 'invoice') initInvoice();
+  if (name === 'traffic') loadTraffic();
 }
 
 document.querySelectorAll('.tab-btn').forEach((b) => {
@@ -229,6 +241,7 @@ async function loadSites() {
           } else {
             buildState.html = data.html;
             buildState.placeId = null;
+            buildState.siteId = extractSiteId(data.html) || null;
             $('#build-frame').srcdoc = data.html;
             $('#build-frame').classList.remove('is-mobile');
             $('#build-device').querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.device === 'desktop'));
@@ -251,7 +264,7 @@ $('#sites-refresh').addEventListener('click', loadSites);
 
 // ------------------------------------------------- Section 1: single page
 
-const buildState = { html: null, placeId: null, notifyEmail: '' };
+const buildState = { html: null, placeId: null, notifyEmail: '', siteId: null };
 
 async function generateSingle(prompt, placeId = null) {
   const errEl = $('#build-error');
@@ -262,15 +275,17 @@ async function generateSingle(prompt, placeId = null) {
   $('#build-generate').disabled = true;
 
   const notifyEmail = ($('#build-notify-email')?.value || '').trim();
+  const siteId = newSiteId();
   try {
     const context = extractKeywords(prompt);
     const res = await api('/api/generate', {
       method: 'POST',
-      body: { mode: 'page', prompt, context, notifyEmail },
+      body: { mode: 'page', prompt, context, notifyEmail, siteId },
     });
     buildState.html = res.html;
     buildState.placeId = placeId;
     buildState.notifyEmail = notifyEmail;
+    buildState.siteId = siteId;
     $('#build-frame').srcdoc = res.html;
     $('#build-result').hidden = false;
     toast('Site generated');
@@ -315,7 +330,7 @@ $('#build-download').addEventListener('click', () => buildState.html && download
 
 // ------------------------------------------------- Section 2: multi-page
 
-const multiState = { pages: {}, defs: [], current: null, placeId: null, notifyEmail: '' };
+const multiState = { pages: {}, defs: [], current: null, placeId: null, notifyEmail: '', siteId: null };
 
 function selectedPageDefs() {
   const defs = [{ filename: 'index.html', title: 'Home' }];
@@ -384,6 +399,7 @@ function openMultiInBuilder(pages) {
   multiState.pages = pages;
   multiState.defs = ordered.map((f) => ({ filename: f, title: titleForFile(f) }));
   multiState.placeId = null;
+  multiState.siteId = extractSiteId(pages['index.html'] || '') || null;
   $('#multi-error').hidden = true;
   $('#multi-link-output').hidden = true;
   renderMultiResult();
@@ -403,6 +419,8 @@ async function generateMulti(prompt) {
   setProgress(defs, statuses);
   const notifyEmail = ($('#multi-notify-email')?.value || '').trim();
   multiState.notifyEmail = notifyEmail;
+  const siteId = newSiteId();
+  multiState.siteId = siteId;
 
   try {
     // Pass 1 — one shared brand/style summary for the whole site.
@@ -419,7 +437,7 @@ async function generateMulti(prompt) {
     const results = await Promise.allSettled(defs.map((page) =>
       api('/api/generate', {
         method: 'POST',
-        body: { mode: 'page', prompt, context, brand: brandRes.brand, page, pages: defs, notifyEmail },
+        body: { mode: 'page', prompt, context, brand: brandRes.brand, page, pages: defs, notifyEmail, siteId },
       }).then((res) => {
         statuses[page.filename] = 'done';
         setProgress(defs, statuses);
@@ -930,6 +948,31 @@ $('#revenue-toggle').querySelectorAll('button').forEach((b) => {
   });
 });
 
+// ------------------------------------------------- Traffic (visitor counts)
+
+async function loadTraffic() {
+  const list = $('#traffic-list');
+  try {
+    const { sites, total } = await api('/api/traffic');
+    $('#traffic-empty').hidden = sites.length > 0;
+    const totalEl = $('#traffic-total');
+    if (totalEl) {
+      totalEl.textContent = `${Number(total || 0).toLocaleString()} total visit${total === 1 ? '' : 's'} across ${sites.length} site${sites.length === 1 ? '' : 's'}`;
+      totalEl.hidden = sites.length === 0;
+    }
+    list.innerHTML = sites.map((s) => `
+      <div class="traffic-row">
+        <span class="t-name">${escapeHtml(s.label || '(untitled site)')}</span>
+        <span class="t-views">${Number(s.views || 0).toLocaleString()}<small>visits</small></span>
+        <span class="t-date">${s.updatedAt ? 'last: ' + escapeHtml(formatDate(s.updatedAt)) : ''}</span>
+      </div>`).join('');
+  } catch (err) {
+    list.innerHTML = `<p class="inline-error">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+$('#traffic-refresh')?.addEventListener('click', loadTraffic);
+
 // ------------------------------------------------- Refine (edit in place)
 
 $('#build-refine-btn').addEventListener('click', async () => {
@@ -941,10 +984,11 @@ $('#build-refine-btn').addEventListener('click', async () => {
   const label = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Refining…';
+  if (!buildState.siteId) buildState.siteId = extractSiteId(buildState.html) || newSiteId();
   try {
     const res = await api('/api/generate', {
       method: 'POST',
-      body: { mode: 'refine', html: buildState.html, instruction, notifyEmail: buildState.notifyEmail || '' },
+      body: { mode: 'refine', html: buildState.html, instruction, notifyEmail: buildState.notifyEmail || '', siteId: buildState.siteId },
     });
     // If the server didn't re-wire forms (no notify email on hand), keep the
     // existing form wiring from the previous version.
@@ -973,10 +1017,11 @@ $('#multi-refine-btn').addEventListener('click', async () => {
   const label = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Refining…';
+  if (!multiState.siteId) multiState.siteId = extractSiteId(multiState.pages[cur]) || newSiteId();
   try {
     const res = await api('/api/generate', {
       method: 'POST',
-      body: { mode: 'refine', html: multiState.pages[cur], instruction, notifyEmail: multiState.notifyEmail || '' },
+      body: { mode: 'refine', html: multiState.pages[cur], instruction, notifyEmail: multiState.notifyEmail || '', siteId: multiState.siteId },
     });
     multiState.pages[cur] = multiState.notifyEmail ? res.html : preserveForms(multiState.pages[cur], res.html);
     showMultiPage(cur);

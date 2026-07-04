@@ -717,6 +717,23 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 .invoice-form legend { color: var(--ink-3); font-size: 0.78rem; padding: 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
 .invoice-output { margin-top: 20px; }
 
+/* ---- Traffic list ---- */
+.traffic-list { display: flex; flex-direction: column; gap: 8px; }
+.traffic-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.traffic-row .t-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.traffic-row .t-views { font-size: 1.35rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.traffic-row .t-views small { font-size: 0.72rem; color: var(--ink-3); font-weight: 500; margin-left: 5px; }
+.traffic-row .t-date { color: var(--ink-3); font-size: 0.82rem; white-space: nowrap; }
+
 /* ---- Go Live header button ---- */
 .golive-btn { white-space: nowrap; }
 

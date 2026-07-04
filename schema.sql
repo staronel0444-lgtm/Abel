@@ -60,5 +60,18 @@ CREATE TABLE IF NOT EXISTS previews (
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Visitor counter. Each generated site carries a tiny beacon that pings
+-- /api/pv with its site_id on load; that endpoint upserts a row here. label
+-- is the site's <title> so the Traffic tab is readable. One row per site,
+-- counted across preview links AND the client's own hosted copy.
+CREATE TABLE IF NOT EXISTS site_views (
+  site_id    TEXT PRIMARY KEY,
+  label      TEXT    NOT NULL DEFAULT '',
+  views      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_view_history_first_viewed ON view_history (first_viewed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON client_payments (paid_at);
+CREATE INDEX IF NOT EXISTS idx_site_views_views ON site_views (views DESC);

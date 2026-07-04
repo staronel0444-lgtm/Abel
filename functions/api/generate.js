@@ -12,6 +12,7 @@
 import { handle, json, readJson, requireString, HttpError } from '../../lib/http.js';
 import { generate } from '../../lib/anthropic.js';
 import { injectForms } from '../../lib/forminject.js';
+import { injectAnalytics } from '../../lib/analytics.js';
 
 const MAX_PAGES = 8;
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -25,6 +26,14 @@ function wireForms(html, notifyEmail) {
   if (!email || !EMAIL_RE.test(email)) return html;
   const business = (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] || '').trim().slice(0, 120);
   return injectForms(html, email, business);
+}
+
+// Bake the visitor-counter beacon in, pointed at this Forge origin so it keeps
+// counting after the site is downloaded to the client's domain.
+function wireAnalytics(html, siteId, request) {
+  const id = typeof siteId === 'string' ? siteId.trim().slice(0, 64) : '';
+  if (!id) return html;
+  return injectAnalytics(html, id, new URL(request.url).origin);
 }
 
 function validatePages(pages) {
@@ -51,7 +60,8 @@ export const onRequestPost = handle(async ({ request, env }) => {
     if (!/<html/i.test(html)) throw new HttpError(400, 'html must be a complete HTML document');
     const instruction = requireString(body, 'instruction', { max: 2000 });
     const result = await generate(env, { mode, html, instruction });
-    const wired = wireForms(result.text, body.notifyEmail);
+    let wired = wireForms(result.text, body.notifyEmail);
+    wired = wireAnalytics(wired, body.siteId, request);
     return json({ html: wired, usage: result.usage, model: result.model });
   }
 
@@ -75,6 +85,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const brand = typeof body.brand === 'string' ? body.brand.slice(0, 4000) : '';
 
   const result = await generate(env, { mode, prompt, context, brand, page, pages });
-  const wired = wireForms(result.text, body.notifyEmail);
+  let wired = wireForms(result.text, body.notifyEmail);
+  wired = wireAnalytics(wired, body.siteId, request);
   return json({ html: wired, usage: result.usage, model: result.model });
 });
