@@ -23,12 +23,22 @@ function pixel() {
   });
 }
 
+const ENSURE_TABLE = `CREATE TABLE IF NOT EXISTS site_views (
+  site_id    TEXT PRIMARY KEY,
+  label      TEXT    NOT NULL DEFAULT '',
+  views      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
+)`;
+
 export const onRequestGet = async ({ request, env }) => {
   try {
     const url = new URL(request.url);
     const s = (url.searchParams.get('s') || '').slice(0, 64);
     const t = (url.searchParams.get('t') || '').slice(0, 120);
     if (s && env.DB) {
+      // Self-provision the table so counting works with no manual DB step.
+      await env.DB.prepare(ENSURE_TABLE).run();
       await env.DB.prepare(
         `INSERT INTO site_views (site_id, label, views, created_at, updated_at)
          VALUES (?1, ?2, 1, datetime('now'), datetime('now'))
