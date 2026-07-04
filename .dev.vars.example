@@ -13,15 +13,6 @@ GOOGLE_PLACES_API_KEY=your-places-key-here
 # Optional model override (defaults to claude-opus-4-8).
 #ANTHROPIC_MODEL=claude-opus-4-8
 
-# Contact-form email alerts (optional feature).
-# RESEND_API_KEY: from resend.com (free tier). When set, generated sites can
-# email their contact-form submissions to the address you enter in the builder.
-# MAIL_FROM: the "from" sender — needs a domain verified in Resend to deliver
-# to arbitrary client inboxes; without it, Resend only delivers to your own
-# account email. Format: "Leads <leads@yourdomain.com>".
-# FORM_SIGNING_SECRET: optional; if unset, the RESEND_API_KEY is used to sign
-# form tokens. Set a random value if you rotate your Resend key often.
-#RESEND_API_KEY=re_your_key_here
-#MAIL_FROM=Forge Leads <leads@yourdomain.com>
-#FORM_SIGNING_SECRET=
-#MOCK_EMAIL=1
+# Note: the generated sites' contact forms are self-contained (they open the
+# visitor's email app addressed to the client), so no email service, API key,
+# or signing secret is needed for them anymore.
