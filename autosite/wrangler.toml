@@ -1,0 +1,17 @@
+# AutoSite — Cloudflare Pages project config.
+#
+# A separate Pages project from Forge. One project hosts the static console
+# (public/) and the automated agent pipeline (functions/). No database yet —
+# the agents are stateless request/response for now; a D1 binding can be
+# added later if the pipeline needs to persist runs.
+#
+# Setup (once):
+#   npx wrangler pages secret put ANTHROPIC_API_KEY
+#
+# Local dev: `npm run dev` → http://localhost:8788
+# Set MOCK_ANTHROPIC=1 in .dev.vars to run the pipeline with no key or spend.
+
+name = "autosite"
+compatibility_date = "2026-06-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "public"
