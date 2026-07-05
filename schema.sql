@@ -72,6 +72,18 @@ CREATE TABLE IF NOT EXISTS site_views (
   updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Money Tracker: a manual log of income the user earned (any source, incl.
+-- cash), shown as a calendar. The app splits each month's total into fixed
+-- buckets (40% taxes / 10% Forge / 35% save / 15% self) client-side.
+CREATE TABLE IF NOT EXISTS income (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  date       TEXT    NOT NULL,               -- YYYY-MM-DD
+  amount     REAL    NOT NULL DEFAULT 0,
+  note       TEXT    NOT NULL DEFAULT '',
+  created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_view_history_first_viewed ON view_history (first_viewed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON client_payments (paid_at);
 CREATE INDEX IF NOT EXISTS idx_site_views_views ON site_views (views DESC);
+CREATE INDEX IF NOT EXISTS idx_income_date ON income (date);

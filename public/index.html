@@ -21,6 +21,7 @@
       <button class="tab-btn" data-tab="clients">Clients</button>
       <button class="tab-btn" data-tab="revenue">Revenue</button>
       <button class="tab-btn" data-tab="traffic">Traffic</button>
+      <button class="tab-btn" data-tab="money">Money</button>
       <button class="tab-btn" data-tab="invoice">Invoice</button>
     </nav>
     <button class="btn btn-sm golive-btn" id="golive-btn" title="How to put a finished site online">🚀 Go Live</button>
@@ -223,6 +224,37 @@
       </div>
     </section>
 
+    <!-- ============ Money Tracker (calendar) ============ -->
+    <section class="panel" id="panel-money">
+      <div class="panel-head">
+        <div>
+          <h1>Money</h1>
+          <p class="hero-sub">Log what you make. Forge splits each month into your buckets — 40% Taxes · 10% Forge · 35% Save · 15% You.</p>
+        </div>
+        <button class="btn btn-primary" id="money-add">＋ Add money</button>
+      </div>
+
+      <div class="money-card">
+        <div class="money-bar">
+          <div class="month-nav">
+            <button class="arrow" id="money-prev" aria-label="Previous month">◀</button>
+            <span id="money-month-label">—</span>
+            <button class="arrow" id="money-next" aria-label="Next month">▶</button>
+          </div>
+          <div class="money-made">
+            <small>Made this month</small>
+            <span class="big money" id="money-month-total">$0</span>
+          </div>
+        </div>
+        <div class="money-layout">
+          <div class="cal-wrap"><div id="money-calendar"></div></div>
+          <div class="money-summary" id="money-summary"></div>
+        </div>
+      </div>
+
+      <div class="alltime" id="money-alltime"></div>
+    </section>
+
     <!-- ============ Traffic (visitor counts) ============ -->
     <section class="panel" id="panel-traffic">
       <div class="panel-head">
@@ -356,6 +388,25 @@
       <h2 id="photos-title">Swap in the client's real photos</h2>
       <p class="muted">Upload a photo from your computer or paste a link to replace any stock image. Photos are shrunk automatically so the site stays fast.</p>
       <div class="photos-list" id="photos-list"></div>
+    </div>
+  </div>
+
+  <!-- Add-money modal (Money tracker) -->
+  <div class="modal-backdrop" id="money-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="money-modal-title">
+      <button class="modal-close" id="money-modal-close" aria-label="Close">×</button>
+      <h2 id="money-modal-title">Add money you made</h2>
+      <form id="money-form">
+        <label>Date <input type="date" id="mf-date" required></label>
+        <label>Amount ($) <input type="number" id="mf-amount" min="0" step="0.01" placeholder="e.g. 800" required></label>
+        <label>Note (optional) <input type="text" id="mf-note" maxlength="200" placeholder="e.g. FarFan Auto — new site"></label>
+        <p class="inline-error" id="money-form-error" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="btn" id="money-modal-cancel">Close</button>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+      <div class="day-entries" id="money-day-entries"></div>
     </div>
   </div>
 

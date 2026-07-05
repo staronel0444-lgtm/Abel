@@ -25,7 +25,9 @@ const moneyFmtCents = new Intl.NumberFormat('en-US', {
   style: 'currency', currency: 'USD', minimumFractionDigits: 2,
 });
 function money(n) {
-  const v = Number(n) || 0;
+  // Round to cents first so float artifacts (e.g. 2600*0.35 = 910.0000001)
+  // don't slip past the integer check and render as "$910.00".
+  const v = Math.round((Number(n) || 0) * 100) / 100;
   return Number.isInteger(v) ? moneyFmt.format(v) : moneyFmtCents.format(v);
 }
 
@@ -111,7 +113,7 @@ function extractSiteId(html) {
 
 // ---------------------------------------------------------------- tabs
 
-const panels = ['build', 'multi', 'sites', 'leads', 'history', 'clients', 'revenue', 'invoice', 'traffic'];
+const panels = ['build', 'multi', 'sites', 'leads', 'history', 'clients', 'revenue', 'invoice', 'traffic', 'money'];
 
 function switchTab(name) {
   for (const p of panels) {
@@ -126,6 +128,7 @@ function switchTab(name) {
   if (name === 'revenue') loadRevenue();
   if (name === 'invoice') initInvoice();
   if (name === 'traffic') loadTraffic();
+  if (name === 'money') loadMoney();
 }
 
 document.querySelectorAll('.tab-btn').forEach((b) => {
@@ -973,6 +976,169 @@ async function loadTraffic() {
 
 $('#traffic-refresh')?.addEventListener('click', loadTraffic);
 
+// ------------------------------------------------- Money Tracker (calendar)
+// Log income, see it on a month calendar, and auto-split each month + all-time
+// into fixed buckets: 40% taxes / 10% Forge / 35% save / 15% self.
+
+const MONEY_SPLIT = [
+  { key: 'tax', label: 'Taxes', pct: 0.40 },
+  { key: 'forge', label: 'Forge', pct: 0.10 },
+  { key: 'save', label: 'Save', pct: 0.35 },
+  { key: 'you', label: 'You', pct: 0.15 },
+];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const moneyState = { month: localCurrentMonth(), entries: [] };
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function shiftMonth(ym, delta) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+}
+
+async function loadMoney() {
+  if (!moneyState.month) moneyState.month = localCurrentMonth();
+  try {
+    const { entries } = await api('/api/income');
+    moneyState.entries = entries || [];
+    renderMoney();
+  } catch (err) {
+    $('#money-calendar').innerHTML = `<p class="inline-error">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function moneySplitHtml(total) {
+  const bar = MONEY_SPLIT.map((s) => `<span class="seg-${s.key}" style="width:${s.pct * 100}%"></span>`).join('');
+  const rows = MONEY_SPLIT.map((s) => `
+    <div class="bk">
+      <span class="dot dot-${s.key}"></span>
+      <span class="bk-name"><b>${s.label}</b><small>${Math.round(s.pct * 100)}%</small></span>
+      <span class="bk-val money">${money(total * s.pct)}</span>
+    </div>`).join('');
+  return `<div class="stackbar" aria-hidden="true">${bar}</div><div class="bk-list">${rows}</div>`;
+}
+
+function renderMoney() {
+  const ym = moneyState.month;
+  const [y, m] = ym.split('-').map(Number);
+
+  // Group this month's entries by day.
+  const byDay = {};
+  let monthTotal = 0;
+  for (const e of moneyState.entries) {
+    if ((e.date || '').slice(0, 7) !== ym) continue;
+    const amt = Number(e.amount) || 0;
+    monthTotal += amt;
+    (byDay[e.date] = byDay[e.date] || { sum: 0 }).sum += amt;
+  }
+
+  $('#money-month-label').textContent = formatMonth(ym);
+  $('#money-month-total').textContent = money(monthTotal);
+
+  // Build the calendar grid.
+  const firstDow = new Date(y, m - 1, 1).getDay();
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push('<td class="empty"></td>');
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${y}-${pad2(m)}-${pad2(d)}`;
+    const info = byDay[key];
+    cells.push(info
+      ? `<td class="has" data-date="${key}"><div class="cd">${d}</div><div class="cd-amt money">${money(info.sum)}</div></td>`
+      : `<td data-date="${key}"><div class="cd">${d}</div></td>`);
+  }
+  while (cells.length % 7 !== 0) cells.push('<td class="empty"></td>');
+  let rows = '';
+  for (let i = 0; i < cells.length; i += 7) rows += `<tr>${cells.slice(i, i + 7).join('')}</tr>`;
+  $('#money-calendar').innerHTML =
+    `<table class="cal"><thead><tr>${WEEKDAYS.map((w) => `<th>${w}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+
+  // Month split summary.
+  $('#money-summary').innerHTML =
+    `<div class="tot"><small>Made this month</small><b class="money">${money(monthTotal)}</b></div>
+     <div class="money-split">${moneySplitHtml(monthTotal)}</div>`;
+
+  // All-time totals.
+  const allTotal = moneyState.entries.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+  $('#money-alltime').innerHTML = `
+    <div class="alltime-title">All-time totals</div>
+    <div class="stat"><small>Total made</small><b class="money">${money(allTotal)}</b></div>
+    <div class="stat tax"><small>Tax set aside</small><b class="money">${money(allTotal * 0.40)}</b></div>
+    <div class="stat save"><small>Saved &amp; invested</small><b class="money">${money(allTotal * 0.35)}</b></div>
+    <div class="stat you"><small>Yours</small><b class="money">${money(allTotal * 0.15)}</b></div>`;
+}
+
+function renderMoneyDayEntries(date) {
+  const items = moneyState.entries.filter((e) => e.date === date);
+  const box = $('#money-day-entries');
+  if (!items.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="day-entries-title">Logged on ${escapeHtml(formatDate(date))}</div>` +
+    items.map((e) => `
+      <div class="day-entry">
+        <span class="de-amt money">${money(e.amount)}</span>
+        <span class="de-note">${escapeHtml(e.note || '')}</span>
+        <button class="btn btn-sm btn-danger" data-del="${e.id}">Delete</button>
+      </div>`).join('');
+  box.querySelectorAll('[data-del]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.del;
+      try {
+        await api(`/api/income/${id}`, { method: 'DELETE' });
+        moneyState.entries = moneyState.entries.filter((x) => String(x.id) !== String(id));
+        renderMoney();
+        renderMoneyDayEntries(date);
+        toast('Deleted');
+      } catch (err) { toast(err.message, true); }
+    });
+  });
+}
+
+function openMoneyModal(date) {
+  $('#money-form').reset();
+  $('#money-form-error').hidden = true;
+  $('#mf-date').value = date || localToday();
+  renderMoneyDayEntries($('#mf-date').value);
+  $('#money-modal').hidden = false;
+  $('#mf-amount').focus();
+}
+
+$('#money-add')?.addEventListener('click', () => openMoneyModal(null));
+$('#money-prev')?.addEventListener('click', () => { moneyState.month = shiftMonth(moneyState.month, -1); renderMoney(); });
+$('#money-next')?.addEventListener('click', () => { moneyState.month = shiftMonth(moneyState.month, 1); renderMoney(); });
+$('#money-calendar')?.addEventListener('click', (e) => {
+  const td = e.target.closest('td[data-date]');
+  if (td) openMoneyModal(td.dataset.date);
+});
+$('#mf-date')?.addEventListener('change', () => renderMoneyDayEntries($('#mf-date').value));
+$('#money-modal-close')?.addEventListener('click', () => { $('#money-modal').hidden = true; });
+$('#money-modal-cancel')?.addEventListener('click', () => { $('#money-modal').hidden = true; });
+$('#money-modal')?.addEventListener('click', (e) => { if (e.target === $('#money-modal')) $('#money-modal').hidden = true; });
+
+$('#money-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const date = $('#mf-date').value;
+  const amount = Number($('#mf-amount').value || 0);
+  const note = $('#mf-note').value.trim();
+  const errEl = $('#money-form-error');
+  errEl.hidden = true;
+  if (!date) { errEl.textContent = 'Pick a date.'; errEl.hidden = false; return; }
+  if (!(amount > 0)) { errEl.textContent = 'Enter an amount bigger than 0.'; errEl.hidden = false; return; }
+  try {
+    const { entry } = await api('/api/income', { method: 'POST', body: { date, amount, note } });
+    moneyState.entries.push(entry);
+    moneyState.month = date.slice(0, 7); // jump the calendar to the month you logged
+    $('#mf-amount').value = '';
+    $('#mf-note').value = '';
+    $('#mf-amount').focus();
+    renderMoney();
+    renderMoneyDayEntries(date);
+    toast(`Added ${money(amount)}`);
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+  }
+});
+
 // ------------------------------------------------- Refine (edit in place)
 
 // One-click polish pass: adds animations/hover/scroll-reveal without touching
@@ -1454,5 +1620,6 @@ document.addEventListener('keydown', (e) => {
     $('#detail-modal').hidden = true;
     $('#photos-modal').hidden = true;
     $('#info-modal').hidden = true;
+    $('#money-modal').hidden = true;
   }
 });
