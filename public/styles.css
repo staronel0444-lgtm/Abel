@@ -717,6 +717,30 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 .invoice-form legend { color: var(--ink-3); font-size: 0.78rem; padding: 0 6px; text-transform: uppercase; letter-spacing: 0.05em; }
 .invoice-output { margin-top: 20px; }
 
+/* ---- Prompt helper (paste info -> prompt) ---- */
+.prompt-builder {
+  background: var(--surface-2);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.pb-label { display: block; font-size: .9rem; color: var(--ink-2); margin-bottom: 8px; }
+.prompt-builder textarea {
+  width: 100%;
+  resize: none;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  line-height: 1.5;
+}
+.prompt-builder textarea:focus { outline: none; border-color: var(--accent); }
+.prompt-builder textarea::placeholder { color: var(--ink-3); }
+.pb-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
+
 /* ---- Money Tracker (calendar) ---- */
 :root { --m-tax: #ef6a62; --m-forge: #f0965a; --m-save: #45c98d; --m-you: #6aa8f5; }
 html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c6c; --m-you: #3f83d6; }

@@ -331,6 +331,48 @@ $('#build-preview-link').addEventListener('click', async (e) => {
 $('#build-copy').addEventListener('click', () => buildState.html && copyText(buildState.html));
 $('#build-download').addEventListener('click', () => buildState.html && downloadFile('site.html', buildState.html));
 
+// ---- Prompt helper: paste raw business info -> a strong prompt (no AI, free).
+function makePromptFromInfo(raw) {
+  const text = String(raw || '').replace(/\r/g, '').trim();
+  if (!text) return '';
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  let name = (lines[0] || 'this business').replace(/\s+/g, ' ').slice(0, 120);
+  // Strip a trailing rating/review count if it landed on the name line.
+  name = name.replace(/\s+[0-5](\.\d)?\s*(★|stars?)?\s*\(?[\d,]+\)?\s*(reviews?)?\s*$/i, '').trim() || name;
+
+  const phone = (text.match(/(\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/) || [])[1];
+  const email = (text.match(/[\w.+-]+@[\w-]+\.[\w.]+/) || [])[0];
+  const loc = (text.match(/\b([A-Z][A-Za-z .'\-]+,\s*[A-Z]{2})\b/) || [])[1];
+  const rating = (text.match(/\b([0-5](?:\.\d)?)\s*(?:★|stars?\b)/i) || [])[1]
+    || (text.match(/\b([1-5]\.\d)\b/) || [])[1];
+  const reviews = (text.match(/([\d,]{1,7})\s*(?:reviews?|ratings?)/i) || [])[1]
+    || (text.match(/\(([\d,]{2,7})\)/) || [])[1];
+
+  const bits = [];
+  bits.push(`Create a professional, modern, mobile-friendly single-page website for ${name}${loc ? `, located in ${loc}` : ''}.`);
+  if (phone) bits.push(`Feature the phone number ${phone} prominently in the header with a click-to-call button.`);
+  if (rating && reviews) bits.push(`Highlight their ${rating}-star rating from ${reviews} reviews as social proof in a testimonials section.`);
+  else if (rating) bits.push(`Highlight their ${rating}-star rating as social proof.`);
+  if (email) bits.push(`Show the email ${email} in the contact section.`);
+  bits.push(`Include a strong hero with a clear call to action, a services section, a why-choose-us section (local, trusted, reliable), a "find us" section with a map if there's an address, and a contact section with a quote-request form.`);
+  bits.push(`Use a clean, professional color scheme that fits the business (the colors can be fine-tuned later). The goal of the page is to make the phone ring.`);
+
+  const details = `\n\nUse these real business details for accurate, specific copy — do not invent facts:\n${text}`;
+  return (bits.join(' ') + details).slice(0, 5800);
+}
+
+$('#pb-make')?.addEventListener('click', () => {
+  const info = ($('#pb-input')?.value || '').trim();
+  if (!info) { toast('Paste some business info first', true); return; }
+  const box = $('#build-prompt');
+  box.value = makePromptFromInfo(info);
+  box.dispatchEvent(new Event('input')); // resize + refresh hint
+  box.focus();
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast('Prompt ready — tweak it if you want, then hit Generate');
+});
+
 // ------------------------------------------------- Section 2: multi-page
 
 const multiState = { pages: {}, defs: [], current: null, placeId: null, notifyEmail: '', siteId: null };

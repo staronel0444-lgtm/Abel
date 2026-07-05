@@ -34,6 +34,14 @@
       <div class="hero">
         <h1>What should we build?</h1>
         <p class="hero-sub">Describe the business or landing page. One prompt in, one complete site out.</p>
+        <div class="prompt-builder">
+          <label class="pb-label" for="pb-input">✨ Prompt helper — paste the business's info and I'll write the prompt for you</label>
+          <textarea id="pb-input" class="autogrow" rows="2" maxlength="4000"
+            placeholder="Paste anything about the business — name, address, phone, hours, reviews (copy it straight from Google Maps, their Facebook, a flyer, anywhere)…"></textarea>
+          <div class="pb-actions">
+            <button class="btn btn-primary" id="pb-make">Make prompt ↓</button>
+          </div>
+        </div>
         <div class="prompt-box">
           <textarea id="build-prompt" class="autogrow" rows="3" maxlength="6000"
             placeholder="A single-page website for Riverside Plumbing in Worcester, MA — 24/7 emergency service, licensed &amp; insured, 4.8 stars on Google, call (508) 555-0114 for a free quote…"></textarea>
