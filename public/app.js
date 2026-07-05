@@ -1023,10 +1023,10 @@ $('#traffic-refresh')?.addEventListener('click', loadTraffic);
 // into fixed buckets: 40% taxes / 10% Forge / 35% save / 15% self.
 
 const MONEY_SPLIT = [
-  { key: 'tax', label: 'Taxes', pct: 0.40 },
+  { key: 'tax', label: 'Taxes', pct: 0.25 },
   { key: 'forge', label: 'Forge', pct: 0.10 },
   { key: 'save', label: 'Save', pct: 0.35 },
-  { key: 'you', label: 'You', pct: 0.15 },
+  { key: 'you', label: 'You', pct: 0.30 },
 ];
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const moneyState = { month: localCurrentMonth(), entries: [] };
@@ -1102,12 +1102,13 @@ function renderMoney() {
 
   // All-time totals.
   const allTotal = moneyState.entries.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+  const pct = Object.fromEntries(MONEY_SPLIT.map((s) => [s.key, s.pct]));
   $('#money-alltime').innerHTML = `
     <div class="alltime-title">All-time totals</div>
     <div class="stat"><small>Total made</small><b class="money">${money(allTotal)}</b></div>
-    <div class="stat tax"><small>Tax set aside</small><b class="money">${money(allTotal * 0.40)}</b></div>
-    <div class="stat save"><small>Saved &amp; invested</small><b class="money">${money(allTotal * 0.35)}</b></div>
-    <div class="stat you"><small>Yours</small><b class="money">${money(allTotal * 0.15)}</b></div>`;
+    <div class="stat tax"><small>Tax set aside</small><b class="money">${money(allTotal * pct.tax)}</b></div>
+    <div class="stat save"><small>Saved &amp; invested</small><b class="money">${money(allTotal * pct.save)}</b></div>
+    <div class="stat you"><small>Yours</small><b class="money">${money(allTotal * pct.you)}</b></div>`;
 }
 
 function renderMoneyDayEntries(date) {
