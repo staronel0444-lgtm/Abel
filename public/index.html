@@ -91,6 +91,14 @@
       <div class="hero hero-compact">
         <h1>Multi-page site</h1>
         <p class="hero-sub">One prompt, several linked pages — a shared brand pass keeps styling, tone, and nav consistent across all of them.</p>
+        <div class="prompt-builder">
+          <label class="pb-label" for="pb-input-multi">✨ Prompt helper — paste the business's info and I'll write the prompt for you</label>
+          <textarea id="pb-input-multi" class="autogrow" rows="2" maxlength="4000"
+            placeholder="Paste anything about the business — name, address, phone, hours, reviews (copy it straight from Google Maps, their Facebook, a flyer, anywhere)…"></textarea>
+          <div class="pb-actions">
+            <button class="btn btn-primary" id="pb-make-multi">Make prompt ↓</button>
+          </div>
+        </div>
         <div class="prompt-box">
           <textarea id="multi-prompt" class="autogrow" rows="3" maxlength="6000"
             placeholder="A website for Golden Hammer Roofing in Worcester, MA — family-owned since 1998, free inspections, financing available…"></textarea>
@@ -133,6 +141,7 @@
             <button data-device="desktop" class="is-active">Desktop</button>
             <button data-device="mobile">Mobile</button>
           </div>
+          <button class="btn btn-primary" id="multi-enhance">✨ Make it interactive</button>
           <button class="btn" id="multi-preview-link">Get preview link</button>
           <button class="btn" id="multi-download">Download page</button>
           <button class="btn" id="multi-download-all">Download all (.zip)</button>

@@ -361,7 +361,7 @@ $('#build-set-email')?.addEventListener('click', async () => {
 });
 
 // ---- Prompt helper: paste raw business info -> a strong prompt (no AI, free).
-function makePromptFromInfo(raw) {
+function makePromptFromInfo(raw, { multiPage = false } = {}) {
   const text = String(raw || '').replace(/\r/g, '').trim();
   if (!text) return '';
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -378,14 +378,16 @@ function makePromptFromInfo(raw) {
   const reviews = (text.match(/([\d,]{1,7})\s*(?:reviews?|ratings?)/i) || [])[1]
     || (text.match(/\(([\d,]{2,7})\)/) || [])[1];
 
+  const kind = multiPage ? 'multi-page website (with separate pages for things like About, Services, and Contact)' : 'single-page website';
+  const thing = multiPage ? 'site' : 'page';
   const bits = [];
-  bits.push(`Create a professional, modern, mobile-friendly single-page website for ${name}${loc ? `, located in ${loc}` : ''}.`);
+  bits.push(`Create a professional, modern, mobile-friendly ${kind} for ${name}${loc ? `, located in ${loc}` : ''}.`);
   if (phone) bits.push(`Feature the phone number ${phone} prominently in the header with a click-to-call button.`);
   if (rating && reviews) bits.push(`Highlight their ${rating}-star rating from ${reviews} reviews as social proof in a testimonials section.`);
   else if (rating) bits.push(`Highlight their ${rating}-star rating as social proof.`);
   if (email) bits.push(`Show the email ${email} in the contact section.`);
   bits.push(`Include a strong hero with a clear call to action, a services section, a why-choose-us section (local, trusted, reliable), a "find us" section with a map if there's an address, and a contact section with a quote-request form.`);
-  bits.push(`Use a clean, professional color scheme that fits the business (the colors can be fine-tuned later). The goal of the page is to make the phone ring.`);
+  bits.push(`Use a clean, professional color scheme that fits the business (the colors can be fine-tuned later). The goal of the ${thing} is to make the phone ring.`);
 
   const details = `\n\nUse these real business details for accurate, specific copy — do not invent facts:\n${text}`;
   return (bits.join(' ') + details).slice(0, 5800);
@@ -397,6 +399,17 @@ $('#pb-make')?.addEventListener('click', () => {
   const box = $('#build-prompt');
   box.value = makePromptFromInfo(info);
   box.dispatchEvent(new Event('input')); // resize + refresh hint
+  box.focus();
+  box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast('Prompt ready — tweak it if you want, then hit Generate');
+});
+
+$('#pb-make-multi')?.addEventListener('click', () => {
+  const info = ($('#pb-input-multi')?.value || '').trim();
+  if (!info) { toast('Paste some business info first', true); return; }
+  const box = $('#multi-prompt');
+  box.value = makePromptFromInfo(info, { multiPage: true });
+  box.dispatchEvent(new Event('input'));
   box.focus();
   box.scrollIntoView({ behavior: 'smooth', block: 'center' });
   toast('Prompt ready — tweak it if you want, then hit Generate');
@@ -1287,16 +1300,14 @@ $('#build-enhance')?.addEventListener('click', () => {
 });
 
 // Multi-page: refine the page currently being viewed.
-$('#multi-refine-btn').addEventListener('click', async () => {
-  const instruction = $('#multi-refine-input').value.trim();
+async function runMultiRefine(instruction, btn, busyLabel) {
   const cur = multiState.current;
   if (!cur || !multiState.pages[cur]) { toast('Generate or open a site first', true); return; }
   if (!instruction) { toast('Type what you want changed first', true); return; }
 
-  const btn = $('#multi-refine-btn');
   const label = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Refining…';
+  btn.textContent = busyLabel;
   if (!multiState.siteId) multiState.siteId = extractSiteId(multiState.pages[cur]) || newSiteId();
   try {
     const res = await api('/api/generate', {
@@ -1305,7 +1316,6 @@ $('#multi-refine-btn').addEventListener('click', async () => {
     });
     multiState.pages[cur] = multiState.notifyEmail ? res.html : preserveForms(multiState.pages[cur], res.html);
     showMultiPage(cur);
-    $('#multi-refine-input').value = '';
     $('#multi-link-output').hidden = true;
     const title = multiState.defs.find((d) => d.filename === cur)?.title || cur;
     toast(`“${title}” updated — save a new link to share it`);
@@ -1315,6 +1325,16 @@ $('#multi-refine-btn').addEventListener('click', async () => {
     btn.disabled = false;
     btn.textContent = label;
   }
+}
+
+$('#multi-refine-btn').addEventListener('click', () => {
+  const instruction = $('#multi-refine-input').value.trim();
+  if (!instruction) { toast('Type what you want changed first', true); return; }
+  runMultiRefine(instruction, $('#multi-refine-btn'), 'Refining…').then(() => { $('#multi-refine-input').value = ''; });
+});
+
+$('#multi-enhance')?.addEventListener('click', () => {
+  runMultiRefine(ENHANCE_INSTRUCTION, $('#multi-enhance'), 'Enhancing…');
 });
 
 // ------------------------------------------------- Device preview toggle
