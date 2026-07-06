@@ -1584,60 +1584,97 @@ function fileToResizedDataUrl(file, maxDim) {
   });
 }
 
+// photosTarget abstracts which builder (single-page or multi-page/current
+// page) the modal is currently editing, so one modal + one code path serves
+// both without duplicating the swap logic.
+let photosTarget = null; // { getHtml(), setHtml(html), label }
+
 function replaceImageAt(index, newSrc) {
-  const doc = new DOMParser().parseFromString(buildState.html, 'text/html');
+  if (!photosTarget) return;
+  const doc = new DOMParser().parseFromString(photosTarget.getHtml(), 'text/html');
   const imgs = doc.querySelectorAll('img');
   if (!imgs[index]) return;
   imgs[index].setAttribute('src', newSrc);
   const html = '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-  buildState.html = html;
-  $('#build-frame').srcdoc = html;
-  $('#build-link-output').hidden = true;
+  photosTarget.setHtml(html);
   toast('Photo replaced — save a new link to share this version');
-  openPhotos();
+  renderPhotosList();
 }
 
-function openPhotos() {
-  if (!buildState.html) { toast('Generate a site first', true); return; }
-  const doc = new DOMParser().parseFromString(buildState.html, 'text/html');
+function renderPhotosList() {
+  const doc = new DOMParser().parseFromString(photosTarget.getHtml(), 'text/html');
   const imgs = Array.from(doc.querySelectorAll('img'));
   const list = $('#photos-list');
+  $('#photos-sub').textContent = photosTarget.label
+    ? `Editing photos on: ${photosTarget.label}. Upload a photo or paste a link to replace any stock image — shrunk automatically so the site stays fast.`
+    : 'Upload a photo from your computer or paste a link to replace any stock image. Photos are shrunk automatically so the site stays fast.';
   if (!imgs.length) {
-    list.innerHTML = '<p class="muted">This site doesn\'t use any &lt;img&gt; photos to swap — its images may be CSS backgrounds. You can ask for a photo with the Refine box instead.</p>';
-  } else {
-    list.innerHTML = imgs.map((img, i) => `
-      <div class="photo-row">
-        <img class="photo-thumb" src="${escapeHtml(img.getAttribute('src') || '')}" alt="" loading="lazy">
-        <div class="photo-ctl">
-          <div class="photo-alt">${escapeHtml(img.getAttribute('alt') || '(no description)')}</div>
-          <label class="btn btn-sm btn-primary">Upload a photo<input type="file" accept="image/*" hidden data-i="${i}"></label>
-          <input type="url" class="photo-url" placeholder="…or paste an image link + press Enter" data-i="${i}">
-        </div>
-      </div>`).join('');
-    list.querySelectorAll('input[type=file]').forEach((inp) => {
-      inp.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        try {
-          const dataUrl = await fileToResizedDataUrl(file, 1600);
-          replaceImageAt(Number(inp.dataset.i), dataUrl);
-        } catch { toast('Could not read that image file', true); }
-      });
-    });
-    list.querySelectorAll('input.photo-url').forEach((inp) => {
-      inp.addEventListener('keydown', (e) => {
-        if (e.key !== 'Enter') return;
-        e.preventDefault();
-        const u = inp.value.trim();
-        if (u) replaceImageAt(Number(inp.dataset.i), u);
-      });
-    });
+    list.innerHTML = '<p class="muted">This page doesn\'t use any &lt;img&gt; photos to swap — its images may be CSS backgrounds. You can ask for a photo with the Refine box instead.</p>';
+    return;
   }
+  list.innerHTML = imgs.map((img, i) => `
+    <div class="photo-row">
+      <img class="photo-thumb" src="${escapeHtml(img.getAttribute('src') || '')}" alt="" loading="lazy">
+      <div class="photo-ctl">
+        <div class="photo-alt">${escapeHtml(img.getAttribute('alt') || '(no description)')}</div>
+        <label class="btn btn-sm btn-primary">Upload a photo<input type="file" accept="image/*" hidden data-i="${i}"></label>
+        <input type="url" class="photo-url" placeholder="…or paste an image link + press Enter" data-i="${i}">
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('input[type=file]').forEach((inp) => {
+    inp.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const dataUrl = await fileToResizedDataUrl(file, 1600);
+        replaceImageAt(Number(inp.dataset.i), dataUrl);
+      } catch { toast('Could not read that image file', true); }
+    });
+  });
+  list.querySelectorAll('input.photo-url').forEach((inp) => {
+    inp.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const u = inp.value.trim();
+      if (u) replaceImageAt(Number(inp.dataset.i), u);
+    });
+  });
+}
+
+function openPhotosForBuild() {
+  if (!buildState.html) { toast('Generate a site first', true); return; }
+  photosTarget = {
+    getHtml: () => buildState.html,
+    setHtml: (html) => {
+      buildState.html = html;
+      $('#build-frame').srcdoc = html;
+      $('#build-link-output').hidden = true;
+    },
+    label: null,
+  };
+  renderPhotosList();
   $('#photos-modal').hidden = false;
 }
 
-const btnPhotos = $('#build-photos');
-if (btnPhotos) btnPhotos.addEventListener('click', openPhotos);
+function openPhotosForMulti() {
+  const cur = multiState.current;
+  if (!cur || !multiState.pages[cur]) { toast('Generate or open a site first', true); return; }
+  const title = multiState.defs.find((d) => d.filename === cur)?.title || cur;
+  photosTarget = {
+    getHtml: () => multiState.pages[cur],
+    setHtml: (html) => {
+      multiState.pages[cur] = html;
+      showMultiPage(cur);
+      $('#multi-link-output').hidden = true;
+    },
+    label: `${title} page (switch pages behind this modal, then reopen Photos for another page)`,
+  };
+  renderPhotosList();
+  $('#photos-modal').hidden = false;
+}
+
+$('#build-photos')?.addEventListener('click', openPhotosForBuild);
+$('#multi-photos')?.addEventListener('click', openPhotosForMulti);
 $('#photos-close')?.addEventListener('click', () => { $('#photos-modal').hidden = true; });
 $('#photos-modal')?.addEventListener('click', (e) => {
   if (e.target === $('#photos-modal')) $('#photos-modal').hidden = true;
