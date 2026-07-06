@@ -11,30 +11,9 @@
 
 import { handle, json, readJson, requireString, HttpError } from '../../lib/http.js';
 import { generate } from '../../lib/anthropic.js';
-import { injectForms } from '../../lib/forminject.js';
-import { injectAnalytics } from '../../lib/analytics.js';
+import { wireForms, wireAnalytics } from '../../lib/wire.js';
 
 const MAX_PAGES = 8;
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-
-// If the caller supplied a "notify email", wire the page's contact form(s) to
-// that address with a self-contained mailto handler. This needs no server, no
-// database, and no third-party service, so the form keeps working after the
-// site is downloaded and hosted on the client's own domain.
-function wireForms(html, notifyEmail) {
-  const email = typeof notifyEmail === 'string' ? notifyEmail.trim() : '';
-  if (!email || !EMAIL_RE.test(email)) return html;
-  const business = (/<title[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] || '').trim().slice(0, 120);
-  return injectForms(html, email, business);
-}
-
-// Bake the visitor-counter beacon in, pointed at this Forge origin so it keeps
-// counting after the site is downloaded to the client's domain.
-function wireAnalytics(html, siteId, request) {
-  const id = typeof siteId === 'string' ? siteId.trim().slice(0, 64) : '';
-  if (!id) return html;
-  return injectAnalytics(html, id, new URL(request.url).origin);
-}
 
 function validatePages(pages) {
   if (!Array.isArray(pages) || pages.length === 0 || pages.length > MAX_PAGES) {
@@ -61,7 +40,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     const instruction = requireString(body, 'instruction', { max: 2000 });
     const result = await generate(env, { mode, html, instruction });
     let wired = wireForms(result.text, body.notifyEmail);
-    wired = wireAnalytics(wired, body.siteId, request);
+    wired = wireAnalytics(wired, body.siteId, new URL(request.url).origin);
     return json({ html: wired, usage: result.usage, model: result.model });
   }
 

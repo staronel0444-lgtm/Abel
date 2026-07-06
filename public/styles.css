@@ -604,9 +604,10 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 .toast.toast-error { border-color: var(--bad); }
 
 /* ---------- Notify-email input (contact form destination) ---------- */
+.notify-row { display: flex; gap: 8px; margin-top: 10px; }
 .notify-input {
-  width: 100%;
-  margin-top: 10px;
+  flex: 1;
+  min-width: 0;
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--ink);
@@ -616,6 +617,8 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 }
 .notify-input::placeholder { color: var(--ink-3); }
 .notify-input:focus { outline: none; border-color: var(--accent); }
+.notify-row .btn-sm { flex: none; white-space: nowrap; }
+@media (max-width: 560px) { .notify-row { flex-wrap: wrap; } .notify-row .btn-sm { flex: 1; } }
 
 /* ---------- Refine bar ---------- */
 .refine-bar { display: flex; gap: 10px; margin-bottom: 12px; }

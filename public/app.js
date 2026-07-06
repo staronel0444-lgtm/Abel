@@ -331,6 +331,35 @@ $('#build-preview-link').addEventListener('click', async (e) => {
 $('#build-copy').addEventListener('click', () => buildState.html && copyText(buildState.html));
 $('#build-download').addEventListener('click', () => buildState.html && downloadFile('site.html', buildState.html));
 
+// ---- Set/update contact email on an ALREADY-generated site — free, no AI.
+// Lets you build a demo before you know the prospect's email, then wire it in
+// the moment they say yes, without spending a single credit.
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+$('#build-set-email')?.addEventListener('click', async () => {
+  if (!buildState.html) { toast('Generate a site first', true); return; }
+  const email = ($('#build-notify-email')?.value || '').trim();
+  if (!EMAIL_RE.test(email)) { toast('Enter a valid email first', true); return; }
+  if (!buildState.siteId) buildState.siteId = extractSiteId(buildState.html) || newSiteId();
+  const btn = $('#build-set-email');
+  btn.disabled = true;
+  try {
+    const res = await api('/api/rewire', {
+      method: 'POST',
+      body: { html: buildState.html, notifyEmail: email, siteId: buildState.siteId },
+    });
+    buildState.html = res.html;
+    buildState.notifyEmail = email;
+    $('#build-frame').srcdoc = res.html;
+    $('#build-link-output').hidden = true;
+    toast('Contact email set — free, no credits used');
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ---- Prompt helper: paste raw business info -> a strong prompt (no AI, free).
 function makePromptFromInfo(raw) {
   const text = String(raw || '').replace(/\r/g, '').trim();
@@ -548,6 +577,36 @@ $('#multi-preview-link').addEventListener('click', async (e) => {
 $('#multi-download').addEventListener('click', () => {
   if (multiState.current && multiState.pages[multiState.current]) {
     downloadFile(multiState.current, multiState.pages[multiState.current]);
+  }
+});
+
+// Set/update contact email across every page of an already-generated
+// multi-page site — free, no AI. Same use case as the Build tab: pre-build a
+// demo without knowing the prospect's email, wire it in once they say yes.
+$('#multi-set-email')?.addEventListener('click', async () => {
+  const files = Object.keys(multiState.pages || {}).filter((f) => multiState.pages[f]);
+  if (!files.length) { toast('Generate a site first', true); return; }
+  const email = ($('#multi-notify-email')?.value || '').trim();
+  if (!EMAIL_RE.test(email)) { toast('Enter a valid email first', true); return; }
+  if (!multiState.siteId) multiState.siteId = extractSiteId(multiState.pages[files[0]]) || newSiteId();
+  const btn = $('#multi-set-email');
+  btn.disabled = true;
+  try {
+    for (const f of files) {
+      const res = await api('/api/rewire', {
+        method: 'POST',
+        body: { html: multiState.pages[f], notifyEmail: email, siteId: multiState.siteId },
+      });
+      multiState.pages[f] = res.html;
+    }
+    multiState.notifyEmail = email;
+    if (multiState.current) showMultiPage(multiState.current);
+    $('#multi-link-output').hidden = true;
+    toast(`Contact email set on all ${files.length} pages — free, no credits used`);
+  } catch (err) {
+    toast(err.message, true);
+  } finally {
+    btn.disabled = false;
   }
 });
 
