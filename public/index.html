@@ -18,6 +18,7 @@
       <button class="tab-btn" data-tab="sites">My Sites</button>
       <button class="tab-btn" data-tab="leads">Lead Finder</button>
       <button class="tab-btn" data-tab="history">History</button>
+      <button class="tab-btn" data-tab="prospects">Prospects</button>
       <button class="tab-btn" data-tab="clients">Clients</button>
       <button class="tab-btn" data-tab="revenue">Revenue</button>
       <button class="tab-btn" data-tab="traffic">Traffic</button>
@@ -202,6 +203,23 @@
         <p>Run a search in Lead Finder — every result lands here automatically.</p>
       </div>
       <div class="history-list" id="history-list"></div>
+    </section>
+
+    <!-- ============ Prospects (manual sales pipeline) ============ -->
+    <section class="panel" id="panel-prospects">
+      <div class="panel-head">
+        <div>
+          <h1>Prospects</h1>
+          <p class="hero-sub">Every business you've pitched or plan to — track it from first contact to yes or no. Add anyone here, not just Lead Finder results.</p>
+        </div>
+        <button class="btn btn-primary" id="prospect-add">＋ Add prospect</button>
+      </div>
+      <div class="due-box" id="prospects-due" hidden></div>
+      <div class="empty" id="prospects-empty" hidden>
+        <h3>No prospects yet</h3>
+        <p>Add a business you're planning to pitch — even ones you found outside of Lead Finder.</p>
+      </div>
+      <div class="prospect-list" id="prospects-list"></div>
     </section>
 
     <!-- ============ Section 4: Client Dashboard ============ -->
@@ -392,6 +410,38 @@
         <div class="modal-actions">
           <button type="button" class="btn" id="client-modal-cancel">Cancel</button>
           <button type="submit" class="btn btn-primary" id="client-form-submit">Save client</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Prospect form modal (add + edit, manual sales pipeline) -->
+  <div class="modal-backdrop" id="prospect-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="prospect-modal-title">
+      <h2 id="prospect-modal-title">Add prospect</h2>
+      <form id="prospect-form">
+        <input type="hidden" id="pf-id">
+        <label>Business name <input type="text" id="pf-name" required maxlength="200"></label>
+        <div class="form-row">
+          <label>Trade / niche <input type="text" id="pf-niche" maxlength="100" placeholder="e.g. plumber, roofer"></label>
+          <label>Phone <input type="tel" id="pf-phone" maxlength="40"></label>
+        </div>
+        <label>Notes <textarea id="pf-notes" rows="2" maxlength="1000" placeholder="e.g. called, said call back after 3pm"></textarea></label>
+        <div class="form-row">
+          <label>Status
+            <select id="pf-status">
+              <option value="new">New — not contacted yet</option>
+              <option value="contacted">Contacted</option>
+              <option value="follow_up">Follow up</option>
+              <option value="no">No — not interested</option>
+            </select>
+          </label>
+          <label id="pf-followup-row">Follow-up date <input type="date" id="pf-followup"></label>
+        </div>
+        <p class="inline-error" id="prospect-form-error" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="btn" id="prospect-modal-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="prospect-form-submit">Save</button>
         </div>
       </form>
     </div>

@@ -474,6 +474,43 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 }
 .client-meta strong { color: var(--ink); font-weight: 500; }
 
+/* ---------- Prospects ---------- */
+.prospect-list { display: flex; flex-direction: column; gap: 12px; }
+.prospect-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+.prospect-notes {
+  margin: 10px 0 0;
+  font-size: 0.9rem;
+  color: var(--ink-2);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+}
+.prospect-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.status-select, .followup-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.88rem;
+}
+
 /* ---------- Revenue stat tile ---------- */
 .window-toggle { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; }
 .window-toggle button {

@@ -83,7 +83,26 @@ CREATE TABLE IF NOT EXISTS income (
   created_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Manual sales pipeline: any lead however you found it (driving around, a
+-- friend's tip, a web search) — NOT tied to a Google Place ID the way
+-- view_history/dismissed_leads are, so it works with or without Lead Finder.
+-- Tracked from first contact through follow-up until it's won (-> a client)
+-- or a no.
+CREATE TABLE IF NOT EXISTS prospects (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  business_name   TEXT    NOT NULL,
+  niche           TEXT    NOT NULL DEFAULT '',
+  phone           TEXT    NOT NULL DEFAULT '',
+  notes           TEXT    NOT NULL DEFAULT '',
+  status          TEXT    NOT NULL DEFAULT 'new' CHECK (status IN ('new','contacted','follow_up','won','no')),
+  follow_up_date  TEXT,                       -- YYYY-MM-DD, optional
+  created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX IF NOT EXISTS idx_view_history_first_viewed ON view_history (first_viewed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON client_payments (paid_at);
 CREATE INDEX IF NOT EXISTS idx_site_views_views ON site_views (views DESC);
 CREATE INDEX IF NOT EXISTS idx_income_date ON income (date);
+CREATE INDEX IF NOT EXISTS idx_prospects_status ON prospects (status);
+CREATE INDEX IF NOT EXISTS idx_prospects_follow_up ON prospects (follow_up_date);

@@ -113,7 +113,7 @@ function extractSiteId(html) {
 
 // ---------------------------------------------------------------- tabs
 
-const panels = ['build', 'multi', 'sites', 'leads', 'history', 'clients', 'revenue', 'invoice', 'traffic', 'money'];
+const panels = ['build', 'multi', 'sites', 'leads', 'history', 'prospects', 'clients', 'revenue', 'invoice', 'traffic', 'money'];
 
 function switchTab(name) {
   for (const p of panels) {
@@ -124,6 +124,7 @@ function switchTab(name) {
   });
   if (name === 'sites') loadSites();
   if (name === 'history') loadHistory();
+  if (name === 'prospects') loadProspects();
   if (name === 'clients') loadClients();
   if (name === 'revenue') loadRevenue();
   if (name === 'invoice') initInvoice();
@@ -840,6 +841,190 @@ $('#detail-close').addEventListener('click', () => { $('#detail-modal').hidden =
 $('#detail-modal').addEventListener('click', (e) => {
   if (e.target === $('#detail-modal')) $('#detail-modal').hidden = true;
 });
+
+// ------------------------------------------------- Prospects (manual pipeline)
+// Any lead however you found it — not tied to a Google Place ID the way
+// Lead Finder's History is, so it works whether or not Lead Finder is ever
+// turned on. Tracks: new -> contacted -> follow_up -> won (becomes a client)
+// or no.
+
+const prospectState = { prospects: [] };
+
+const PROSPECT_STATUS_LABEL = {
+  new: 'New', contacted: 'Contacted', follow_up: 'Follow up', won: 'Won — client', no: 'No',
+};
+
+function updateFollowupVisibility() {
+  const row = $('#pf-followup-row');
+  if (row) row.style.display = $('#pf-status').value === 'follow_up' ? '' : 'none';
+}
+$('#pf-status')?.addEventListener('change', updateFollowupVisibility);
+
+function openProspectModal(prospect = null) {
+  $('#prospect-form').reset();
+  $('#prospect-form-error').hidden = true;
+  $('#pf-id').value = prospect ? prospect.id : '';
+  if (prospect) {
+    $('#prospect-modal-title').textContent = 'Edit prospect';
+    $('#pf-name').value = prospect.businessName;
+    $('#pf-niche').value = prospect.niche || '';
+    $('#pf-phone').value = prospect.phone || '';
+    $('#pf-notes').value = prospect.notes || '';
+    // "won" isn't a manually-selectable option — use the Won button instead.
+    $('#pf-status').value = prospect.status === 'won' ? 'contacted' : prospect.status;
+    $('#pf-followup').value = prospect.followUpDate || '';
+  } else {
+    $('#prospect-modal-title').textContent = 'Add prospect';
+    $('#pf-status').value = 'new';
+  }
+  updateFollowupVisibility();
+  $('#prospect-modal').hidden = false;
+  $('#pf-name').focus();
+}
+
+$('#prospect-add')?.addEventListener('click', () => openProspectModal());
+$('#prospect-modal-cancel')?.addEventListener('click', () => { $('#prospect-modal').hidden = true; });
+$('#prospect-modal')?.addEventListener('click', (e) => { if (e.target === $('#prospect-modal')) $('#prospect-modal').hidden = true; });
+
+$('#prospect-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const errEl = $('#prospect-form-error');
+  errEl.hidden = true;
+  const id = $('#pf-id').value;
+  const payload = {
+    businessName: $('#pf-name').value.trim(),
+    niche: $('#pf-niche').value.trim(),
+    phone: $('#pf-phone').value.trim(),
+    notes: $('#pf-notes').value.trim(),
+    status: $('#pf-status').value,
+    followUpDate: $('#pf-status').value === 'follow_up' ? ($('#pf-followup').value || null) : null,
+  };
+  if (!payload.businessName) { errEl.textContent = 'Business name is required.'; errEl.hidden = false; return; }
+  $('#prospect-form-submit').disabled = true;
+  try {
+    if (id) {
+      await api(`/api/prospects/${id}`, { method: 'PUT', body: payload });
+      toast('Prospect updated');
+    } else {
+      await api('/api/prospects', { method: 'POST', body: payload });
+      toast('Prospect added');
+    }
+    $('#prospect-modal').hidden = true;
+    loadProspects();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+  } finally {
+    $('#prospect-form-submit').disabled = false;
+  }
+});
+
+async function updateProspectStatus(prospect, status, followUpDate) {
+  try {
+    await api(`/api/prospects/${prospect.id}`, {
+      method: 'PUT',
+      body: { status, followUpDate: status === 'follow_up' ? (followUpDate ?? prospect.followUpDate) : null },
+    });
+    loadProspects();
+  } catch (err) { toast(err.message, true); }
+}
+
+// Reuses the existing client modal (same as Lead Finder's Yes-flow) so a won
+// prospect becomes a real client with zero duplicate code.
+function convertProspectToClient(prospect) {
+  openClientModal({
+    mode: 'lead',
+    lead: { name: prospect.businessName, phone: prospect.phone, address: '', placeId: null },
+    onSaved: async () => {
+      try { await api(`/api/prospects/${prospect.id}`, { method: 'PUT', body: { status: 'won' } }); } catch { /* client still saved */ }
+      toast(`${prospect.businessName} added as a client 🎉`);
+      loadProspects();
+    },
+  });
+}
+
+async function deleteProspect(prospect) {
+  if (!confirm(`Delete ${prospect.businessName}? This can't be undone.`)) return;
+  try {
+    await api(`/api/prospects/${prospect.id}`, { method: 'DELETE' });
+    toast('Deleted');
+    loadProspects();
+  } catch (err) { toast(err.message, true); }
+}
+
+function renderProspects() {
+  const today = localToday();
+  const active = prospectState.prospects.filter((p) => p.status !== 'won' && p.status !== 'no');
+  const dueNow = active.filter((p) => p.status === 'follow_up' && p.followUpDate && p.followUpDate <= today);
+
+  const dueBox = $('#prospects-due');
+  if (dueNow.length) {
+    dueBox.hidden = false;
+    dueBox.innerHTML = `<h3>Follow up today (${dueNow.length})</h3>` + dueNow.map((p) => `
+      <div class="due-row" data-id="${p.id}">
+        <span><strong>${escapeHtml(p.businessName)}</strong>${p.phone ? ` · ${escapeHtml(p.phone)}` : ''}</span>
+        <button class="btn btn-sm btn-primary" data-act="contacted">Mark contacted</button>
+      </div>`).join('');
+    dueBox.querySelectorAll('.due-row').forEach((row) => {
+      const p = prospectState.prospects.find((x) => String(x.id) === row.dataset.id);
+      row.querySelector('[data-act="contacted"]').addEventListener('click', () => updateProspectStatus(p, 'contacted'));
+    });
+  } else {
+    dueBox.hidden = true;
+  }
+
+  const list = $('#prospects-list');
+  $('#prospects-empty').hidden = active.length > 0;
+  list.innerHTML = '';
+  for (const p of active) {
+    const card = document.createElement('div');
+    card.className = 'prospect-card';
+    card.innerHTML = `
+      <div class="client-top">
+        <h3>${escapeHtml(p.businessName)}</h3>
+        <span class="badge${p.status === 'new' || p.status === 'contacted' ? ' badge-undecided' : ''}">${PROSPECT_STATUS_LABEL[p.status]}</span>
+      </div>
+      <div class="client-meta">
+        ${p.niche ? `<div>${escapeHtml(p.niche)}</div>` : ''}
+        ${p.phone ? `<div><a href="tel:${escapeHtml(p.phone.replace(/[^\d+]/g, ''))}">${escapeHtml(p.phone)}</a></div>` : ''}
+        ${p.followUpDate ? `<div>Follow up: <strong>${escapeHtml(formatDate(p.followUpDate))}</strong></div>` : ''}
+      </div>
+      ${p.notes ? `<p class="prospect-notes">${escapeHtml(p.notes)}</p>` : ''}
+      <div class="prospect-actions">
+        <select class="status-select" aria-label="Status">
+          <option value="new" ${p.status === 'new' ? 'selected' : ''}>New</option>
+          <option value="contacted" ${p.status === 'contacted' ? 'selected' : ''}>Contacted</option>
+          <option value="follow_up" ${p.status === 'follow_up' ? 'selected' : ''}>Follow up</option>
+        </select>
+        <input type="date" class="followup-input" value="${p.followUpDate || ''}" ${p.status === 'follow_up' ? '' : 'hidden'}>
+        <button class="btn btn-sm btn-primary" data-act="won">🎉 Won</button>
+        <button class="btn btn-sm" data-act="no">No</button>
+        <button class="btn btn-sm" data-act="edit">Edit</button>
+        <button class="btn btn-sm btn-danger" data-act="delete">Delete</button>
+      </div>`;
+    const dateInput = card.querySelector('.followup-input');
+    card.querySelector('.status-select').addEventListener('change', (e) => {
+      dateInput.hidden = e.target.value !== 'follow_up';
+      updateProspectStatus(p, e.target.value, dateInput.value);
+    });
+    dateInput.addEventListener('change', () => updateProspectStatus(p, 'follow_up', dateInput.value));
+    card.querySelector('[data-act="won"]').addEventListener('click', () => convertProspectToClient(p));
+    card.querySelector('[data-act="no"]').addEventListener('click', () => updateProspectStatus(p, 'no'));
+    card.querySelector('[data-act="edit"]').addEventListener('click', () => openProspectModal(p));
+    card.querySelector('[data-act="delete"]').addEventListener('click', () => deleteProspect(p));
+    list.appendChild(card);
+  }
+}
+
+async function loadProspects() {
+  try {
+    const { prospects } = await api('/api/prospects');
+    prospectState.prospects = prospects;
+    renderProspects();
+  } catch (err) {
+    $('#prospects-list').innerHTML = `<p class="inline-error">${escapeHtml(err.message)}</p>`;
+  }
+}
 
 // ------------------------------------------------- Section 4: Clients
 
@@ -1776,6 +1961,7 @@ $('#info-modal')?.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     $('#client-modal').hidden = true;
+    $('#prospect-modal').hidden = true;
     $('#detail-modal').hidden = true;
     $('#photos-modal').hidden = true;
     $('#info-modal').hidden = true;
