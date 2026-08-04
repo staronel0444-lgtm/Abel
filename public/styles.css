@@ -911,6 +911,67 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
 }
 .photo-url:focus { outline: none; border-color: var(--accent); }
 
+/* ---- Emails (maintenance / welcome) ---- */
+.email-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 24px; }
+.email-type-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+}
+.email-type-btn:hover { border-color: var(--accent); }
+.email-type-btn .et-ico { font-size: 1.7rem; flex: none; }
+.email-type-btn .et-text { display: flex; flex-direction: column; gap: 2px; }
+.email-type-btn .et-text strong { font-size: 1rem; }
+.email-type-btn .et-text small { color: var(--ink-2); font-size: 0.84rem; }
+
+.email-client-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; margin-top: 14px; }
+.email-client-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  color: var(--ink);
+  font: inherit;
+  width: 100%;
+}
+.email-client-row:hover { border-color: var(--accent); }
+.email-client-row span { color: var(--ink-2); font-size: 0.85rem; }
+
+.email-output {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+}
+.email-output .panel-head { margin-bottom: 14px; }
+.email-output .panel-head h2 { margin: 0; font-size: 1.05rem; }
+.email-output > label { display: block; margin-bottom: 12px; font-size: 0.9rem; color: var(--ink-2); }
+.email-output input,
+.email-output textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+}
+
 @media (max-width: 640px) {
   .golive-btn { display: none; }
   .photo-row { grid-template-columns: 64px 1fr; }
@@ -920,4 +981,5 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
   .history-row { grid-template-columns: 1fr auto; }
   .history-row .h-niche { display: none; }
   .stat-value { font-size: 48px; }
+  .email-types { grid-template-columns: 1fr; }
 }

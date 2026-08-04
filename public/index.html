@@ -24,6 +24,7 @@
       <button class="tab-btn" data-tab="traffic">Traffic</button>
       <button class="tab-btn" data-tab="money">Money</button>
       <button class="tab-btn" data-tab="invoice">Invoice</button>
+      <button class="tab-btn" data-tab="emails">Emails</button>
     </nav>
     <button class="btn btn-sm golive-btn" id="golive-btn" title="How to put a finished site online">🚀 Go Live</button>
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle light or dark mode" title="Toggle light / dark mode">🌙</button>
@@ -384,6 +385,45 @@
         </div>
       </div>
     </section>
+
+    <!-- ============ Emails (maintenance / welcome, from saved clients) ============ -->
+    <section class="panel" id="panel-emails">
+      <div class="panel-head">
+        <div>
+          <h1>Emails</h1>
+          <p class="hero-sub">Pick a type, pick a client, get a ready-to-send email. No AI needed — instant and free.</p>
+        </div>
+      </div>
+
+      <div class="email-types">
+        <button class="email-type-btn" id="email-type-maintenance" type="button">
+          <span class="et-ico">💳</span>
+          <span class="et-text"><strong>Monthly maintenance fee</strong><small>Remind a client their monthly fee is due</small></span>
+        </button>
+        <button class="email-type-btn" id="email-type-welcome" type="button">
+          <span class="et-ico">🎉</span>
+          <span class="et-text"><strong>First website / welcome</strong><small>Let a new client know their site is live</small></span>
+        </button>
+      </div>
+
+      <div class="empty" id="emails-empty" hidden>
+        <h3>No clients saved yet</h3>
+        <p>Add a client on the Clients tab first, then come back here to email them.</p>
+      </div>
+
+      <div class="email-output" id="email-output" hidden>
+        <div class="panel-head">
+          <h2 id="email-output-title">Email</h2>
+          <button class="btn btn-sm" id="email-start-over" type="button">Start over</button>
+        </div>
+        <label>Subject <input type="text" id="email-subject" maxlength="200"></label>
+        <label>Body <textarea id="email-body" class="autogrow" rows="10" maxlength="4000"></textarea></label>
+        <div class="modal-actions">
+          <button class="btn" id="email-copy" type="button">Copy email</button>
+          <button class="btn btn-primary" id="email-open-mail" type="button">✉️ Open in Mail app</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Client form modal (Yes-flow + add + edit) -->
@@ -412,6 +452,18 @@
           <button type="submit" class="btn btn-primary" id="client-form-submit">Save client</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Email client picker (choose who a maintenance/welcome email is for) -->
+  <div class="modal-backdrop" id="email-client-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="email-client-modal-title">
+      <h2 id="email-client-modal-title">Choose a client</h2>
+      <p class="muted">Pick who this email is for.</p>
+      <div class="email-client-list" id="email-client-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="email-client-modal-cancel">Cancel</button>
+      </div>
     </div>
   </div>
 

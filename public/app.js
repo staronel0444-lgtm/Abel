@@ -113,7 +113,7 @@ function extractSiteId(html) {
 
 // ---------------------------------------------------------------- tabs
 
-const panels = ['build', 'multi', 'sites', 'leads', 'history', 'prospects', 'clients', 'revenue', 'invoice', 'traffic', 'money'];
+const panels = ['build', 'multi', 'sites', 'leads', 'history', 'prospects', 'clients', 'revenue', 'invoice', 'traffic', 'money', 'emails'];
 
 function switchTab(name) {
   for (const p of panels) {
@@ -130,6 +130,7 @@ function switchTab(name) {
   if (name === 'invoice') initInvoice();
   if (name === 'traffic') loadTraffic();
   if (name === 'money') loadMoney();
+  if (name === 'emails') initEmails();
 }
 
 document.querySelectorAll('.tab-btn').forEach((b) => {
@@ -1648,6 +1649,122 @@ $('#inv-download').addEventListener('click', () => {
   if (invoiceDocHtml) downloadFile(`${$('#inv-type').value}.html`, invoiceDocHtml);
 });
 
+// ------------------------------------------------- Emails (maintenance / welcome)
+// Client-side only, no AI call — pulls from clientState (same data the
+// Clients tab uses) and the "from" name/contact already saved by Invoice.
+
+const EMAIL_TEMPLATES = {
+  maintenance: {
+    label: 'Monthly maintenance fee',
+    subject: (c) => `Monthly website maintenance — ${c.companyName}`,
+    body: (c, from) => [
+      `Hi ${c.ownerName || 'there'},`,
+      '',
+      `Just a friendly reminder that this month's website maintenance fee (${money(c.monthlyFee || 0)}) is due. This covers hosting, upkeep, and any small updates to ${c.companyName}'s site.`,
+      '',
+      "Let me know if you'd like anything changed while I'm in there!",
+      '',
+      'Thanks,',
+      from.name + (from.contact ? `\n${from.contact}` : ''),
+    ].join('\n'),
+  },
+  welcome: {
+    label: 'First website / welcome',
+    subject: (c) => `${c.companyName}'s new website is live!`,
+    body: (c, from) => {
+      const lines = [
+        `Hi ${c.ownerName || 'there'},`,
+        '',
+        `Great news — ${c.companyName}'s new website is live! Take a look and let me know if you'd like anything changed.`,
+        '',
+      ];
+      if (c.monthlyFee > 0) {
+        lines.push(
+          `Quick note: hosting & maintenance is ${money(c.monthlyFee)}/month, which covers updates and keeps everything running smoothly.`,
+          ''
+        );
+      }
+      lines.push("Thanks again for the opportunity to build this for you!", '', 'Thanks,', from.name + (from.contact ? `\n${from.contact}` : ''));
+      return lines.join('\n');
+    },
+  },
+};
+
+const emailState = { type: null };
+let currentEmailClient = null;
+
+async function initEmails() {
+  if (!clientState.clients.length) {
+    try { await loadClients(); } catch { /* ignore */ }
+  }
+  $('#emails-empty').hidden = clientState.clients.length > 0;
+}
+
+function emailFromInfo() {
+  const from = { name: 'Your Business', contact: '' };
+  try {
+    const saved = JSON.parse(localStorage.getItem(INVOICE_FROM_KEY) || '{}');
+    if (saved.name) from.name = saved.name;
+    if (saved.contact) from.contact = saved.contact;
+  } catch { /* ignore */ }
+  return from;
+}
+
+function openEmailPicker(type) {
+  if (!clientState.clients.length) { toast('Add a client first — Clients tab', true); return; }
+  emailState.type = type;
+  const list = $('#email-client-list');
+  list.innerHTML = clientState.clients.map((c) => `
+    <button type="button" class="email-client-row" data-id="${c.id}">
+      <strong>${escapeHtml(c.companyName)}</strong>
+      <span>${escapeHtml(c.email || c.phone || 'no contact on file')}</span>
+    </button>`).join('');
+  list.querySelectorAll('.email-client-row').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const c = clientState.clients.find((x) => x.id === Number(btn.dataset.id));
+      $('#email-client-modal').hidden = true;
+      if (c) generateEmail(c);
+    });
+  });
+  $('#email-client-modal').hidden = false;
+}
+
+function generateEmail(client) {
+  const tpl = EMAIL_TEMPLATES[emailState.type];
+  if (!tpl) return;
+  const from = emailFromInfo();
+  currentEmailClient = client;
+  $('#email-output-title').textContent = `${tpl.label} — ${client.companyName}`;
+  $('#email-subject').value = tpl.subject(client, from);
+  $('#email-body').value = tpl.body(client, from);
+  $('#email-body').dispatchEvent(new Event('input'));
+  $('#email-output').hidden = false;
+  $('#email-output').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+$('#email-type-maintenance').addEventListener('click', () => openEmailPicker('maintenance'));
+$('#email-type-welcome').addEventListener('click', () => openEmailPicker('welcome'));
+$('#email-client-modal-cancel').addEventListener('click', () => { $('#email-client-modal').hidden = true; });
+$('#email-client-modal').addEventListener('click', (e) => {
+  if (e.target === $('#email-client-modal')) $('#email-client-modal').hidden = true;
+});
+
+$('#email-copy').addEventListener('click', () => {
+  copyText(`Subject: ${$('#email-subject').value.trim()}\n\n${$('#email-body').value}`);
+});
+
+$('#email-open-mail').addEventListener('click', () => {
+  const to = (currentEmailClient && currentEmailClient.email) || '';
+  const subject = $('#email-subject').value.trim();
+  const body = $('#email-body').value;
+  window.location.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+});
+
+$('#email-start-over').addEventListener('click', () => {
+  $('#email-output').hidden = true;
+  currentEmailClient = null;
+});
+
 // ---------------------------------------------------------------- theme
 
 const THEME_KEY = 'forge-theme';
@@ -1966,5 +2083,6 @@ document.addEventListener('keydown', (e) => {
     $('#photos-modal').hidden = true;
     $('#info-modal').hidden = true;
     $('#money-modal').hidden = true;
+    $('#email-client-modal').hidden = true;
   }
 });
