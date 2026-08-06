@@ -77,6 +77,7 @@
             <button data-device="mobile">Mobile</button>
           </div>
           <button class="btn btn-primary" id="build-enhance">✨ Make it interactive</button>
+          <button class="btn btn-primary" id="build-style">🎨 Change style</button>
           <button class="btn" id="build-preview-link">Get preview link</button>
           <button class="btn" id="build-photos">🖼️ Photos</button>
           <button class="btn" id="build-copy">Copy HTML</button>
@@ -144,6 +145,7 @@
             <button data-device="mobile">Mobile</button>
           </div>
           <button class="btn btn-primary" id="multi-enhance">✨ Make it interactive</button>
+          <button class="btn btn-primary" id="multi-style">🎨 Change style</button>
           <button class="btn" id="multi-preview-link">Get preview link</button>
           <button class="btn" id="multi-photos">🖼️ Photos</button>
           <button class="btn" id="multi-download">Download page</button>
@@ -471,6 +473,20 @@
           <button type="submit" class="btn btn-primary" id="client-form-submit">Save client</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Art-style gallery: swaps a finished site's whole look, keeping the content -->
+  <div class="modal-backdrop" id="style-modal" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="style-modal-title">
+      <button class="modal-close" id="style-modal-close" aria-label="Close">×</button>
+      <h2 id="style-modal-title">Pick a style</h2>
+      <p class="muted" id="style-modal-sub">The words, photos and sections stay exactly the same — only the look changes.</p>
+      <input type="search" id="style-search" placeholder="Search styles…" aria-label="Search styles" autocomplete="off">
+      <div class="style-grid" id="style-grid"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="style-modal-cancel">Cancel</button>
+      </div>
     </div>
   </div>
 

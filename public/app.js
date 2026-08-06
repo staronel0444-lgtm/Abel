@@ -1839,6 +1839,112 @@ $('#money-form')?.addEventListener('submit', async (e) => {
 const ENHANCE_INSTRUCTION =
   'Add tasteful interactivity and visual polish WITHOUT changing the wording, images, colors, or overall layout: smooth scroll-reveal animations as sections enter the viewport, subtle hover effects on buttons, links, cards, and images, a sticky header that condenses slightly on scroll, and gentle transitions throughout. Keep it elegant and fast — no gaudy or distracting motion and no autoplay audio. Honor prefers-reduced-motion for accessibility, and keep all existing text and structure intact.';
 
+// ------------------------------------------------- Art styles (restyle a site)
+// Each entry carries a real design brief, not just a name: the model needs
+// specific fonts, colours, shapes and mood to produce a genuinely different
+// look. `swatch` is only for the picker's own thumbnail.
+
+const ART_STYLES = [
+  // ---- Clean ----
+  { key: 'minimalist', name: 'Minimalist', group: 'Clean', blurb: 'Huge white space, almost no colour', swatch: ['#ffffff', '#111111', '#e5e5e5'],
+    brief: 'Extreme restraint. Near-white background, near-black text, at most one muted accent used sparingly. Very generous white space — double the padding you would normally use. A refined sans-serif or a quiet grotesque, tight letter-spacing on headings. No shadows, no gradients, no rounded corners beyond 2px. Thin 1px hairline dividers instead of boxes and cards. Let emptiness do the work.' },
+  { key: 'swiss', name: 'Swiss / Grid', group: 'Clean', blurb: 'Strict grid, precise, ordered', swatch: ['#f2f2f0', '#d32011', '#1a1a1a'],
+    brief: 'International Typographic Style. A visible, strictly enforced column grid — align everything to it. Helvetica-like neue-grotesque type, flush left, ragged right, never centred. One bold primary colour (classic Swiss red or similar) against off-white and black. Large type-size contrast between headline and body. Rectangular blocks, hard edges, mathematical spacing. Order and precision above decoration.' },
+  { key: 'scandinavian', name: 'Scandinavian', group: 'Clean', blurb: 'Light, airy, soft neutrals', swatch: ['#f7f5f2', '#a8b5a6', '#3d3a35'],
+    brief: 'Nordic calm. Warm off-white and pale birch tones, soft sage or dusty blue accents, gentle warm grey text — never pure black. Light, humanist sans-serif with comfortable line-height. Soft 8–12px rounded corners, very subtle shadows. Airy spacing, natural light feeling, uncluttered. Understated and quietly premium.' },
+  { key: 'corporate', name: 'Corporate Clean', group: 'Clean', blurb: 'Blue, safe, trustworthy', swatch: ['#ffffff', '#0b5cab', '#4a5568'],
+    brief: 'Established professional-services look. Confident corporate blue as the primary, cool neutral greys, white background. Clear sans-serif, sensible sizes, strong readable hierarchy. Cards with light borders and soft shadows, 6px radii, tidy icon-led feature rows. Structured and predictable in a reassuring way — this should look like a company that has been in business twenty years.' },
+
+  // ---- Bold ----
+  { key: 'brutalist', name: 'Brutalist', group: 'Bold', blurb: 'Raw, harsh, unpolished on purpose', swatch: ['#ffffff', '#000000', '#0000ee'],
+    brief: 'Raw web brutalism. Stark white background, pure black text, default-blue underlined links. Monospace or plain system type at unapologetic sizes. Thick 3–4px solid black borders on everything, zero border radius, zero shadows. Visible structure, exposed boxes, deliberately unrefined spacing. Loud oversized headings. It should feel hand-built and confrontational rather than designed.' },
+  { key: 'neobrutalist', name: 'Neo-Brutalist', group: 'Bold', blurb: 'Thick outlines, hard shadows, bright', swatch: ['#ffde59', '#000000', '#ff5c8a'],
+    brief: 'Modern neo-brutalism. Saturated flat primaries and candy brights on cream or white. Every card, button and image gets a heavy 3px black outline and a hard offset drop shadow (e.g. 6px 6px 0 #000) with no blur. Chunky geometric sans-serif, very heavy weights. Slight playful rotations on some elements. Buttons visibly "press" on hover by shifting toward their shadow. Bold, graphic and confident.' },
+  { key: 'typographic', name: 'Bold Typographic', group: 'Bold', blurb: 'Giant letters are the design', swatch: ['#111111', '#f5f5f0', '#ff4b1f'],
+    brief: 'Type as the entire design. The headline should be enormous — filling most of the viewport — in a heavy display face with very tight tracking and negative leading where lines stack. Minimal imagery; words carry everything. High contrast, mostly two tones plus one hot accent. Text set at dramatic size jumps. Sections separated by scale changes rather than boxes.' },
+  { key: 'maximalist', name: 'Maximalist', group: 'Bold', blurb: 'Packed, layered, loud', swatch: ['#7b2ff7', '#f7b32b', '#12c2e9'],
+    brief: 'More is more. Clashing saturated colours, layered patterned backgrounds, overlapping elements, multiple contrasting typefaces used together. Decorative borders, stickers, badges and shapes filling negative space. Dense and energetic — but keep text legible over its background at all times. Every section should feel like a different poster while remaining one site.' },
+
+  // ---- Retro ----
+  { key: 'vintage70s', name: 'Vintage 70s', group: 'Retro', blurb: 'Burnt orange, brown, old signage', swatch: ['#e07a3f', '#7a4419', '#f2e3c9'],
+    brief: '1970s Americana. Burnt orange, mustard, avocado and deep brown on warm cream. Rounded chunky retro display type for headings (think old motel and gas-station signage), warm serif or slab for body. Thick rounded pill shapes, arched section tops, concentric stripe motifs. Subtle grain or paper texture. Warm, sun-faded and nostalgic.' },
+  { key: 'y2k', name: 'Y2K', group: 'Retro', blurb: 'Chrome, shine, early-2000s web', swatch: ['#c0c0c0', '#00d4ff', '#ff00c8'],
+    brief: 'Turn-of-the-millennium optimism. Metallic chrome and silver gradients, glossy bubble buttons with highlight sheen, electric cyan and magenta accents on white or gradient backgrounds. Rounded plastic shapes, bevelled edges, star and sparkle motifs. Techno-optimistic sans-serif, some italic. Slightly gaudy and fun — lean into the gloss.' },
+  { key: 'artdeco', name: 'Art Deco', group: 'Retro', blurb: 'Gold, geometric, 1920s luxury', swatch: ['#0e1b2a', '#c9a227', '#f4f1e8'],
+    brief: '1920s Deco glamour. Deep navy or black grounds with metallic gold and cream. Strong symmetry, stepped geometric ornament, sunburst and chevron motifs, thin gold rules framing sections. High-contrast elegant display serif with wide letter-spacing for headings, refined serif body. Vertical emphasis, arched and fan-shaped forms. Opulent and formal.' },
+  { key: 'memphis', name: 'Memphis', group: 'Retro', blurb: '80s squiggles and clashing shapes', swatch: ['#ff5c8a', '#2ec4f1', '#ffd23f'],
+    brief: '1980s Memphis Group postmodernism. Bright clashing pastels and primaries on white. Scattered geometric confetti — squiggles, zigzags, dots, triangles, wavy lines — as decorative background elements. Playful asymmetry, elements rotated slightly off-axis. Bold rounded sans-serif. Terrazzo speckle patterns. Deliberately fun and slightly chaotic.' },
+  { key: 'retrofuture', name: 'Retro-Futurism', group: 'Retro', blurb: 'Synthwave, neon grids, 80s sci-fi', swatch: ['#1a0b2e', '#ff2a6d', '#05d9e8'],
+    brief: '1980s synthwave. Deep purple-to-magenta gradient skies, a glowing perspective grid receding to a horizon, neon pink and cyan. Chrome or neon-outlined display type with glow and subtle scanlines. Sunset-stripe motifs. Dark ground throughout with luminous accents. Cinematic and nostalgic-futuristic.' },
+
+  // ---- Fancy ----
+  { key: 'luxury', name: 'Luxury', group: 'Fancy', blurb: 'Black and gold, elegant, spacious', swatch: ['#0a0a0a', '#c9a961', '#f6f3ee'],
+    brief: 'High-end boutique. Near-black or deep charcoal ground, warm gold or champagne accents, ivory text. A high-contrast elegant serif (Didone-like) for headings with wide letter-spacing, refined sans for body. Enormous white space, very restrained ornament, thin gold hairlines. Slow, understated hover transitions. Everything should feel expensive and unhurried.' },
+  { key: 'editorial', name: 'Editorial', group: 'Fancy', blurb: 'Magazine headlines, column layouts', swatch: ['#faf8f5', '#1a1a1a', '#a4442c'],
+    brief: 'Print magazine feature spread. Large expressive serif headlines with a drop cap opening the first paragraph. Multi-column text where appropriate, generous margins, pull-quotes set large in the accent colour. Off-white paper ground, rich black text, one editorial accent (deep red or ink blue). Captions in small italic. Rules and generous leading. Reads like a well-designed magazine.' },
+  { key: 'newspaper', name: 'Newspaper', group: 'Fancy', blurb: 'Broadsheet, thin rules, dense', swatch: ['#f4f1ea', '#111111', '#8b0000'],
+    brief: 'Broadsheet newspaper. Newsprint-cream ground, dense black serif body type in narrow columns, a heavy blackletter-or-condensed-serif masthead treatment for the business name. Thin black rules separating everything, small-caps section labels, bylines and datelines. Tight leading, justified columns. Deliberately old-print and information-dense.' },
+
+  // ---- Techy ----
+  { key: 'darktech', name: 'Dark Tech', group: 'Techy', blurb: 'Dark background, neon accent', swatch: ['#0d1117', '#3fb950', '#c9d1d9'],
+    brief: 'Modern developer-product dark mode. Near-black blue-grey ground, elevated surfaces a shade lighter, one vivid accent (electric green, blue or violet). Crisp geometric sans, monospace for small labels and numbers. Subtle 1px borders, faint inner glows, 8px radii. Sharp, technical and precise. Restrained accent use — glow only where it matters.' },
+  { key: 'cyberpunk', name: 'Cyberpunk', group: 'Techy', blurb: 'Neon on black, glitch', swatch: ['#0a0012', '#ff003c', '#00fff5'],
+    brief: 'Neon-noir cyberpunk. Near-black ground with hot magenta and cyan neon. Glitch and chromatic-aberration effects on headings (offset red/cyan text shadows), scanline overlays, angular clipped corners instead of rounded. Monospace or techno display type, often uppercase. Neon-outlined boxes that glow on hover. Gritty, high-contrast and electric.' },
+  { key: 'glass', name: 'Glassmorphism', group: 'Techy', blurb: 'Frosted glass, blur, translucent', swatch: ['#6a8cff', '#b8c6ff', '#ffffff'],
+    brief: 'Frosted-glass layering. A colourful soft gradient or blurred photographic background, with content panels using backdrop-filter blur, semi-transparent white fills, thin light borders and soft shadows. Rounded 16–20px corners. Light airy sans-serif. Floating depth — panels appear to hover above the background. Bright and modern.' },
+  { key: 'neumorphic', name: 'Neumorphism', group: 'Techy', blurb: 'Soft shadows, pressed-in buttons', swatch: ['#e0e5ec', '#a3b1c6', '#4d5b70']  ,
+    brief: 'Soft UI. A single flat light-grey background used everywhere, with elements defined purely by paired shadows — a light shadow top-left and a dark shadow bottom-right — so they appear extruded from or pressed into the surface. Generous 16–20px radii, no borders, very low contrast, muted blue-grey text. Buttons invert their shadows on press. Tactile and soft.' },
+  { key: 'blueprint', name: 'Blueprint', group: 'Techy', blurb: 'Grid lines, technical drawing', swatch: ['#0b3d5c', '#7fd4ff', '#e8f4fa'],
+    brief: 'Architectural drafting. Deep blueprint-blue ground with a fine white grid overlay. Thin white or pale-cyan line work, technical annotations, dimension lines and measurement ticks as decoration. Monospace or technical sans type, uppercase small labels. Sections framed like drawing sheets with title blocks and revision marks. Precise and engineered.' },
+
+  // ---- Warm ----
+  { key: 'handcrafted', name: 'Handcrafted', group: 'Warm', blurb: 'Textured, hand-drawn, cozy', swatch: ['#f2e8d5', '#8c5a2b', '#5a7a4a'],
+    brief: 'Artisan and handmade. Warm kraft-paper and cream grounds with subtle paper or linen texture, earthy browns and muted greens. A friendly hand-lettered or brush script for headings paired with a warm serif body. Hand-drawn underlines, wobbly borders, stamp and badge motifs. Slightly imperfect alignment. Feels made by a person, not a factory.' },
+  { key: 'organic', name: 'Organic', group: 'Warm', blurb: 'Earth tones, curves, botanical', swatch: ['#f6f1e7', '#5f7a52', '#c47b4f'],
+    brief: 'Natural and botanical. Warm sand and cream grounds, sage and olive greens, terracotta accents. Soft organic blob shapes and curved section dividers instead of straight edges — wavy SVG separators between sections. Rounded humanist type. Leaf and plant motifs as subtle decoration. Very large border radii on images. Calm, earthy and alive.' },
+  { key: 'illustrated', name: 'Illustrated', group: 'Warm', blurb: 'Drawings carry the page', swatch: ['#fff4e0', '#e8734a', '#2f6b8f'],
+    brief: 'Illustration-led. Flat vector-style inline SVG illustrations as the main visual language — simple shapes, bold outlines, a limited friendly palette. Hand-drawn decorative accents, curved dividers, spot illustrations beside each section. Rounded approachable sans-serif. Playful but tidy. Where photos exist keep them, but surround them with illustrated framing.' },
+  { key: 'collage', name: 'Collage', group: 'Warm', blurb: 'Layered cut-paper scraps', swatch: ['#f0ebe1', '#d94f37', '#2b4a6f'],
+    brief: 'Cut-paper collage. Elements look torn or cut and pasted — irregular clip-path edges, slight rotations, layered overlapping pieces with paper drop shadows. Mixed typography, some pieces looking like they came from different sources. Tape and staple motifs. Muted vintage-paper palette with a couple of bold spot colours. Tactile, scrapbook energy.' },
+  { key: 'playful', name: 'Playful', group: 'Warm', blurb: 'Rounded, bright, bouncy', swatch: ['#ffd93d', '#ff6b9d', '#4ecdc4'],
+    brief: 'Cheerful and bouncy. Bright friendly primaries and pastels, very rounded everything — 24px+ radii, pill buttons, circular badges. Chunky rounded sans-serif with generous weight. Bouncy easing on hovers, slight scale-up interactions, wiggling accents. Fun geometric shapes in the background. Optimistic and approachable without being childish.' },
+
+  // ---- Heavy ----
+  { key: 'industrial', name: 'Industrial', group: 'Heavy', blurb: 'Concrete, metal, thick type', swatch: ['#2b2b2b', '#f0b429', '#8a8a8a'],
+    brief: 'Workshop and heavy trade. Concrete grey and charcoal grounds with a subtle concrete or brushed-metal texture, safety-yellow or hazard-orange accents. Heavy condensed uppercase sans-serif, stencil feeling for headings. Hard edges, thick rules, diagonal hazard-stripe dividers, rivet and plate motifs. Utilitarian, rugged and built to last.' },
+  { key: 'photographic', name: 'Photographic', group: 'Heavy', blurb: 'Huge full-screen photos', swatch: ['#1c1c1c', '#ffffff', '#c8a882'],
+    brief: 'Photography-first. Full-bleed edge-to-edge imagery filling the viewport, with text overlaid directly on photographs using scrims or gradient overlays for legibility. Minimal chrome — no cards, no boxes. Large light-weight type over images, generous letter-spacing. Sections alternate between full-bleed image and quiet text. Cinematic and immersive.' },
+  { key: 'monochrome', name: 'Monochrome', group: 'Heavy', blurb: 'One colour, top to bottom', swatch: ['#1b2a3a', '#5c7a99', '#dce6f0'],
+    brief: 'Single-hue discipline. Choose one colour that suits the trade and build the entire palette from tints and shades of only that hue — background, surfaces, text, buttons, borders. Images treated with a matching duotone or tint. Contrast comes from lightness alone, never from a second colour. One typeface at multiple weights. Cohesive and striking.' },
+];
+
+const STYLE_GROUPS = ['Clean', 'Bold', 'Retro', 'Fancy', 'Techy', 'Warm', 'Heavy'];
+
+function styleByKey(key) {
+  return ART_STYLES.find((s) => s.key === key) || null;
+}
+
+// The whole point: transform the look, keep the site. Anything that took a
+// Claude call or a client's real details to produce must survive untouched.
+function styleInstruction(style) {
+  return `Completely redesign the VISUAL STYLE of this page in the "${style.name}" aesthetic.
+
+${style.name} means: ${style.brief}
+
+Change all of this to match the new style: colour palette, background treatments, fonts (swap the Google Fonts links to ones that fit), type sizes and weights, spacing and rhythm, borders, corner radii, shadows, button and card styling, section dividers, decorative details, hover states, and any illustrative or textural flourishes. Commit fully — the result should look like a different designer built it.
+
+Keep ALL of the following EXACTLY as they are — do not reword, remove, reorder or invent any of it:
+- Every word of the existing copy, headings and button labels
+- All images and their src URLs, and their alt text
+- The same sections in the same order, and the navigation
+- The contact form: same fields, same name attributes, no action attribute
+- Every phone number and tel: link, and any map embed
+- All <head> metadata: title, meta description, Open Graph tags, the JSON-LD structured data block, and the favicon
+- The footer's business name, auto-updating copyright year script and privacy line
+
+Return the complete redesigned HTML document.`;
+}
+
 async function runBuildRefine(instruction, btn, busyLabel) {
   if (!buildState.html) { toast('Generate a site first', true); return; }
   if (!instruction) { toast('Type what you want changed first', true); return; }
@@ -1913,6 +2019,129 @@ $('#multi-refine-btn').addEventListener('click', () => {
 
 $('#multi-enhance')?.addEventListener('click', () => {
   runMultiRefine(ENHANCE_INSTRUCTION, $('#multi-enhance'), 'Enhancing…');
+});
+
+// ---- Style picker: swap a finished site's whole look ----
+// Built for the sales moment — show the demo, let the client say "not my
+// colours", and change the entire look in front of them.
+
+const styleState = { target: 'build', current: { build: null, multi: null } };
+
+function renderStyleGrid(filter = '') {
+  const q = filter.trim().toLowerCase();
+  const matches = ART_STYLES.filter((s) =>
+    !q || s.name.toLowerCase().includes(q) || s.blurb.toLowerCase().includes(q) || s.group.toLowerCase().includes(q));
+  const grid = $('#style-grid');
+
+  if (!matches.length) {
+    grid.innerHTML = '<p class="muted">No styles match that.</p>';
+    return;
+  }
+
+  const active = styleState.current[styleState.target];
+  grid.innerHTML = STYLE_GROUPS
+    .map((group) => {
+      const inGroup = matches.filter((s) => s.group === group);
+      if (!inGroup.length) return '';
+      return `<div class="style-group-label">${escapeHtml(group)}</div>` + inGroup.map((s) => `
+        <button type="button" class="style-card${s.key === active ? ' is-current' : ''}" data-style="${s.key}">
+          <span class="style-swatch" aria-hidden="true">
+            ${s.swatch.map((c) => `<i style="background:${escapeHtml(c)}"></i>`).join('')}
+          </span>
+          <span class="style-text">
+            <strong>${escapeHtml(s.name)}</strong>
+            <small>${escapeHtml(s.blurb)}</small>
+          </span>
+          ${s.key === active ? '<span class="style-current-tag">Current</span>' : ''}
+        </button>`).join('');
+    })
+    .join('');
+
+  grid.querySelectorAll('.style-card').forEach((card) => {
+    card.addEventListener('click', () => applyStyle(card.dataset.style));
+  });
+}
+
+function openStyleModal(target) {
+  if (target === 'build' && !buildState.html) { toast('Generate a site first', true); return; }
+  if (target === 'multi' && !(multiState.current && multiState.pages[multiState.current])) {
+    toast('Generate or open a site first', true); return;
+  }
+  styleState.target = target;
+  const pageCount = target === 'multi' ? Object.keys(multiState.pages).length : 1;
+  $('#style-modal-sub').textContent = pageCount > 1
+    ? `The words, photos and sections stay the same — only the look changes. This restyles all ${pageCount} pages, so it uses ${pageCount} credits.`
+    : 'The words, photos and sections stay exactly the same — only the look changes. Uses 1 credit.';
+  $('#style-search').value = '';
+  renderStyleGrid();
+  $('#style-modal').hidden = false;
+}
+
+async function applyStyle(key) {
+  const style = styleByKey(key);
+  if (!style) return;
+  const target = styleState.target;
+  $('#style-modal').hidden = true;
+
+  if (target === 'build') {
+    const btn = $('#build-style');
+    await runBuildRefine(styleInstruction(style), btn, `Restyling…`);
+    styleState.current.build = key;
+    toast(`Restyled — ${style.name}`);
+    return;
+  }
+
+  // Multi-page: every page has to change or the site stops matching itself.
+  const filenames = Object.keys(multiState.pages);
+  if (!confirm(`Restyle all ${filenames.length} pages to "${style.name}"? This uses ${filenames.length} credits — one per page.`)) return;
+
+  const btn = $('#multi-style');
+  const label = btn.textContent;
+  btn.disabled = true;
+  if (!multiState.siteId) multiState.siteId = extractSiteId(multiState.pages[filenames[0]]) || newSiteId();
+
+  let done = 0;
+  let failed = 0;
+  for (const filename of filenames) {
+    btn.textContent = `Restyling ${done + 1}/${filenames.length}…`;
+    try {
+      const res = await api('/api/generate', {
+        method: 'POST',
+        body: {
+          mode: 'refine',
+          html: multiState.pages[filename],
+          instruction: styleInstruction(style),
+          notifyEmail: multiState.notifyEmail || '',
+          siteId: multiState.siteId,
+        },
+      });
+      multiState.pages[filename] = multiState.notifyEmail
+        ? res.html
+        : preserveForms(multiState.pages[filename], res.html);
+    } catch (err) {
+      failed++;
+      toast(`${filename}: ${err.message}`, true);
+    }
+    done++;
+  }
+
+  styleState.current.multi = key;
+  showMultiPage(multiState.current);
+  $('#multi-link-output').hidden = true;
+  btn.disabled = false;
+  btn.textContent = label;
+  toast(failed
+    ? `Restyled with ${failed} page${failed === 1 ? '' : 's'} failed — try those again`
+    : `All ${filenames.length} pages restyled — ${style.name}`);
+}
+
+$('#build-style')?.addEventListener('click', () => openStyleModal('build'));
+$('#multi-style')?.addEventListener('click', () => openStyleModal('multi'));
+$('#style-search')?.addEventListener('input', (e) => renderStyleGrid(e.target.value));
+$('#style-modal-close')?.addEventListener('click', () => { $('#style-modal').hidden = true; });
+$('#style-modal-cancel')?.addEventListener('click', () => { $('#style-modal').hidden = true; });
+$('#style-modal')?.addEventListener('click', (e) => {
+  if (e.target === $('#style-modal')) $('#style-modal').hidden = true;
 });
 
 // ------------------------------------------------- Device preview toggle
@@ -2476,6 +2705,7 @@ document.addEventListener('keydown', (e) => {
     $('#info-modal').hidden = true;
     $('#money-modal').hidden = true;
     $('#email-client-modal').hidden = true;
+    $('#style-modal').hidden = true;
     $('#paymethod-cancel')?.click(); // resolves its pending promise, then closes
   }
 });
