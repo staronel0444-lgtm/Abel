@@ -173,6 +173,14 @@
             <option value="__other">Other…</option>
           </select>
           <input type="text" id="lead-niche-other" placeholder="Custom niche" maxlength="80" hidden>
+          <select id="lead-min-rating" aria-label="Minimum star rating">
+            <option value="">Any rating</option>
+            <option value="3">3★+</option>
+            <option value="3.5">3.5★+</option>
+            <option value="4">4★+</option>
+            <option value="4.5">4.5★+</option>
+          </select>
+          <input type="number" id="lead-min-reviews" min="0" step="1" placeholder="Min reviews" aria-label="Minimum review count">
           <button class="btn btn-primary" type="submit" id="lead-search-btn">Search</button>
         </form>
       </div>
@@ -187,6 +195,11 @@
         <p>Every business we found already has a website (or was already decided). Try a different ZIP or niche.</p>
       </div>
       <p class="muted stats-line" id="lead-stats" hidden></p>
+      <div class="lead-batch-bar" id="lead-batch-bar" hidden>
+        <label class="lead-select-all"><input type="checkbox" id="lead-select-all-cb"> Select all</label>
+        <span class="muted" id="lead-selected-count">0 selected</span>
+        <button class="btn btn-primary" type="button" id="lead-batch-generate" disabled>Generate demos for selected</button>
+      </div>
       <div class="card-grid" id="lead-results"></div>
     </section>
 
@@ -452,6 +465,18 @@
           <button type="submit" class="btn btn-primary" id="client-form-submit">Save client</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Batch demo generation progress + results (Lead Finder) -->
+  <div class="modal-backdrop" id="batch-modal" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="batch-modal-title">
+      <h2 id="batch-modal-title">Generating demos…</h2>
+      <p class="muted" id="batch-modal-sub">0 of 0 done</p>
+      <div class="batch-list" id="batch-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="batch-modal-cancel">Cancel</button>
+      </div>
     </div>
   </div>
 

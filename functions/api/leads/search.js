@@ -8,15 +8,27 @@
 import { handle, json, readJson, requireString } from '../../../lib/http.js';
 import { searchPlaces } from '../../../lib/places.js';
 
+// Optional lead-quality filters: only reads a number out of a request field
+// if it's a finite value within a sane range, otherwise treats it as unset.
+function optionalNumber(body, field, { min, max }) {
+  const raw = body?.[field];
+  if (raw === undefined || raw === null || raw === '') return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < min || n > max) return null;
+  return n;
+}
+
 export const onRequestPost = handle(async ({ request, env }) => {
   const body = await readJson(request);
   const zip = requireString(body, 'zip', { max: 120 });
   const niche = requireString(body, 'niche', { max: 80 });
+  const minRating = optionalNumber(body, 'minRating', { min: 0, max: 5 });
+  const minReviews = optionalNumber(body, 'minReviews', { min: 0, max: 1000000 });
 
   const places = await searchPlaces(env, { zip, niche });
 
   if (places.length === 0) {
-    return json({ leads: [], stats: { total: 0, withWebsite: 0, dismissed: 0 } });
+    return json({ leads: [], stats: { total: 0, withWebsite: 0, dismissed: 0, belowThreshold: 0 } });
   }
 
   // Log every result to view history. Keep the original first_viewed_at on
@@ -45,11 +57,17 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const dismissed = new Set((dismissedRows.results || []).map((r) => r.place_id));
 
   const withWebsite = places.filter((p) => p.website).length;
-  const leads = places.filter((p) => !p.website && !dismissed.has(p.placeId));
+  const meetsThreshold = (p) =>
+    (minRating === null || (typeof p.rating === 'number' && p.rating >= minRating)) &&
+    (minReviews === null || (p.reviewCount || 0) >= minReviews);
+
+  const undecidedNoWebsite = places.filter((p) => !p.website && !dismissed.has(p.placeId));
+  const leads = undecidedNoWebsite.filter(meetsThreshold);
   const dismissedCount = places.filter((p) => !p.website && dismissed.has(p.placeId)).length;
+  const belowThreshold = undecidedNoWebsite.length - leads.length;
 
   return json({
     leads,
-    stats: { total: places.length, withWebsite, dismissed: dismissedCount },
+    stats: { total: places.length, withWebsite, dismissed: dismissedCount, belowThreshold },
   });
 });

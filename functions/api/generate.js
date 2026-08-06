@@ -65,6 +65,6 @@ export const onRequestPost = handle(async ({ request, env }) => {
 
   const result = await generate(env, { mode, prompt, context, brand, page, pages });
   let wired = wireForms(result.text, body.notifyEmail);
-  wired = wireAnalytics(wired, body.siteId, request);
+  wired = wireAnalytics(wired, body.siteId, new URL(request.url).origin);
   return json({ html: wired, usage: result.usage, model: result.model });
 });

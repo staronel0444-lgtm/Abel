@@ -627,7 +627,7 @@ $('#multi-set-email')?.addEventListener('click', async () => {
 
 // ------------------------------------------------- Section 3: Lead Finder
 
-const leadState = { niche: '', leads: [] };
+const leadState = { niche: '', leads: [], selected: new Set() };
 
 function resolveNiche() {
   const sel = $('#lead-niche').value;
@@ -671,7 +671,10 @@ function leadCardHtml(lead, niche, status = 'undecided') {
 
   return `
     <div class="lead-head">
-      <h3>${escapeHtml(lead.name)}</h3>
+      <div class="lead-name-group">
+        <label class="lead-select"><input type="checkbox" class="lead-select-cb" data-place-id="${escapeHtml(lead.placeId)}" aria-label="Select ${escapeHtml(lead.name)} for bulk demo generation"></label>
+        <h3>${escapeHtml(lead.name)}</h3>
+      </div>
       ${badge}
     </div>
     <div class="lead-meta">
@@ -747,6 +750,8 @@ function renderLeadResults(leads, niche) {
     wireLeadCard(card, lead, niche, (newStatus) => {
       if (newStatus === 'client' || newStatus === 'no') {
         // Decided → drops out of the active results.
+        leadState.selected.delete(lead.placeId);
+        updateBatchBar();
         card.classList.add('is-leaving');
         setTimeout(() => {
           card.remove();
@@ -754,19 +759,33 @@ function renderLeadResults(leads, niche) {
         }, 350);
       }
     });
+    const cb = card.querySelector('.lead-select-cb');
+    if (cb) {
+      cb.addEventListener('change', () => {
+        if (cb.checked) leadState.selected.add(lead.placeId);
+        else leadState.selected.delete(lead.placeId);
+        updateBatchBar();
+      });
+    }
     grid.appendChild(card);
   }
+  updateBatchBar();
 }
 
 $('#lead-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const zip = $('#lead-zip').value.trim();
   const niche = resolveNiche();
+  const minRating = $('#lead-min-rating').value;
+  const minReviews = $('#lead-min-reviews').value;
   const errEl = $('#lead-error');
   errEl.hidden = true;
   $('#lead-empty').hidden = true;
   $('#lead-stats').hidden = true;
   $('#lead-results').innerHTML = '';
+  leadState.selected = new Set();
+  leadState.leads = [];
+  updateBatchBar();
 
   if (!zip) { errEl.textContent = 'Enter a ZIP code or address.'; errEl.hidden = false; return; }
   if (!niche) { errEl.textContent = 'Pick a niche (or type a custom one).'; errEl.hidden = false; return; }
@@ -774,17 +793,22 @@ $('#lead-form').addEventListener('submit', async (e) => {
   $('#lead-loading').hidden = false;
   $('#lead-search-btn').disabled = true;
   try {
-    const res = await api('/api/leads/search', { method: 'POST', body: { zip, niche } });
+    const res = await api('/api/leads/search', {
+      method: 'POST',
+      body: { zip, niche, minRating: minRating || undefined, minReviews: minReviews || undefined },
+    });
     leadState.niche = niche;
     leadState.leads = res.leads;
 
     const s = res.stats;
+    const filterNote = s.belowThreshold ? ` · ${s.belowThreshold} below your rating/review filter` : '';
     $('#lead-stats').textContent =
-      `${s.total} businesses found · ${s.withWebsite} already have a website · ${s.dismissed} previously decided · ${res.leads.length} new lead${res.leads.length === 1 ? '' : 's'}`;
+      `${s.total} businesses found · ${s.withWebsite} already have a website · ${s.dismissed} previously decided${filterNote} · ${res.leads.length} new lead${res.leads.length === 1 ? '' : 's'}`;
     $('#lead-stats').hidden = false;
 
     if (!res.leads.length) {
       $('#lead-empty').hidden = false;
+      updateBatchBar();
     } else {
       renderLeadResults(res.leads, niche);
     }
@@ -795,6 +819,120 @@ $('#lead-form').addEventListener('submit', async (e) => {
     $('#lead-loading').hidden = true;
     $('#lead-search-btn').disabled = false;
   }
+});
+
+// ---- Bulk selection + batch demo generation ----
+
+function updateBatchBar() {
+  const bar = $('#lead-batch-bar');
+  const total = leadState.leads.length;
+  if (!total) { bar.hidden = true; return; }
+  bar.hidden = false;
+  const n = leadState.selected.size;
+  $('#lead-selected-count').textContent = `${n} selected`;
+  $('#lead-batch-generate').disabled = n === 0;
+  const allCb = $('#lead-select-all-cb');
+  allCb.checked = n > 0 && n === total;
+  allCb.indeterminate = n > 0 && n < total;
+}
+
+$('#lead-select-all-cb').addEventListener('change', (e) => {
+  const checked = e.target.checked;
+  leadState.leads.forEach((l) => {
+    if (checked) leadState.selected.add(l.placeId);
+    else leadState.selected.delete(l.placeId);
+  });
+  $('#lead-results').querySelectorAll('.lead-select-cb').forEach((cb) => { cb.checked = checked; });
+  updateBatchBar();
+});
+
+// Reuses the "from" identity already saved by the Invoice/Emails tabs so the
+// pitch line can introduce you by name without asking again.
+function pitchTextFor(lead, url) {
+  const from = emailFromInfo();
+  const intro = from.name && from.name !== 'Your Business' ? `I'm ${from.name} — ` : '';
+  return `Hi, is this the owner of ${lead.name}? ${intro}I build websites for local businesses. I already made one for you — want to see it? ${url}`;
+}
+
+function batchRowHtml(lead) {
+  return `
+    <div class="batch-row" data-place-id="${escapeHtml(lead.placeId)}">
+      <div class="br-top">
+        <span class="br-name">${escapeHtml(lead.name)}</span>
+        <span class="br-status">Waiting…</span>
+      </div>
+    </div>`;
+}
+
+let batchCancelled = false;
+
+async function runBatchGenerate(leads, niche) {
+  if (!leads.length) return;
+  const n = leads.length;
+  if (!confirm(`Generate ${n} demo site${n === 1 ? '' : 's'}? This uses ${n} AI credit${n === 1 ? '' : 's'} — one per site.`)) return;
+
+  batchCancelled = false;
+  $('#batch-modal-title').textContent = 'Generating demos…';
+  $('#batch-modal-sub').textContent = `0 of ${n} done`;
+  $('#batch-list').innerHTML = leads.map(batchRowHtml).join('');
+  const rows = Array.from($('#batch-list').querySelectorAll('.batch-row'));
+  const cancelBtn = $('#batch-modal-cancel');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = () => { batchCancelled = true; };
+  $('#batch-modal').hidden = false;
+
+  let done = 0;
+  for (let i = 0; i < leads.length; i++) {
+    if (batchCancelled) break;
+    const lead = leads[i];
+    const row = rows[i];
+    const statusEl = row.querySelector('.br-status');
+    statusEl.textContent = 'Generating…';
+    try {
+      const prompt = buildLeadPrompt(lead, niche);
+      const context = extractKeywords(prompt);
+      const siteId = newSiteId();
+      const genRes = await api('/api/generate', {
+        method: 'POST',
+        body: { mode: 'page', prompt, context, notifyEmail: '', siteId },
+      });
+      const prevRes = await api('/api/previews', {
+        method: 'POST',
+        body: { kind: 'single', html: genRes.html, placeId: lead.placeId },
+      });
+      const fullUrl = location.origin + prevRes.url;
+      row.classList.add('is-done');
+      statusEl.textContent = 'Done ✓';
+      const pitch = pitchTextFor(lead, fullUrl);
+      row.insertAdjacentHTML('beforeend', `
+        <a class="br-link" href="${escapeHtml(prevRes.url)}" target="_blank" rel="noopener">${escapeHtml(fullUrl)}</a>
+        <div class="br-actions">
+          <button type="button" class="btn btn-sm" data-copy-link="${escapeHtml(fullUrl)}">Copy link</button>
+          <button type="button" class="btn btn-sm" data-copy-pitch="${escapeHtml(pitch)}">Copy pitch text</button>
+        </div>`);
+      row.querySelector('[data-copy-link]').addEventListener('click', (e) => copyText(e.target.dataset.copyLink));
+      row.querySelector('[data-copy-pitch]').addEventListener('click', (e) => copyText(e.target.dataset.copyPitch));
+    } catch (err) {
+      row.classList.add('is-failed');
+      statusEl.textContent = `Failed — ${err.message}`;
+    }
+    done++;
+    $('#batch-modal-sub').textContent = `${done} of ${n} done`;
+  }
+
+  cancelBtn.textContent = 'Close';
+  cancelBtn.onclick = () => { $('#batch-modal').hidden = true; };
+  $('#batch-modal-title').textContent = batchCancelled ? 'Stopped early' : 'All done';
+  loadSites();
+}
+
+$('#lead-batch-generate').addEventListener('click', () => {
+  const chosen = leadState.leads.filter((l) => leadState.selected.has(l.placeId));
+  runBatchGenerate(chosen, leadState.niche);
+});
+
+$('#batch-modal').addEventListener('click', (e) => {
+  if (e.target === $('#batch-modal')) $('#batch-modal').hidden = true;
 });
 
 // ------------------------------------------------- Section 3b: History
@@ -2086,3 +2224,5 @@ document.addEventListener('keydown', (e) => {
     $('#email-client-modal').hidden = true;
   }
 });
+// Note: #batch-modal is deliberately excluded from Escape — closing it early
+// while a batch is mid-run should be a deliberate Cancel click, not a stray key.
