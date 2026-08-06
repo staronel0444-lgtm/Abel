@@ -73,13 +73,18 @@ CREATE TABLE IF NOT EXISTS site_views (
 );
 
 -- Money Tracker: a manual log of income the user earned (any source, incl.
--- cash), shown as a calendar. The app splits each month's total into fixed
--- buckets (40% taxes / 10% Forge / 35% save / 15% self) client-side.
+-- cash), shown as a calendar. `amount` is the sticker price (what the client
+-- agreed to pay); `fee` is what the payment platform took off the top, worked
+-- out from `method` at log time and stored so historical rows keep the fee
+-- that was actually charged. The app splits (amount - fee) into fixed buckets
+-- (25% taxes / 10% Forge / 35% save / 30% self) client-side.
 CREATE TABLE IF NOT EXISTS income (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   date       TEXT    NOT NULL,               -- YYYY-MM-DD
   amount     REAL    NOT NULL DEFAULT 0,
   note       TEXT    NOT NULL DEFAULT '',
+  method     TEXT    NOT NULL DEFAULT 'other',
+  fee        REAL    NOT NULL DEFAULT 0,
   created_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 

@@ -1416,7 +1416,11 @@ $('#traffic-refresh')?.addEventListener('click', loadTraffic);
 
 // ------------------------------------------------- Money Tracker (calendar)
 // Log income, see it on a month calendar, and auto-split each month + all-time
-// into fixed buckets: 40% taxes / 10% Forge / 35% save / 15% self.
+// into fixed buckets: 25% taxes / 10% Forge / 35% save / 30% self.
+//
+// The buckets are worked out from what actually LANDED, not the sticker price:
+// a $500 sale paid through PayPal only puts ~$482 in the bank, and setting
+// aside 25% of $500 for tax would be setting aside money that never arrived.
 
 const MONEY_SPLIT = [
   { key: 'tax', label: 'Taxes', pct: 0.25 },
@@ -1424,6 +1428,37 @@ const MONEY_SPLIT = [
   { key: 'save', label: 'Save', pct: 0.35 },
   { key: 'you', label: 'You', pct: 0.30 },
 ];
+
+// Standard published US rates. The fee is calculated at log time and stored
+// with the entry, so old rows keep the fee that was really charged even if a
+// platform changes its pricing later.
+const PAYMENT_METHODS = [
+  { key: 'stripe', label: 'Stripe', pct: 0.029, flat: 0.30 },
+  { key: 'paypal', label: 'PayPal', pct: 0.0349, flat: 0.49 },
+  { key: 'cashapp', label: 'Cash App', pct: 0.0275, flat: 0 },
+  { key: 'bank', label: 'Bank transfer / Zelle', pct: 0, flat: 0 },
+  { key: 'apple', label: 'Apple Cash (debit)', pct: 0, flat: 0 },
+  { key: 'cash', label: 'Cash', pct: 0, flat: 0 },
+  { key: 'other', label: 'Other / not sure', pct: 0, flat: 0 },
+];
+const MONEY_METHOD_KEY = 'forge-money-method';
+
+function methodByKey(key) {
+  return PAYMENT_METHODS.find((m) => m.key === key) || null;
+}
+function methodLabel(key) {
+  const m = methodByKey(key);
+  return m ? m.label : 'Other / not sure';
+}
+
+// What the payment platform keeps. Never more than the payment itself.
+function feeFor(amount, methodKey) {
+  const m = methodByKey(methodKey);
+  const gross = Number(amount) || 0;
+  if (!m || gross <= 0) return 0;
+  return Math.min(Math.round((gross * m.pct + m.flat) * 100) / 100, gross);
+}
+
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const moneyState = { month: localCurrentMonth(), entries: [] };
 
@@ -1460,18 +1495,22 @@ function renderMoney() {
   const ym = moneyState.month;
   const [y, m] = ym.split('-').map(Number);
 
-  // Group this month's entries by day.
+  // Group this month's entries by day. Calendar cells show the sticker price
+  // (that's the sale you remember making); the split below uses the net.
   const byDay = {};
-  let monthTotal = 0;
+  let monthGross = 0;
+  let monthFees = 0;
   for (const e of moneyState.entries) {
     if ((e.date || '').slice(0, 7) !== ym) continue;
     const amt = Number(e.amount) || 0;
-    monthTotal += amt;
+    monthGross += amt;
+    monthFees += Number(e.fee) || 0;
     (byDay[e.date] = byDay[e.date] || { sum: 0 }).sum += amt;
   }
+  const monthNet = monthGross - monthFees;
 
   $('#money-month-label').textContent = formatMonth(ym);
-  $('#money-month-total').textContent = money(monthTotal);
+  $('#money-month-total').textContent = money(monthGross);
 
   // Build the calendar grid.
   const firstDow = new Date(y, m - 1, 1).getDay();
@@ -1491,20 +1530,32 @@ function renderMoney() {
   $('#money-calendar').innerHTML =
     `<table class="cal"><thead><tr>${WEEKDAYS.map((w) => `<th>${w}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
 
-  // Month split summary.
+  // Month split summary. The fee/net lines only appear when a fee was actually
+  // charged, so a cash-only month stays uncluttered.
+  const monthFeeLines = monthFees > 0
+    ? `<div class="fee-line"><small>Payment fees</small><b class="money">−${money(monthFees)}</b></div>
+       <div class="net-line"><small>Actually received</small><b class="money">${money(monthNet)}</b></div>`
+    : '';
   $('#money-summary').innerHTML =
-    `<div class="tot"><small>Made this month</small><b class="money">${money(monthTotal)}</b></div>
-     <div class="money-split">${moneySplitHtml(monthTotal)}</div>`;
+    `<div class="tot"><small>Made this month</small><b class="money">${money(monthGross)}</b></div>
+     ${monthFeeLines}
+     <div class="money-split">${moneySplitHtml(monthNet)}</div>`;
 
   // All-time totals.
-  const allTotal = moneyState.entries.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+  const allGross = moneyState.entries.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+  const allFees = moneyState.entries.reduce((a, e) => a + (Number(e.fee) || 0), 0);
+  const allNet = allGross - allFees;
   const pct = Object.fromEntries(MONEY_SPLIT.map((s) => [s.key, s.pct]));
+  const feeStat = allFees > 0
+    ? `<div class="stat fees"><small>Lost to payment fees</small><b class="money">${money(allFees)}</b></div>`
+    : '';
   $('#money-alltime').innerHTML = `
     <div class="alltime-title">All-time totals</div>
-    <div class="stat"><small>Total made</small><b class="money">${money(allTotal)}</b></div>
-    <div class="stat tax"><small>Tax set aside</small><b class="money">${money(allTotal * pct.tax)}</b></div>
-    <div class="stat save"><small>Saved &amp; invested</small><b class="money">${money(allTotal * pct.save)}</b></div>
-    <div class="stat you"><small>Yours</small><b class="money">${money(allTotal * pct.you)}</b></div>`;
+    <div class="stat"><small>Total made</small><b class="money">${money(allGross)}</b></div>
+    ${feeStat}
+    <div class="stat tax"><small>Tax set aside</small><b class="money">${money(allNet * pct.tax)}</b></div>
+    <div class="stat save"><small>Saved &amp; invested</small><b class="money">${money(allNet * pct.save)}</b></div>
+    <div class="stat you"><small>Yours</small><b class="money">${money(allNet * pct.you)}</b></div>`;
 }
 
 function renderMoneyDayEntries(date) {
@@ -1512,12 +1563,18 @@ function renderMoneyDayEntries(date) {
   const box = $('#money-day-entries');
   if (!items.length) { box.innerHTML = ''; return; }
   box.innerHTML = `<div class="day-entries-title">Logged on ${escapeHtml(formatDate(date))}</div>` +
-    items.map((e) => `
+    items.map((e) => {
+      const fee = Number(e.fee) || 0;
+      const detail = fee > 0
+        ? `${methodLabel(e.method)} — ${money(fee)} fee, you got ${money((Number(e.amount) || 0) - fee)}`
+        : methodLabel(e.method);
+      return `
       <div class="day-entry">
         <span class="de-amt money">${money(e.amount)}</span>
-        <span class="de-note">${escapeHtml(e.note || '')}</span>
+        <span class="de-note">${escapeHtml(e.note || '')}<small class="de-method">${escapeHtml(detail)}</small></span>
         <button class="btn btn-sm btn-danger" data-del="${e.id}">Delete</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   box.querySelectorAll('[data-del]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.del;
@@ -1532,14 +1589,51 @@ function renderMoneyDayEntries(date) {
   });
 }
 
+// Live "here's what actually lands" line under the amount field.
+function renderMoneyNetPreview() {
+  const el = $('#mf-net');
+  if (!el) return;
+  const amount = Number($('#mf-amount').value || 0);
+  const key = $('#mf-method').value;
+  if (!(amount > 0)) { el.hidden = true; return; }
+  const fee = feeFor(amount, key);
+  el.hidden = false;
+  el.textContent = fee > 0
+    ? `${methodLabel(key)} takes ${money(fee)} — you actually get ${money(amount - fee)}`
+    : `No fee — you get all ${money(amount)}`;
+  el.classList.toggle('is-free', fee === 0);
+}
+
 function openMoneyModal(date) {
   $('#money-form').reset();
   $('#money-form-error').hidden = true;
   $('#mf-date').value = date || localToday();
+  // reset() wipes the select back to its first option, so restore the
+  // remembered choice after it.
+  $('#mf-method').value = localStorage.getItem(MONEY_METHOD_KEY) || 'stripe';
+  renderMoneyNetPreview();
   renderMoneyDayEntries($('#mf-date').value);
   $('#money-modal').hidden = false;
   $('#mf-amount').focus();
 }
+
+// Built from PAYMENT_METHODS so the dropdown and the fee math can't drift.
+(function initMoneyMethods() {
+  const sel = $('#mf-method');
+  if (!sel) return;
+  sel.innerHTML = PAYMENT_METHODS.map((m) => {
+    const rate = m.pct || m.flat
+      ? `${(m.pct * 100).toFixed(2).replace(/\.?0+$/, '')}%${m.flat ? ` + $${m.flat.toFixed(2)}` : ''}`
+      : 'no fee';
+    return `<option value="${m.key}">${escapeHtml(m.label)} (${rate})</option>`;
+  }).join('');
+  sel.value = localStorage.getItem(MONEY_METHOD_KEY) || 'stripe';
+  sel.addEventListener('change', () => {
+    localStorage.setItem(MONEY_METHOD_KEY, sel.value);
+    renderMoneyNetPreview();
+  });
+  $('#mf-amount')?.addEventListener('input', renderMoneyNetPreview);
+})();
 
 $('#money-add')?.addEventListener('click', () => openMoneyModal(null));
 $('#money-prev')?.addEventListener('click', () => { moneyState.month = shiftMonth(moneyState.month, -1); renderMoney(); });
@@ -1558,20 +1652,26 @@ $('#money-form')?.addEventListener('submit', async (e) => {
   const date = $('#mf-date').value;
   const amount = Number($('#mf-amount').value || 0);
   const note = $('#mf-note').value.trim();
+  const payMethod = $('#mf-method').value;
+  const fee = feeFor(amount, payMethod);
   const errEl = $('#money-form-error');
   errEl.hidden = true;
   if (!date) { errEl.textContent = 'Pick a date.'; errEl.hidden = false; return; }
   if (!(amount > 0)) { errEl.textContent = 'Enter an amount bigger than 0.'; errEl.hidden = false; return; }
   try {
-    const { entry } = await api('/api/income', { method: 'POST', body: { date, amount, note } });
+    const { entry } = await api('/api/income', {
+      method: 'POST',
+      body: { date, amount, note, method: payMethod, fee },
+    });
     moneyState.entries.push(entry);
     moneyState.month = date.slice(0, 7); // jump the calendar to the month you logged
     $('#mf-amount').value = '';
     $('#mf-note').value = '';
+    renderMoneyNetPreview();
     $('#mf-amount').focus();
     renderMoney();
     renderMoneyDayEntries(date);
-    toast(`Added ${money(amount)}`);
+    toast(fee > 0 ? `Added ${money(amount)} — ${money(amount - fee)} after fees` : `Added ${money(amount)}`);
   } catch (err) {
     errEl.textContent = err.message;
     errEl.hidden = false;

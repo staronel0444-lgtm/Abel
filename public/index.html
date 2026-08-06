@@ -550,6 +550,8 @@
       <form id="money-form">
         <label>Date <input type="date" id="mf-date" required></label>
         <label>Amount ($) <input type="number" id="mf-amount" min="0" step="0.01" placeholder="e.g. 800" required></label>
+        <label>Paid by <select id="mf-method"></select></label>
+        <p class="mf-net" id="mf-net" hidden></p>
         <label>Note (optional) <input type="text" id="mf-note" maxlength="200" placeholder="e.g. FarFan Auto — new site"></label>
         <p class="inline-error" id="money-form-error" hidden></p>
         <div class="modal-actions">
