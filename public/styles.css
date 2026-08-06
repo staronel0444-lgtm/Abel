@@ -472,6 +472,9 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
   flex-wrap: wrap;
 }
 .due-row:first-of-type { border-top: 0; }
+.due-months { display: block; color: var(--ink-2); font-size: 0.84rem; margin-top: 3px; }
+.due-months b { color: var(--accent); }
+.due-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .client-list { display: flex; flex-direction: column; gap: 12px; }
 .client-card {
@@ -492,6 +495,11 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
   color: var(--ink-2);
 }
 .client-meta strong { color: var(--ink); font-weight: 500; }
+.client-meta .owes { grid-column: 1 / -1; color: var(--accent); }
+.client-meta .owes strong { color: var(--accent); font-weight: 700; }
+/* Ended clients stay visible as history but stop competing for attention. */
+.client-card.is-ended { opacity: 0.62; }
+.client-card.is-ended h3 { color: var(--ink-2); }
 
 /* ---------- Prospects ---------- */
 .prospect-list { display: flex; flex-direction: column; gap: 12px; }
@@ -581,6 +589,9 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
   color: var(--ink-2);
 }
 .stat-row strong { color: var(--ink); font-weight: 700; }
+.stat-net { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.stat-net #revenue-fees { color: var(--bad); }
+.stat-row-net strong { color: var(--good); font-size: 1.1rem; }
 
 /* ---------- Preview manager ---------- */
 .preview-manager { margin-top: 40px; color: var(--ink-2); }

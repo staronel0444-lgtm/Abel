@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS clients (
   monthly_fee     REAL NOT NULL DEFAULT 0,   -- current maintenance fee
   close_date      TEXT NOT NULL,             -- YYYY-MM-DD, editable
   last_paid_month TEXT,                      -- denormalized MAX(client_payments.month)
+  payment_method  TEXT NOT NULL DEFAULT 'other', -- how the upfront was paid
+  fee             REAL NOT NULL DEFAULT 0,   -- processing fee on the upfront
+  status          TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','ended')),
   created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -42,10 +45,12 @@ CREATE TABLE IF NOT EXISTS clients (
 -- correctly. amount snapshots monthly_fee at the moment it was marked paid,
 -- so later fee changes don't rewrite past revenue.
 CREATE TABLE IF NOT EXISTS client_payments (
-  client_id INTEGER NOT NULL,
-  month     TEXT    NOT NULL,               -- YYYY-MM
-  amount    REAL    NOT NULL DEFAULT 0,
-  paid_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+  client_id      INTEGER NOT NULL,
+  month          TEXT    NOT NULL,          -- YYYY-MM
+  amount         REAL    NOT NULL DEFAULT 0,
+  payment_method TEXT    NOT NULL DEFAULT 'other',
+  fee            REAL    NOT NULL DEFAULT 0,
+  paid_at        TEXT    NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (client_id, month)
 );
 

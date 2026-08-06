@@ -37,6 +37,71 @@ function localToday() {
 function localCurrentMonth() {
   return localToday().slice(0, 7); // YYYY-MM
 }
+
+// ---------------------------------------------------------- payment methods
+// Standard published US rates. A fee is worked out when the money is logged
+// and stored alongside it, so old records keep the fee that was really charged
+// even if a platform changes its pricing later. Shared by the Money calendar,
+// the Clients tab (upfront + maintenance) and the Revenue dashboard.
+
+const PAYMENT_METHODS = [
+  { key: 'stripe', label: 'Stripe', pct: 0.029, flat: 0.30 },
+  { key: 'paypal', label: 'PayPal', pct: 0.0349, flat: 0.49 },
+  { key: 'cashapp', label: 'Cash App', pct: 0.0275, flat: 0 },
+  { key: 'bank', label: 'Bank transfer / Zelle', pct: 0, flat: 0 },
+  { key: 'apple', label: 'Apple Cash (debit)', pct: 0, flat: 0 },
+  { key: 'cash', label: 'Cash', pct: 0, flat: 0 },
+  { key: 'other', label: 'Other / not sure', pct: 0, flat: 0 },
+];
+const MONEY_METHOD_KEY = 'forge-money-method';
+
+function methodByKey(key) {
+  return PAYMENT_METHODS.find((m) => m.key === key) || null;
+}
+function methodLabel(key) {
+  const m = methodByKey(key);
+  return m ? m.label : 'Other / not sure';
+}
+
+// What the payment platform keeps. Never more than the payment itself.
+function feeFor(amount, methodKey) {
+  const m = methodByKey(methodKey);
+  const gross = Number(amount) || 0;
+  if (!m || gross <= 0) return 0;
+  return Math.min(Math.round((gross * m.pct + m.flat) * 100) / 100, gross);
+}
+
+function lastUsedMethod() {
+  return localStorage.getItem(MONEY_METHOD_KEY) || 'stripe';
+}
+function rememberMethod(key) {
+  localStorage.setItem(MONEY_METHOD_KEY, key);
+}
+
+// Fills any <select> with the method list, each showing its rate.
+function populateMethodSelect(sel, selected) {
+  if (!sel) return;
+  sel.innerHTML = PAYMENT_METHODS.map((m) => {
+    const rate = m.pct || m.flat
+      ? `${(m.pct * 100).toFixed(2).replace(/\.?0+$/, '')}%${m.flat ? ` + $${m.flat.toFixed(2)}` : ''}`
+      : 'no fee';
+    return `<option value="${m.key}">${escapeHtml(m.label)} (${rate})</option>`;
+  }).join('');
+  sel.value = selected || lastUsedMethod();
+}
+
+// Shared "what actually lands" line used under every amount + method pairing.
+function renderNetLine(el, amount, methodKey) {
+  if (!el) return;
+  const gross = Number(amount) || 0;
+  if (!(gross > 0)) { el.hidden = true; return; }
+  const fee = feeFor(gross, methodKey);
+  el.hidden = false;
+  el.textContent = fee > 0
+    ? `${methodLabel(methodKey)} takes ${money(fee)} — you actually get ${money(gross - fee)}`
+    : `No fee — you get all ${money(gross)}`;
+  el.classList.toggle('is-free', fee === 0);
+}
 function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso.includes('T') || iso.includes(' ') ? iso.replace(' ', 'T') + 'Z' : iso + 'T00:00:00');
@@ -865,6 +930,9 @@ function batchRowHtml(lead) {
 }
 
 let batchCancelled = false;
+// While a batch is mid-run the modal is the only signal that credits are still
+// being spent, so it stays put until the run ends or Cancel is pressed.
+let batchRunning = false;
 
 async function runBatchGenerate(leads, niche) {
   if (!leads.length) return;
@@ -872,6 +940,7 @@ async function runBatchGenerate(leads, niche) {
   if (!confirm(`Generate ${n} demo site${n === 1 ? '' : 's'}? This uses ${n} AI credit${n === 1 ? '' : 's'} — one per site.`)) return;
 
   batchCancelled = false;
+  batchRunning = true;
   $('#batch-modal-title').textContent = 'Generating demos…';
   $('#batch-modal-sub').textContent = `0 of ${n} done`;
   $('#batch-list').innerHTML = leads.map(batchRowHtml).join('');
@@ -920,6 +989,7 @@ async function runBatchGenerate(leads, niche) {
     $('#batch-modal-sub').textContent = `${done} of ${n} done`;
   }
 
+  batchRunning = false;
   cancelBtn.textContent = 'Close';
   cancelBtn.onclick = () => { $('#batch-modal').hidden = true; };
   $('#batch-modal-title').textContent = batchCancelled ? 'Stopped early' : 'All done';
@@ -931,8 +1001,11 @@ $('#lead-batch-generate').addEventListener('click', () => {
   runBatchGenerate(chosen, leadState.niche);
 });
 
+// Tapping the backdrop closes the modal only once nothing is left running —
+// otherwise sites would keep generating (and credits keep being spent) with
+// nothing on screen to show it. Stopping early has to be a deliberate Cancel.
 $('#batch-modal').addEventListener('click', (e) => {
-  if (e.target === $('#batch-modal')) $('#batch-modal').hidden = true;
+  if (e.target === $('#batch-modal') && !batchRunning) $('#batch-modal').hidden = true;
 });
 
 // ------------------------------------------------- Section 3b: History
@@ -1169,6 +1242,25 @@ async function loadProspects() {
 
 const clientState = { clients: [] };
 
+// The upfront payment has a processing fee too — and it's the bigger one, so
+// it matters more than the monthly. Editing an existing client leaves the
+// recorded method alone; only new clients log income.
+function renderClientNetPreview() {
+  const isEdit = !!$('#cf-id').value;
+  const amount = Number($('#cf-amount').value || 0);
+  $('#cf-method-row').hidden = isEdit || !(amount > 0);
+  if (isEdit || !(amount > 0)) { $('#cf-net').hidden = true; return; }
+  renderNetLine($('#cf-net'), amount, $('#cf-method').value);
+}
+
+(function initClientMethod() {
+  const sel = $('#cf-method');
+  if (!sel) return;
+  populateMethodSelect(sel);
+  sel.addEventListener('change', () => { rememberMethod(sel.value); renderClientNetPreview(); });
+  $('#cf-amount')?.addEventListener('input', renderClientNetPreview);
+})();
+
 function openClientModal({ mode, lead = null, client = null, onSaved = null }) {
   const modal = $('#client-modal');
   const form = $('#client-form');
@@ -1177,6 +1269,7 @@ function openClientModal({ mode, lead = null, client = null, onSaved = null }) {
   $('#cf-id').value = client ? client.id : '';
   $('#cf-place-id').value = lead ? lead.placeId : (client?.placeId || '');
   $('#cf-close-date').value = localToday();
+  $('#cf-method').value = lastUsedMethod();
 
   if (mode === 'lead') {
     $('#client-modal-title').textContent = 'New client 🎉';
@@ -1200,6 +1293,7 @@ function openClientModal({ mode, lead = null, client = null, onSaved = null }) {
     $('#client-modal-sub').textContent = 'For deals that didn\'t come through Lead Finder.';
   }
 
+  renderClientNetPreview();
   modal.hidden = false;
   modal.dataset.mode = mode;
   modal._onSaved = onSaved;
@@ -1217,18 +1311,23 @@ $('#client-form').addEventListener('submit', async (e) => {
   const errEl = $('#client-form-error');
   errEl.hidden = true;
 
+  const amountPaid = Number($('#cf-amount').value || 0);
   const payload = {
     companyName: $('#cf-company').value.trim(),
     ownerName: $('#cf-owner').value.trim(),
     email: $('#cf-email').value.trim(),
     phone: $('#cf-phone').value.trim(),
     address: $('#cf-address').value.trim(),
-    amountPaid: Number($('#cf-amount').value || 0),
+    amountPaid,
     monthlyFee: Number($('#cf-monthly').value || 0),
     closeDate: $('#cf-close-date').value,
   };
 
   const id = $('#cf-id').value;
+  if (!id && amountPaid > 0) {
+    payload.paymentMethod = $('#cf-method').value;
+    payload.fee = feeFor(amountPaid, payload.paymentMethod);
+  }
   const placeId = $('#cf-place-id').value;
   $('#client-form-submit').disabled = true;
   try {
@@ -1237,7 +1336,9 @@ $('#client-form').addEventListener('submit', async (e) => {
       toast('Client updated');
     } else {
       await api('/api/clients', { method: 'POST', body: { ...payload, placeId: placeId || undefined } });
-      toast(placeId ? 'Client added — this lead won\'t show up in searches anymore' : 'Client added');
+      toast(amountPaid > 0
+        ? `Client added — ${money(amountPaid)} logged to Money`
+        : (placeId ? 'Client added — this lead won\'t show up in searches anymore' : 'Client added'));
     }
     modal.hidden = true;
     if (typeof modal._onSaved === 'function') modal._onSaved();
@@ -1252,20 +1353,95 @@ $('#client-form').addEventListener('submit', async (e) => {
 
 $('#client-add').addEventListener('click', () => openClientModal({ mode: 'add' }));
 
-function isDueThisMonth(client, month) {
-  if (!(client.monthlyFee > 0)) return false;
+// Every maintenance month this client still owes, oldest first — not just the
+// current one. A month that gets skipped used to vanish the moment the
+// calendar rolled over, so the money was quietly never collected.
+function unpaidMonths(client, currentMonth) {
+  if (!(client.monthlyFee > 0)) return [];
+  if (client.status === 'ended') return [];          // no longer billing them
   const closeMonth = (client.closeDate || '').slice(0, 7);
+  if (!closeMonth) return [];
+
   // Maintenance cycles start the month after close; upfront covers month 1.
-  return month > closeMonth && !client.paidMonths.includes(month);
+  const out = [];
+  let m = shiftMonth(closeMonth, 1);
+  while (m <= currentMonth) {
+    if (!client.paidMonths.includes(m)) out.push(m);
+    m = shiftMonth(m, 1);
+  }
+  return out;
 }
 
-async function markPaid(client) {
+function amountOwed(client, currentMonth) {
+  return unpaidMonths(client, currentMonth).length * (client.monthlyFee || 0);
+}
+
+// Asks how a payment arrived so the fee can be worked out, then resolves with
+// { method, fee } — or null if cancelled.
+function askPaymentMethod({ title, sub, amount }) {
+  return new Promise((resolve) => {
+    const modal = $('#paymethod-modal');
+    const sel = $('#pm-method');
+    const netEl = $('#pm-net');
+    $('#paymethod-title').textContent = title;
+    $('#paymethod-sub').textContent = sub;
+    populateMethodSelect(sel);
+
+    const update = () => renderNetLine(netEl, amount, sel.value);
+    update();
+
+    const close = (result) => {
+      modal.hidden = true;
+      sel.removeEventListener('change', onChange);
+      $('#paymethod-form').removeEventListener('submit', onSubmit);
+      $('#paymethod-cancel').removeEventListener('click', onCancel);
+      modal.removeEventListener('click', onBackdrop);
+      resolve(result);
+    };
+    const onChange = () => { rememberMethod(sel.value); update(); };
+    const onSubmit = (e) => {
+      e.preventDefault();
+      close({ method: sel.value, fee: feeFor(amount, sel.value) });
+    };
+    const onCancel = () => close(null);
+    const onBackdrop = (e) => { if (e.target === modal) close(null); };
+
+    sel.addEventListener('change', onChange);
+    $('#paymethod-form').addEventListener('submit', onSubmit);
+    $('#paymethod-cancel').addEventListener('click', onCancel);
+    modal.addEventListener('click', onBackdrop);
+    modal.hidden = false;
+  });
+}
+
+async function markPaid(client, month) {
+  const target = month || localCurrentMonth();
+  const answer = await askPaymentMethod({
+    title: 'How did they pay?',
+    sub: `${client.companyName} — ${formatMonth(target)} · ${money(client.monthlyFee)}`,
+    amount: client.monthlyFee,
+  });
+  if (!answer) return;
   try {
     await api(`/api/clients/${client.id}/payments`, {
       method: 'POST',
-      body: { month: localCurrentMonth() },
+      body: { month: target, method: answer.method, fee: answer.fee, date: localToday() },
     });
-    toast(`${client.companyName} marked paid for ${formatMonth(localCurrentMonth())}`);
+    toast(`${client.companyName} paid for ${formatMonth(target)} — added to Money`);
+    loadClients();
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+async function setClientStatus(client, status) {
+  const ending = status === 'ended';
+  if (ending && !confirm(
+    `Stop billing ${client.companyName}?\n\nThey'll stop showing up as owing you money, but everything they already paid stays counted in Revenue.`
+  )) return;
+  try {
+    await api(`/api/clients/${client.id}`, { method: 'PUT', body: { status } });
+    toast(ending ? `${client.companyName} marked as ended` : `${client.companyName} is active again`);
     loadClients();
   } catch (err) {
     toast(err.message, true);
@@ -1274,42 +1450,57 @@ async function markPaid(client) {
 
 function renderClients() {
   const month = localCurrentMonth();
-  const due = clientState.clients.filter((c) => isDueThisMonth(c, month));
+  const owing = clientState.clients
+    .map((c) => ({ client: c, months: unpaidMonths(c, month) }))
+    .filter((x) => x.months.length > 0);
 
   const dueBox = $('#clients-due');
-  if (due.length) {
+  if (owing.length) {
+    const totalOwed = owing.reduce((sum, x) => sum + x.months.length * x.client.monthlyFee, 0);
+    const behind = owing.filter((x) => x.months.length > 1).length;
     dueBox.hidden = false;
     dueBox.innerHTML = `
-      <h3>Due this month — ${escapeHtml(formatMonth(month))} (${due.length})</h3>
-      ${due.map((c) => `
+      <h3>Owed to you — ${money(totalOwed)}${behind ? ` · ${behind} behind` : ''}</h3>
+      ${owing.map(({ client: c, months }) => `
         <div class="due-row" data-id="${c.id}">
-          <span><strong>${escapeHtml(c.companyName)}</strong> · ${money(c.monthlyFee)}/mo${c.lastPaidMonth ? ` · last paid ${escapeHtml(formatMonth(c.lastPaidMonth))}` : ' · never paid yet'}</span>
-          <button class="btn btn-sm btn-primary" data-act="paid">Mark this month paid</button>
+          <span>
+            <strong>${escapeHtml(c.companyName)}</strong> · ${money(c.monthlyFee)}/mo
+            <small class="due-months">Owes ${months.map((m) => escapeHtml(formatMonth(m))).join(', ')} — <b>${money(months.length * c.monthlyFee)}</b></small>
+          </span>
+          <span class="due-btns">
+            ${months.map((m) => `<button class="btn btn-sm btn-primary" data-month="${m}">${escapeHtml(formatMonth(m).replace(/ \d{4}$/, ''))} paid</button>`).join('')}
+          </span>
         </div>`).join('')}`;
     dueBox.querySelectorAll('.due-row').forEach((row) => {
       const client = clientState.clients.find((c) => c.id === Number(row.dataset.id));
-      row.querySelector('[data-act="paid"]').addEventListener('click', () => markPaid(client));
+      row.querySelectorAll('[data-month]').forEach((btn) => {
+        btn.addEventListener('click', () => markPaid(client, btn.dataset.month));
+      });
     });
   } else {
     dueBox.hidden = clientState.clients.length === 0;
-    dueBox.innerHTML = `<h3>All caught up 🔥</h3><p class="muted" style="margin:0">No maintenance fees due for ${escapeHtml(formatMonth(month))}.</p>`;
+    dueBox.innerHTML = `<h3>All caught up 🔥</h3><p class="muted" style="margin:0">Nobody owes you anything right now.</p>`;
   }
 
   const list = $('#clients-list');
   $('#clients-empty').hidden = clientState.clients.length > 0;
   list.innerHTML = '';
   for (const c of clientState.clients) {
+    const ended = c.status === 'ended';
+    const owedMonths = unpaidMonths(c, month);
     const paidThisMonth = c.paidMonths.includes(month);
     const card = document.createElement('div');
-    card.className = 'client-card';
+    card.className = `client-card${ended ? ' is-ended' : ''}`;
     card.innerHTML = `
       <div class="client-top">
         <h3>${escapeHtml(c.companyName)}</h3>
         <div class="client-actions">
-          ${isDueThisMonth(c, month)
-            ? '<button class="btn btn-sm btn-primary" data-act="paid">Mark this month paid</button>'
-            : paidThisMonth ? '<span class="badge badge-client">Paid this month</span>' : ''}
+          ${ended ? '<span class="badge badge-undecided">Ended</span>' : ''}
+          ${!ended && owedMonths.length
+            ? `<button class="btn btn-sm btn-primary" data-act="paid">Mark ${escapeHtml(formatMonth(owedMonths[0]).replace(/ \d{4}$/, ''))} paid</button>`
+            : !ended && paidThisMonth ? '<span class="badge badge-client">Paid this month</span>' : ''}
           <button class="btn btn-sm" data-act="edit">Edit</button>
+          <button class="btn btn-sm" data-act="status">${ended ? 'Reactivate' : 'Mark as ended'}</button>
           <button class="btn btn-sm btn-danger" data-act="delete">Delete</button>
         </div>
       </div>
@@ -1322,10 +1513,14 @@ function renderClients() {
         <div>Monthly: <strong>${money(c.monthlyFee)}</strong></div>
         <div>Closed: <strong>${escapeHtml(formatDate(c.closeDate))}</strong></div>
         <div>Months paid: <strong>${c.paidMonths.length}</strong>${c.lastPaidMonth ? ` (last: ${escapeHtml(formatMonth(c.lastPaidMonth))})` : ''}</div>
+        ${owedMonths.length ? `<div class="owes">Owes: <strong>${money(owedMonths.length * c.monthlyFee)}</strong> (${owedMonths.length} month${owedMonths.length === 1 ? '' : 's'})</div>` : ''}
       </div>`;
     card.querySelector('[data-act="edit"]').addEventListener('click', () => openClientModal({ mode: 'edit', client: c }));
+    card.querySelector('[data-act="status"]').addEventListener('click', () => setClientStatus(c, ended ? 'active' : 'ended'));
     card.querySelector('[data-act="delete"]').addEventListener('click', async () => {
-      if (!confirm(`Delete ${c.companyName}? Their payment history goes too, and the business can show up in Lead Finder again.`)) return;
+      if (!confirm(
+        `Delete ${c.companyName} completely?\n\nThis also erases every payment they ever made, so your Revenue total will drop. If they were a real client who's just finished, use "Mark as ended" instead.`
+      )) return;
       try {
         await api(`/api/clients/${c.id}`, { method: 'DELETE' });
         toast('Client removed');
@@ -1333,7 +1528,7 @@ function renderClients() {
       } catch (err) { toast(err.message, true); }
     });
     const paidBtn = card.querySelector('[data-act="paid"]');
-    if (paidBtn) paidBtn.addEventListener('click', () => markPaid(c));
+    if (paidBtn) paidBtn.addEventListener('click', () => markPaid(c, owedMonths[0]));
     list.appendChild(card);
   }
 }
@@ -1366,6 +1561,13 @@ async function loadRevenue() {
     $('#revenue-value').textContent = money(res.total);
     $('#revenue-upfront').textContent = money(res.upfront);
     $('#revenue-monthly').textContent = money(res.monthly);
+
+    // Only shown once a fee has actually been charged, so a cash-only stretch
+    // isn't cluttered with two extra zero rows.
+    const fees = Number(res.fees) || 0;
+    $('#revenue-net-box').hidden = fees <= 0;
+    $('#revenue-fees').textContent = `−${money(fees)}`;
+    $('#revenue-net').textContent = money(Number(res.net) || 0);
 
     const delta = $('#revenue-delta');
     if (res.trendPct === null || res.prior === null) {
@@ -1428,36 +1630,6 @@ const MONEY_SPLIT = [
   { key: 'save', label: 'Save', pct: 0.35 },
   { key: 'you', label: 'You', pct: 0.30 },
 ];
-
-// Standard published US rates. The fee is calculated at log time and stored
-// with the entry, so old rows keep the fee that was really charged even if a
-// platform changes its pricing later.
-const PAYMENT_METHODS = [
-  { key: 'stripe', label: 'Stripe', pct: 0.029, flat: 0.30 },
-  { key: 'paypal', label: 'PayPal', pct: 0.0349, flat: 0.49 },
-  { key: 'cashapp', label: 'Cash App', pct: 0.0275, flat: 0 },
-  { key: 'bank', label: 'Bank transfer / Zelle', pct: 0, flat: 0 },
-  { key: 'apple', label: 'Apple Cash (debit)', pct: 0, flat: 0 },
-  { key: 'cash', label: 'Cash', pct: 0, flat: 0 },
-  { key: 'other', label: 'Other / not sure', pct: 0, flat: 0 },
-];
-const MONEY_METHOD_KEY = 'forge-money-method';
-
-function methodByKey(key) {
-  return PAYMENT_METHODS.find((m) => m.key === key) || null;
-}
-function methodLabel(key) {
-  const m = methodByKey(key);
-  return m ? m.label : 'Other / not sure';
-}
-
-// What the payment platform keeps. Never more than the payment itself.
-function feeFor(amount, methodKey) {
-  const m = methodByKey(methodKey);
-  const gross = Number(amount) || 0;
-  if (!m || gross <= 0) return 0;
-  return Math.min(Math.round((gross * m.pct + m.flat) * 100) / 100, gross);
-}
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const moneyState = { month: localCurrentMonth(), entries: [] };
@@ -1589,19 +1761,8 @@ function renderMoneyDayEntries(date) {
   });
 }
 
-// Live "here's what actually lands" line under the amount field.
 function renderMoneyNetPreview() {
-  const el = $('#mf-net');
-  if (!el) return;
-  const amount = Number($('#mf-amount').value || 0);
-  const key = $('#mf-method').value;
-  if (!(amount > 0)) { el.hidden = true; return; }
-  const fee = feeFor(amount, key);
-  el.hidden = false;
-  el.textContent = fee > 0
-    ? `${methodLabel(key)} takes ${money(fee)} — you actually get ${money(amount - fee)}`
-    : `No fee — you get all ${money(amount)}`;
-  el.classList.toggle('is-free', fee === 0);
+  renderNetLine($('#mf-net'), $('#mf-amount').value, $('#mf-method').value);
 }
 
 function openMoneyModal(date) {
@@ -1610,26 +1771,19 @@ function openMoneyModal(date) {
   $('#mf-date').value = date || localToday();
   // reset() wipes the select back to its first option, so restore the
   // remembered choice after it.
-  $('#mf-method').value = localStorage.getItem(MONEY_METHOD_KEY) || 'stripe';
+  $('#mf-method').value = lastUsedMethod();
   renderMoneyNetPreview();
   renderMoneyDayEntries($('#mf-date').value);
   $('#money-modal').hidden = false;
   $('#mf-amount').focus();
 }
 
-// Built from PAYMENT_METHODS so the dropdown and the fee math can't drift.
 (function initMoneyMethods() {
   const sel = $('#mf-method');
   if (!sel) return;
-  sel.innerHTML = PAYMENT_METHODS.map((m) => {
-    const rate = m.pct || m.flat
-      ? `${(m.pct * 100).toFixed(2).replace(/\.?0+$/, '')}%${m.flat ? ` + $${m.flat.toFixed(2)}` : ''}`
-      : 'no fee';
-    return `<option value="${m.key}">${escapeHtml(m.label)} (${rate})</option>`;
-  }).join('');
-  sel.value = localStorage.getItem(MONEY_METHOD_KEY) || 'stripe';
+  populateMethodSelect(sel);
   sel.addEventListener('change', () => {
-    localStorage.setItem(MONEY_METHOD_KEY, sel.value);
+    rememberMethod(sel.value);
     renderMoneyNetPreview();
   });
   $('#mf-amount')?.addEventListener('input', renderMoneyNetPreview);
@@ -2322,6 +2476,7 @@ document.addEventListener('keydown', (e) => {
     $('#info-modal').hidden = true;
     $('#money-modal').hidden = true;
     $('#email-client-modal').hidden = true;
+    $('#paymethod-cancel')?.click(); // resolves its pending promise, then closes
   }
 });
 // Note: #batch-modal is deliberately excluded from Escape — closing it early

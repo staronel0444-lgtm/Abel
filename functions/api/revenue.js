@@ -10,6 +10,7 @@
 // Also returns the prior equivalent period for the trend indicator.
 
 import { handle, json, HttpError } from '../../lib/http.js';
+import { ensureClientColumns } from '../../lib/migrate.js';
 
 const WINDOW_DAYS = {
   '24h': 1,
@@ -22,7 +23,7 @@ const WINDOW_DAYS = {
 
 async function sums(env, { fromIso, toIso, fromDate, toDate }) {
   // Upfront: close_date is a YYYY-MM-DD string, compared against date bounds.
-  let upfrontSql = 'SELECT COALESCE(SUM(amount_paid), 0) AS total FROM clients';
+  let upfrontSql = 'SELECT COALESCE(SUM(amount_paid), 0) AS total, COALESCE(SUM(fee), 0) AS fees FROM clients';
   const upfrontBinds = [];
   const upfrontConds = [];
   if (fromDate) { upfrontConds.push(`close_date >= ?${upfrontBinds.length + 1}`); upfrontBinds.push(fromDate); }
@@ -30,7 +31,7 @@ async function sums(env, { fromIso, toIso, fromDate, toDate }) {
   if (upfrontConds.length) upfrontSql += ' WHERE ' + upfrontConds.join(' AND ');
 
   // Monthly: paid_at is a full datetime.
-  let monthlySql = 'SELECT COALESCE(SUM(amount), 0) AS total FROM client_payments';
+  let monthlySql = 'SELECT COALESCE(SUM(amount), 0) AS total, COALESCE(SUM(fee), 0) AS fees FROM client_payments';
   const monthlyBinds = [];
   const monthlyConds = [];
   if (fromIso) { monthlyConds.push(`paid_at >= ?${monthlyBinds.length + 1}`); monthlyBinds.push(fromIso); }
@@ -44,7 +45,11 @@ async function sums(env, { fromIso, toIso, fromDate, toDate }) {
 
   const upfront = upfrontRow.results?.[0]?.total || 0;
   const monthly = monthlyRow.results?.[0]?.total || 0;
-  return { upfront, monthly, total: upfront + monthly };
+  const fees = (upfrontRow.results?.[0]?.fees || 0) + (monthlyRow.results?.[0]?.fees || 0);
+  const total = upfront + monthly;
+  // `total` stays the sticker price so the trend compares like with like;
+  // `net` is what actually reached the bank after processing fees.
+  return { upfront, monthly, total, fees, net: total - fees };
 }
 
 // D1's datetime('now') default stores "YYYY-MM-DD HH:MM:SS" (space, no Z);
@@ -60,6 +65,7 @@ export const onRequestGet = handle(async ({ request, env }) => {
     throw new HttpError(400, `window must be one of: ${Object.keys(WINDOW_DAYS).join(', ')}`);
   }
 
+  await ensureClientColumns(env.DB);
   const days = WINDOW_DAYS[window];
 
   if (days === null) {

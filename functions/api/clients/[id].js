@@ -4,7 +4,10 @@
 //   up in Lead Finder searches again.
 
 import { handle, json, readJson, HttpError } from '../../../lib/http.js';
+import { ensureClientColumns } from '../../../lib/migrate.js';
 import { shapeClient, parseMoney, parseCloseDate } from './index.js';
+
+const STATUSES = new Set(['active', 'ended']);
 
 function parseId(params) {
   const id = Number(params.id);
@@ -20,6 +23,7 @@ async function getClient(env, id) {
 
 export const onRequestPut = handle(async ({ request, env, params }) => {
   const id = parseId(params);
+  await ensureClientColumns(env.DB);
   await getClient(env, id);
   const body = await readJson(request);
 
@@ -35,6 +39,10 @@ export const onRequestPut = handle(async ({ request, env, params }) => {
   if (body.amountPaid !== undefined) updates.amount_paid = parseMoney(body.amountPaid, 'amountPaid');
   if (body.monthlyFee !== undefined) updates.monthly_fee = parseMoney(body.monthlyFee, 'monthlyFee');
   if (body.closeDate !== undefined) updates.close_date = parseCloseDate(body.closeDate);
+  if (body.status !== undefined) {
+    if (!STATUSES.has(body.status)) throw new HttpError(400, 'status must be "active" or "ended"');
+    updates.status = body.status;
+  }
 
   const columns = Object.keys(updates);
   if (columns.length === 0) throw new HttpError(400, 'No fields to update');

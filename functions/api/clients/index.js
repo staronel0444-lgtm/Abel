@@ -6,6 +6,8 @@
 //   stops appearing in searches.
 
 import { handle, json, readJson, requireString, HttpError } from '../../../lib/http.js';
+import { ensureClientColumns } from '../../../lib/migrate.js';
+import { logIncome, cleanMethod, cleanFee } from '../../../lib/income.js';
 
 export function shapeClient(row, paidMonths = []) {
   return {
@@ -20,6 +22,9 @@ export function shapeClient(row, paidMonths = []) {
     monthlyFee: row.monthly_fee,
     closeDate: row.close_date,
     lastPaidMonth: row.last_paid_month,
+    paymentMethod: row.payment_method || 'other',
+    fee: row.fee || 0,
+    status: row.status || 'active',
     createdAt: row.created_at,
     paidMonths,
   };
@@ -42,6 +47,7 @@ export function parseCloseDate(value) {
 }
 
 export const onRequestGet = handle(async ({ env }) => {
+  await ensureClientColumns(env.DB);
   const [clientRows, paymentRows] = await env.DB.batch([
     env.DB.prepare('SELECT * FROM clients ORDER BY close_date DESC, id DESC'),
     env.DB.prepare('SELECT client_id, month FROM client_payments ORDER BY month ASC'),
@@ -60,6 +66,8 @@ export const onRequestGet = handle(async ({ env }) => {
 });
 
 export const onRequestPost = handle(async ({ request, env }) => {
+  await ensureClientColumns(env.DB);
+
   const body = await readJson(request);
   const companyName = requireString(body, 'companyName', { max: 200 });
   const closeDate = parseCloseDate(body.closeDate);
@@ -68,16 +76,31 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const placeId = typeof body.placeId === 'string' && body.placeId.trim() ? body.placeId.trim() : null;
   const opt = (f, max = 300) => (typeof body[f] === 'string' ? body[f].trim().slice(0, max) : '');
 
+  const paymentMethod = cleanMethod(body.paymentMethod);
+  const upfrontFee = cleanFee(body.fee, amountPaid);
+
   const result = await env.DB
     .prepare(
       `INSERT INTO clients (place_id, company_name, owner_name, phone, email, address,
-                            amount_paid, monthly_fee, close_date)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`
+                            amount_paid, monthly_fee, close_date, payment_method, fee)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
     )
-    .bind(placeId, companyName, opt('ownerName'), opt('phone'), opt('email'), opt('address'), amountPaid, monthlyFee, closeDate)
+    .bind(placeId, companyName, opt('ownerName'), opt('phone'), opt('email'), opt('address'),
+      amountPaid, monthlyFee, closeDate, paymentMethod, upfrontFee)
     .run();
 
   const id = result.meta.last_row_id;
+
+  // The upfront fee is real income too — log it so the tax split sees it.
+  if (amountPaid > 0) {
+    await logIncome(env.DB, {
+      date: closeDate,
+      amount: amountPaid,
+      note: `${companyName} — upfront`,
+      method: paymentMethod,
+      fee: upfrontFee,
+    });
+  }
 
   if (placeId) {
     await env.DB

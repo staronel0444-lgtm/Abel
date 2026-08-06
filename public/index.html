@@ -277,6 +277,10 @@
           <div class="stat-row"><span>Upfront</span><strong id="revenue-upfront">$0</strong></div>
           <div class="stat-row"><span>Monthly maintenance</span><strong id="revenue-monthly">$0</strong></div>
         </div>
+        <div class="stat-net" id="revenue-net-box" hidden>
+          <div class="stat-row"><span>Payment fees</span><strong id="revenue-fees">$0</strong></div>
+          <div class="stat-row stat-row-net"><span>Actually received</span><strong id="revenue-net">$0</strong></div>
+        </div>
       </div>
     </section>
 
@@ -458,11 +462,29 @@
           <label>Amount paid upfront ($) <input type="number" id="cf-amount" min="0" step="0.01" value="0"></label>
           <label>Monthly maintenance fee ($) <input type="number" id="cf-monthly" min="0" step="0.01" value="0"></label>
         </div>
+        <label id="cf-method-row">Upfront paid by <select id="cf-method"></select></label>
+        <p class="mf-net" id="cf-net" hidden></p>
         <label>Close date <input type="date" id="cf-close-date" required></label>
         <p class="inline-error" id="client-form-error" hidden></p>
         <div class="modal-actions">
           <button type="button" class="btn" id="client-modal-cancel">Cancel</button>
           <button type="submit" class="btn btn-primary" id="client-form-submit">Save client</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- "How did they pay?" prompt, shown when marking a maintenance month paid -->
+  <div class="modal-backdrop" id="paymethod-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="paymethod-title">
+      <h2 id="paymethod-title">How did they pay?</h2>
+      <p class="muted" id="paymethod-sub"></p>
+      <form id="paymethod-form">
+        <label>Paid by <select id="pm-method"></select></label>
+        <p class="mf-net" id="pm-net" hidden></p>
+        <div class="modal-actions">
+          <button type="button" class="btn" id="paymethod-cancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Mark paid</button>
         </div>
       </form>
     </div>
