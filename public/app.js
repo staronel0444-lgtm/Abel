@@ -996,48 +996,53 @@ async function runBatchGenerate(leads, niche) {
   $('#batch-modal').hidden = false;
 
   let done = 0;
-  for (let i = 0; i < leads.length; i++) {
-    if (batchCancelled) break;
-    const lead = leads[i];
-    const row = rows[i];
-    const statusEl = row.querySelector('.br-status');
-    statusEl.textContent = 'Generating…';
-    try {
-      const prompt = buildLeadPrompt(lead, niche);
-      const context = extractKeywords(prompt);
-      const siteId = newSiteId();
-      const genRes = await api('/api/generate', {
-        method: 'POST',
-        body: { mode: 'page', prompt, context, notifyEmail: '', siteId },
-      });
-      const prevRes = await api('/api/previews', {
-        method: 'POST',
-        body: { kind: 'single', html: genRes.html, placeId: lead.placeId },
-      });
-      const fullUrl = location.origin + prevRes.url;
-      row.classList.add('is-done');
-      statusEl.textContent = 'Done ✓';
-      const pitch = pitchTextFor(lead, fullUrl);
-      row.insertAdjacentHTML('beforeend', `
-        <a class="br-link" href="${escapeHtml(prevRes.url)}" target="_blank" rel="noopener">${escapeHtml(fullUrl)}</a>
-        <div class="br-actions">
-          <button type="button" class="btn btn-sm" data-copy-link="${escapeHtml(fullUrl)}">Copy link</button>
-          <button type="button" class="btn btn-sm" data-copy-pitch="${escapeHtml(pitch)}">Copy pitch text</button>
-        </div>`);
-      row.querySelector('[data-copy-link]').addEventListener('click', (e) => copyText(e.target.dataset.copyLink));
-      row.querySelector('[data-copy-pitch]').addEventListener('click', (e) => copyText(e.target.dataset.copyPitch));
-    } catch (err) {
-      row.classList.add('is-failed');
-      statusEl.textContent = `Failed — ${err.message}`;
+  try {
+    for (let i = 0; i < leads.length; i++) {
+      if (batchCancelled) break;
+      const lead = leads[i];
+      const row = rows[i];
+      const statusEl = row.querySelector('.br-status');
+      statusEl.textContent = 'Generating…';
+      try {
+        const prompt = buildLeadPrompt(lead, niche);
+        const context = extractKeywords(prompt);
+        const siteId = newSiteId();
+        const genRes = await api('/api/generate', {
+          method: 'POST',
+          body: { mode: 'page', prompt, context, notifyEmail: '', siteId },
+        });
+        const prevRes = await api('/api/previews', {
+          method: 'POST',
+          body: { kind: 'single', html: genRes.html, placeId: lead.placeId },
+        });
+        const fullUrl = location.origin + prevRes.url;
+        row.classList.add('is-done');
+        statusEl.textContent = 'Done ✓';
+        const pitch = pitchTextFor(lead, fullUrl);
+        row.insertAdjacentHTML('beforeend', `
+          <a class="br-link" href="${escapeHtml(prevRes.url)}" target="_blank" rel="noopener">${escapeHtml(fullUrl)}</a>
+          <div class="br-actions">
+            <button type="button" class="btn btn-sm" data-copy-link="${escapeHtml(fullUrl)}">Copy link</button>
+            <button type="button" class="btn btn-sm" data-copy-pitch="${escapeHtml(pitch)}">Copy pitch text</button>
+          </div>`);
+        row.querySelector('[data-copy-link]').addEventListener('click', (e) => copyText(e.target.dataset.copyLink));
+        row.querySelector('[data-copy-pitch]').addEventListener('click', (e) => copyText(e.target.dataset.copyPitch));
+      } catch (err) {
+        row.classList.add('is-failed');
+        statusEl.textContent = `Failed — ${err.message}`;
+      }
+      done++;
+      $('#batch-modal-sub').textContent = `${done} of ${n} done`;
     }
-    done++;
-    $('#batch-modal-sub').textContent = `${done} of ${n} done`;
+  } finally {
+    // Always hand the modal back, even if something above threw. Otherwise the
+    // backdrop stays blocked and Cancel still reads "Cancel", leaving a modal
+    // that can only be escaped by reloading the page.
+    batchRunning = false;
+    cancelBtn.textContent = 'Close';
+    cancelBtn.onclick = () => { $('#batch-modal').hidden = true; };
+    $('#batch-modal-title').textContent = batchCancelled ? 'Stopped early' : 'All done';
   }
-
-  batchRunning = false;
-  cancelBtn.textContent = 'Close';
-  cancelBtn.onclick = () => { $('#batch-modal').hidden = true; };
-  $('#batch-modal-title').textContent = batchCancelled ? 'Stopped early' : 'All done';
   loadSites();
 }
 
@@ -1991,8 +1996,8 @@ Return the complete redesigned HTML document.`;
 }
 
 async function runBuildRefine(instruction, btn, busyLabel) {
-  if (!buildState.html) { toast('Generate a site first', true); return; }
-  if (!instruction) { toast('Type what you want changed first', true); return; }
+  if (!buildState.html) { toast('Generate a site first', true); return false; }
+  if (!instruction) { toast('Type what you want changed first', true); return false; }
 
   const label = btn.textContent;
   btn.disabled = true;
@@ -2010,8 +2015,10 @@ async function runBuildRefine(instruction, btn, busyLabel) {
     $('#build-frame').srcdoc = newHtml;
     $('#build-link-output').hidden = true; // any earlier link now points at the old version
     toast('Change applied — save a new link to share this version');
+    return true;
   } catch (err) {
     toast(err.message, true);
+    return false;
   } finally {
     btn.disabled = false;
     btn.textContent = label;
@@ -2021,7 +2028,10 @@ async function runBuildRefine(instruction, btn, busyLabel) {
 $('#build-refine-btn').addEventListener('click', () => {
   const instruction = $('#build-refine-input').value.trim();
   if (!instruction) { toast('Type what you want changed first', true); return; }
-  runBuildRefine(instruction, $('#build-refine-btn'), 'Refining…').then(() => { $('#build-refine-input').value = ''; });
+  // Only clear the box on success — a failed refine used to wipe what you typed.
+  runBuildRefine(instruction, $('#build-refine-btn'), 'Refining…').then((ok) => {
+    if (ok) $('#build-refine-input').value = '';
+  });
 });
 
 $('#build-enhance')?.addEventListener('click', () => {
@@ -2031,8 +2041,8 @@ $('#build-enhance')?.addEventListener('click', () => {
 // Multi-page: refine the page currently being viewed.
 async function runMultiRefine(instruction, btn, busyLabel) {
   const cur = multiState.current;
-  if (!cur || !multiState.pages[cur]) { toast('Generate or open a site first', true); return; }
-  if (!instruction) { toast('Type what you want changed first', true); return; }
+  if (!cur || !multiState.pages[cur]) { toast('Generate or open a site first', true); return false; }
+  if (!instruction) { toast('Type what you want changed first', true); return false; }
 
   const label = btn.textContent;
   btn.disabled = true;
@@ -2048,8 +2058,10 @@ async function runMultiRefine(instruction, btn, busyLabel) {
     $('#multi-link-output').hidden = true;
     const title = multiState.defs.find((d) => d.filename === cur)?.title || cur;
     toast(`“${title}” updated — save a new link to share it`);
+    return true;
   } catch (err) {
     toast(err.message, true);
+    return false;
   } finally {
     btn.disabled = false;
     btn.textContent = label;
@@ -2059,7 +2071,9 @@ async function runMultiRefine(instruction, btn, busyLabel) {
 $('#multi-refine-btn').addEventListener('click', () => {
   const instruction = $('#multi-refine-input').value.trim();
   if (!instruction) { toast('Type what you want changed first', true); return; }
-  runMultiRefine(instruction, $('#multi-refine-btn'), 'Refining…').then(() => { $('#multi-refine-input').value = ''; });
+  runMultiRefine(instruction, $('#multi-refine-btn'), 'Refining…').then((ok) => {
+    if (ok) $('#multi-refine-input').value = '';
+  });
 });
 
 $('#multi-enhance')?.addEventListener('click', () => {
@@ -2130,7 +2144,10 @@ async function applyStyle(key) {
 
   if (target === 'build') {
     const btn = $('#build-style');
-    await runBuildRefine(styleInstruction(style), btn, `Restyling…`);
+    const ok = await runBuildRefine(styleInstruction(style), btn, 'Restyling…');
+    // On failure runBuildRefine has already said why — don't overwrite that
+    // with a success message, and don't mark a style the site isn't in.
+    if (!ok) return;
     styleState.current.build = key;
     toast(`Restyled — ${style.name}`);
     return;
@@ -2147,37 +2164,48 @@ async function applyStyle(key) {
 
   let done = 0;
   let failed = 0;
-  for (const filename of filenames) {
-    btn.textContent = `Restyling ${done + 1}/${filenames.length}…`;
-    try {
-      const res = await api('/api/generate', {
-        method: 'POST',
-        body: {
-          mode: 'refine',
-          html: multiState.pages[filename],
-          instruction: styleInstruction(style),
-          notifyEmail: multiState.notifyEmail || '',
-          siteId: multiState.siteId,
-        },
-      });
-      multiState.pages[filename] = multiState.notifyEmail
-        ? res.html
-        : preserveForms(multiState.pages[filename], res.html);
-    } catch (err) {
-      failed++;
-      toast(`${filename}: ${err.message}`, true);
+  try {
+    for (const filename of filenames) {
+      btn.textContent = `Restyling ${done + 1}/${filenames.length}…`;
+      try {
+        const res = await api('/api/generate', {
+          method: 'POST',
+          body: {
+            mode: 'refine',
+            html: multiState.pages[filename],
+            instruction: styleInstruction(style),
+            notifyEmail: multiState.notifyEmail || '',
+            siteId: multiState.siteId,
+          },
+        });
+        multiState.pages[filename] = multiState.notifyEmail
+          ? res.html
+          : preserveForms(multiState.pages[filename], res.html);
+      } catch (err) {
+        failed++;
+        toast(`${filename}: ${err.message}`, true);
+      }
+      done++;
     }
-    done++;
+
+    // If every page failed the site is untouched, so don't record the style.
+    if (failed < filenames.length) styleState.current.multi = key;
+    showMultiPage(multiState.current);
+    $('#multi-link-output').hidden = true;
+  } finally {
+    // Always give the button back, even if rendering threw — otherwise it
+    // stays stuck on "Restyling 3/4…" until the page is reloaded.
+    btn.disabled = false;
+    btn.textContent = label;
   }
 
-  styleState.current.multi = key;
-  showMultiPage(multiState.current);
-  $('#multi-link-output').hidden = true;
-  btn.disabled = false;
-  btn.textContent = label;
-  toast(failed
-    ? `Restyled with ${failed} page${failed === 1 ? '' : 's'} failed — try those again`
-    : `All ${filenames.length} pages restyled — ${style.name}`);
+  if (failed === filenames.length) {
+    toast('Restyle failed — the site is unchanged', true);
+  } else {
+    toast(failed
+      ? `Restyled, but ${failed} page${failed === 1 ? '' : 's'} failed — try those again`
+      : `All ${filenames.length} pages restyled — ${style.name}`);
+  }
 }
 
 $('#build-style')?.addEventListener('click', () => openStyleModal('build'));
