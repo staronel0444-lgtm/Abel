@@ -189,6 +189,60 @@ function swapFrame(frame, html) {
   setTimeout(done, 1200); // never leave it dimmed if load doesn't fire
 }
 
+// A press ripples out from where you actually clicked. Delegated, so it covers
+// buttons that get created later too.
+document.addEventListener('pointerdown', (e) => {
+  if (REDUCED_MOTION) return;
+  const btn = e.target.closest('.btn, .tab-btn, .decide-btn');
+  if (!btn || btn.disabled) return;
+  const r = btn.getBoundingClientRect();
+  const size = Math.max(r.width, r.height);
+  const dot = document.createElement('span');
+  dot.className = 'ripple';
+  dot.style.width = dot.style.height = size + 'px';
+  dot.style.left = (e.clientX - r.left - size / 2) + 'px';
+  dot.style.top = (e.clientY - r.top - size / 2) + 'px';
+  btn.appendChild(dot);
+  dot.addEventListener('animationend', () => dot.remove(), { once: true });
+});
+
+// Flash an element green when something completes.
+function flashOk(el) {
+  if (!el || REDUCED_MOTION) return;
+  el.classList.remove('flash-ok');
+  void el.offsetWidth;
+  el.classList.add('flash-ok');
+  el.addEventListener('animationend', () => el.classList.remove('flash-ok'), { once: true });
+}
+
+// Rolling captions while a site generates, so the wait reads as work happening
+// rather than a frozen screen. Purely cosmetic — it does not track real
+// progress, and it stops the moment generation finishes.
+const GEN_STAGES = [
+  'Reading the business details…',
+  'Choosing colours and type…',
+  'Writing the copy…',
+  'Laying out the sections…',
+  'Adding the contact form…',
+  'Wiring up the interactions…',
+  'Polishing…',
+];
+function startGenStages(el) {
+  if (!el) return () => {};
+  let i = 0;
+  el.textContent = GEN_STAGES[0];
+  if (REDUCED_MOTION) return () => {};
+  const timer = setInterval(() => {
+    i = (i + 1) % GEN_STAGES.length;
+    el.classList.add('is-fading');
+    setTimeout(() => {
+      el.textContent = GEN_STAGES[i];
+      el.classList.remove('is-fading');
+    }, 250);
+  }, 2600);
+  return () => clearInterval(timer);
+}
+
 // Shape-of-the-content placeholders while a list loads.
 function showSkeleton(container, { rows = 3, grid = false } = {}) {
   if (!container) return;
@@ -267,9 +321,16 @@ function extractSiteId(html) {
 
 const panels = ['build', 'multi', 'sites', 'leads', 'history', 'prospects', 'clients', 'revenue', 'invoice', 'traffic', 'money', 'emails'];
 
+let lastTabIndex = 0;
 function switchTab(name) {
+  const nextIndex = panels.indexOf(name);
+  const dir = nextIndex > lastTabIndex ? 'from-right' : nextIndex < lastTabIndex ? 'from-left' : '';
+  lastTabIndex = nextIndex < 0 ? lastTabIndex : nextIndex;
   for (const p of panels) {
-    $(`#panel-${p}`).classList.toggle('is-active', p === name);
+    const el = $(`#panel-${p}`);
+    el.classList.remove('from-right', 'from-left');
+    el.classList.toggle('is-active', p === name);
+    if (p === name && dir) el.classList.add(dir);
   }
   document.querySelectorAll('.tab-btn').forEach((b) => {
     b.classList.toggle('is-active', b.dataset.tab === name);
@@ -434,6 +495,7 @@ async function generateSingle(prompt, placeId = null) {
   $('#build-link-output').hidden = true;
   $('#build-loading').hidden = false;
   $('#build-generate').disabled = true;
+  const stopStages = startGenStages($('#build-status'));
 
   const notifyEmail = ($('#build-notify-email')?.value || '').trim();
   const siteId = newSiteId();
@@ -454,6 +516,7 @@ async function generateSingle(prompt, placeId = null) {
     errEl.textContent = err.message;
     errEl.hidden = false;
   } finally {
+    stopStages();
     $('#build-loading').hidden = true;
     $('#build-generate').disabled = false;
   }
@@ -853,7 +916,10 @@ function buildLeadPrompt(lead, niche) {
   return bits.join(' ');
 }
 
-function leadCardHtml(lead, niche, status = 'undecided') {
+// `compact` renders a scannable summary card for the results grid — tapping it
+// opens the same card in full, with the prompt and the Generate button. Keeping
+// the whole prompt on every card made the grid enormous and hard to skim.
+function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {}) {
   const prompt = buildLeadPrompt(lead, niche);
   const rating = lead.rating
     ? `<div class="rating">★ ${escapeHtml(lead.rating)} · ${escapeHtml(lead.reviewCount)} reviews</div>`
@@ -883,13 +949,15 @@ function leadCardHtml(lead, niche, status = 'undecided') {
       ${lead.phone ? `<div>${escapeHtml(lead.phone)}</div>` : ''}
       ${rating}
     </div>
-    <div class="lead-prompt">
+    ${compact
+      ? `<div class="lead-open-hint"><span>Tap for the full prompt</span><span class="chev">›</span></div>`
+      : `<div class="lead-prompt">
       <h4>Auto-generated prompt</h4>
       <p>${escapeHtml(prompt)}</p>
     </div>
     <div class="lead-generate">
       <button class="btn btn-primary" data-act="generate">Generate site</button>
-    </div>
+    </div>`}
     ${decide}`;
 }
 
@@ -940,13 +1008,45 @@ function wireLeadCard(cardEl, lead, niche, onDecided) {
   }
 }
 
+// Full view of a lead from the results grid: the whole auto-generated prompt
+// plus Generate and the Yes/No decision. Decisions taken here are mirrored back
+// onto the card behind the modal so the two never disagree.
+function openLeadDetail(lead, niche, sourceCard) {
+  const holder = $('#detail-card');
+  const render = (status) => {
+    holder.innerHTML = `<article class="lead-card">${leadCardHtml(lead, niche, status)}</article>`;
+    wireLeadCard(holder.firstElementChild, lead, niche, (newStatus) => {
+      $('#detail-modal').hidden = true;
+      if ((newStatus === 'client' || newStatus === 'no') && sourceCard) {
+        leadState.selected.delete(lead.placeId);
+        updateBatchBar();
+        sourceCard.classList.add('is-leaving');
+        setTimeout(() => {
+          sourceCard.remove();
+          if (!$('#lead-results').children.length) $('#lead-empty').hidden = false;
+        }, 350);
+      }
+    });
+  };
+  render('undecided');
+  $('#detail-modal').hidden = false;
+}
+
 function renderLeadResults(leads, niche) {
   const grid = $('#lead-results');
   grid.innerHTML = '';
   for (const lead of leads) {
     const card = document.createElement('article');
-    card.className = 'lead-card';
-    card.innerHTML = leadCardHtml(lead, niche, 'undecided');
+    card.className = 'lead-card is-compact';
+    card.innerHTML = leadCardHtml(lead, niche, 'undecided', { compact: true });
+
+    // Tapping the card body opens the full view. The checkbox and the Yes/No
+    // buttons keep working in place, so triage doesn't need a detour.
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.lead-select, .lead-decide, button, input, label')) return;
+      openLeadDetail(lead, niche, card);
+    });
+
     wireLeadCard(card, lead, niche, (newStatus) => {
       if (newStatus === 'client' || newStatus === 'no') {
         // Decided → drops out of the active results.

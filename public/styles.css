@@ -1301,3 +1301,152 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
   .traffic-row:hover, .history-row:hover { transform: none; }
   .confetti-piece { display: none; }
 }
+
+/* =====================================================================
+   Motion layer 2 — the parts you actually notice
+   ===================================================================== */
+
+/* Compact lead cards: clearly tappable, and they say so. */
+.lead-card.is-compact { cursor: pointer; }
+.lead-open-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  padding-bottom: 14px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--ink-3);
+  font-size: 0.84rem;
+}
+.lead-open-hint .chev {
+  font-size: 1.3rem;
+  line-height: 1;
+  transition: transform 0.18s ease;
+}
+.lead-card.is-compact:hover .lead-open-hint { color: var(--accent); }
+.lead-card.is-compact:hover .lead-open-hint .chev { transform: translateX(4px); }
+.lead-card.is-compact:hover { border-color: var(--accent); }
+
+/* Click ripple. Attached by JS to any .btn / .tab-btn so a press has weight. */
+.btn, .tab-btn, .decide-btn { position: relative; overflow: hidden; }
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  background: currentColor;
+  opacity: 0.32;
+  pointer-events: none;
+  animation: ripple-out 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes ripple-out { to { transform: scale(2.6); opacity: 0; } }
+
+/* Primary actions glow on hover so the main path is obvious. */
+.btn-primary {
+  box-shadow: 0 0 0 0 rgba(232, 133, 60, 0);
+  transition: transform 0.12s ease, background-color 0.15s ease,
+              border-color 0.15s ease, box-shadow 0.28s ease;
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 22px -4px rgba(232, 133, 60, 0.55);
+  transform: translateY(-1px);
+}
+
+/* The brand mark breathes. */
+.brand-mark {
+  display: inline-block;
+  animation: ember 3.4s ease-in-out infinite;
+  text-shadow: 0 0 12px rgba(232, 133, 60, 0.45);
+}
+@keyframes ember {
+  0%, 100% { opacity: 1;    transform: scale(1);    text-shadow: 0 0 12px rgba(232,133,60,0.45); }
+  50%      { opacity: 0.86; transform: scale(1.07); text-shadow: 0 0 22px rgba(232,133,60,0.75); }
+}
+
+/* Generating: a moving sheen bar, so waiting looks like progress rather than
+   a frozen screen. The stage caption underneath is set from JS. */
+.gen-progress {
+  max-width: 420px;
+  margin: 0 auto 14px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+  position: relative;
+}
+.gen-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 42%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: gen-sweep 1.5s ease-in-out infinite;
+}
+@keyframes gen-sweep {
+  from { transform: translateX(-110%); }
+  to   { transform: translateX(345%); }
+}
+.gen-stage {
+  color: var(--ink-2);
+  min-height: 1.4em;
+  transition: opacity 0.25s ease;
+}
+.gen-stage.is-fading { opacity: 0; }
+
+/* Cards arrive with a bit more presence than a plain fade. */
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  60%  { opacity: 1; }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Modals get a blurred backdrop and a spring. */
+.modal-backdrop:not([hidden]) { backdrop-filter: blur(3px); }
+@keyframes modal-in {
+  0%   { opacity: 0; transform: translateY(18px) scale(0.94); }
+  70%  { opacity: 1; transform: translateY(-3px) scale(1.008); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* A finished action flashes green once. */
+.flash-ok { animation: flash-ok 0.75s ease; }
+@keyframes flash-ok {
+  0%   { box-shadow: 0 0 0 0 rgba(88, 201, 138, 0.55); }
+  100% { box-shadow: 0 0 0 16px rgba(88, 201, 138, 0); }
+}
+
+/* Tabs remember which way you moved and slide accordingly. */
+.panel.is-active.from-right { animation: panel-right 0.3s cubic-bezier(0.22,1,0.36,1) both; }
+.panel.is-active.from-left  { animation: panel-left  0.3s cubic-bezier(0.22,1,0.36,1) both; }
+@keyframes panel-right {
+  from { opacity: 0; transform: translateX(26px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes panel-left {
+  from { opacity: 0; transform: translateX(-26px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* The hero carries a slow ember wash behind it. */
+.hero { position: relative; }
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: -40px -10% 0;
+  z-index: -1;
+  background: radial-gradient(60% 70% at 50% 0%, rgba(232, 133, 60, 0.16), transparent 70%);
+  animation: hero-breathe 7s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes hero-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark, .hero::before, .gen-progress::after { animation: none; }
+  .ripple { display: none; }
+  .btn-primary:hover:not(:disabled) { transform: none; }
+  .lead-card.is-compact:hover .lead-open-hint .chev { transform: none; }
+}
