@@ -54,6 +54,7 @@ const PAYMENT_METHODS = [
   { key: 'other', label: 'Other / not sure', pct: 0, flat: 0 },
 ];
 const MONEY_METHOD_KEY = 'forge-money-method';
+const FIRST_CLIENT_KEY = 'forge-first-client';
 
 function methodByKey(key) {
   return PAYMENT_METHODS.find((m) => m.key === key) || null;
@@ -135,6 +136,92 @@ function toast(message, isError = false) {
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
+}
+
+// ---------------------------------------------------------------- motion
+// Small presentation helpers. Every one of them is a no-op when the viewer
+// has asked for reduced motion, and none of them change what anything does.
+
+const REDUCED_MOTION = (() => {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  catch { return false; }
+})();
+
+// Deal a freshly rendered list in with a slight stagger.
+function staggerIn(container) {
+  if (!container || REDUCED_MOTION) return;
+  for (const el of container.children) el.classList.add('stagger-in');
+}
+
+// Count a number up to its value instead of snapping to it. Formats through
+// whatever function the caller uses elsewhere, so currency stays currency.
+function countUp(el, to, format = (n) => String(Math.round(n))) {
+  if (!el) return;
+  const target = Number(to) || 0;
+  if (REDUCED_MOTION) { el.textContent = format(target); return; }
+
+  const from = 0;
+  const duration = 550;
+  const start = performance.now();
+  // Cancel any count still running on this element.
+  if (el._countRaf) cancelAnimationFrame(el._countRaf);
+
+  const tick = (now) => {
+    const t = Math.min(1, (now - start) / duration);
+    // ease-out cubic: quick then settling
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = format(from + (target - from) * eased);
+    if (t < 1) el._countRaf = requestAnimationFrame(tick);
+    else { el._countRaf = null; el.textContent = format(target); }
+  };
+  el._countRaf = requestAnimationFrame(tick);
+}
+
+// Fade a preview frame out and back in around a content swap, so a regenerated
+// site doesn't flash white.
+function swapFrame(frame, html) {
+  if (!frame) return;
+  if (REDUCED_MOTION) { frame.srcdoc = html; return; }
+  frame.classList.add('is-swapping');
+  frame.srcdoc = html;
+  const done = () => frame.classList.remove('is-swapping');
+  frame.addEventListener('load', done, { once: true });
+  setTimeout(done, 1200); // never leave it dimmed if load doesn't fire
+}
+
+// Shape-of-the-content placeholders while a list loads.
+function showSkeleton(container, { rows = 3, grid = false } = {}) {
+  if (!container) return;
+  container.className = container.className
+    .replace(/\bskeleton-list\b|\bskeleton-grid\b/g, '').trim();
+  container.innerHTML = Array.from({ length: rows }, () => `
+    <div class="skeleton">
+      <div class="sk-line w-40"></div>
+      <div class="sk-line w-80"></div>
+      <div class="sk-line w-60"></div>
+    </div>`).join('');
+  container.classList.add(grid ? 'skeleton-grid' : 'skeleton-list');
+}
+function clearSkeleton(container) {
+  if (!container) return;
+  container.classList.remove('skeleton-list', 'skeleton-grid');
+}
+
+// A brief burst for a genuinely good moment. Removes itself.
+function celebrate() {
+  if (REDUCED_MOTION) return;
+  const colors = ['#e8853c', '#58c98a', '#7aa7e8', '#f2c14e', '#f29d5c'];
+  for (let i = 0; i < 70; i++) {
+    const bit = document.createElement('i');
+    bit.className = 'confetti-piece';
+    bit.style.left = Math.random() * 100 + 'vw';
+    bit.style.background = colors[i % colors.length];
+    bit.style.animationDuration = (2.2 + Math.random() * 1.6) + 's';
+    bit.style.animationDelay = (Math.random() * 0.5) + 's';
+    bit.style.borderRadius = Math.random() < 0.4 ? '50%' : '2px';
+    document.body.appendChild(bit);
+    bit.addEventListener('animationend', () => bit.remove(), { once: true });
+  }
 }
 
 async function copyText(text) {
@@ -269,6 +356,7 @@ async function createPreview(payload, outputEl) {
 // thumbnails with open-in-builder / copy / delete.
 async function loadSites() {
   const grid = $('#sites-grid');
+  showSkeleton(grid, { rows: 3, grid: true });
   try {
     const { previews } = await api('/api/previews');
     $('#sites-empty').hidden = previews.length > 0;
@@ -286,6 +374,8 @@ async function loadSites() {
           </div>
         </div>
       </div>`).join('');
+    clearSkeleton(grid);
+    staggerIn(grid);
     grid.querySelectorAll('.site-card').forEach((card) => {
       const { id, kind, url } = card.dataset;
       const full = location.origin + url;
@@ -357,7 +447,7 @@ async function generateSingle(prompt, placeId = null) {
     buildState.placeId = placeId;
     buildState.notifyEmail = notifyEmail;
     buildState.siteId = siteId;
-    $('#build-frame').srcdoc = res.html;
+    swapFrame($('#build-frame'), res.html);
     $('#build-result').hidden = false;
     toast('Site generated');
   } catch (err) {
@@ -520,7 +610,7 @@ window.addEventListener('message', (e) => {
 
 function showMultiPage(filename) {
   multiState.current = filename;
-  $('#multi-frame').srcdoc = withNavShim(multiState.pages[filename]);
+  swapFrame($('#multi-frame'), withNavShim(multiState.pages[filename]));
   $('#multi-tabs').querySelectorAll('button').forEach((b) => {
     b.classList.toggle('is-active', b.dataset.file === filename);
   });
@@ -705,8 +795,14 @@ function renderLeadUsage(usage) {
   const remaining = Number(usage.monthRemaining) || 0;
   const target = Number(usage.dayTarget) || 30;
 
+  const changed = $('#lu-today').textContent !== String(today);
   $('#lu-today').textContent = today;
   $('#lu-month-remaining').textContent = remaining.toLocaleString();
+  if (changed && !REDUCED_MOTION) {
+    box.classList.remove('just-changed');
+    void box.offsetWidth;            // restart the animation
+    box.classList.add('just-changed');
+  }
   // Warn once the day's pace or the month's allowance starts running out.
   box.classList.toggle('is-warn', today >= target || remaining <= 100);
   box.hidden = false;
@@ -873,6 +969,7 @@ function renderLeadResults(leads, niche) {
     }
     grid.appendChild(card);
   }
+  staggerIn(grid);
   updateBatchBar();
 }
 
@@ -1062,6 +1159,7 @@ $('#batch-modal').addEventListener('click', (e) => {
 
 async function loadHistory() {
   const list = $('#history-list');
+  showSkeleton(list, { rows: 4 });
   try {
     const { entries } = await api('/api/history');
     $('#history-empty').hidden = entries.length > 0;
@@ -1072,6 +1170,8 @@ async function loadHistory() {
         <span class="h-date">${escapeHtml(formatDate(e.firstViewedAt))}</span>
         <span class="badge badge-${e.status === 'client' ? 'client' : e.status}">${e.status === 'client' ? 'Yes — client' : e.status === 'no' ? 'No' : 'Undecided'}</span>
       </button>`).join('');
+    clearSkeleton(list);
+    staggerIn(list);
     list.querySelectorAll('.history-row').forEach((row) => {
       row.addEventListener('click', () => openHistoryDetail(entries[Number(row.dataset.i)]));
     });
@@ -1385,7 +1485,14 @@ $('#client-form').addEventListener('submit', async (e) => {
       await api(`/api/clients/${id}`, { method: 'PUT', body: payload });
       toast('Client updated');
     } else {
+      const isFirstEver = clientState.clients.length === 0;
       await api('/api/clients', { method: 'POST', body: { ...payload, placeId: placeId || undefined } });
+      // First client is a genuine milestone — mark it, but only ever once.
+      if (isFirstEver && !localStorage.getItem(FIRST_CLIENT_KEY)) {
+        try { localStorage.setItem(FIRST_CLIENT_KEY, '1'); } catch { /* ignore */ }
+        celebrate();
+        setTimeout(() => toast('🎉 First client. That is the hard one done.'), 900);
+      }
       toast(amountPaid > 0
         ? `Client added — ${money(amountPaid)} logged to Money`
         : (placeId ? 'Client added — this lead won\'t show up in searches anymore' : 'Client added'));
@@ -1581,6 +1688,7 @@ function renderClients() {
     if (paidBtn) paidBtn.addEventListener('click', () => markPaid(c, owedMonths[0]));
     list.appendChild(card);
   }
+  staggerIn(list);
 }
 
 async function loadClients() {
@@ -1608,9 +1716,9 @@ let revenueWindow = 'month';
 async function loadRevenue() {
   try {
     const res = await api(`/api/revenue?window=${encodeURIComponent(revenueWindow)}`);
-    $('#revenue-value').textContent = money(res.total);
-    $('#revenue-upfront').textContent = money(res.upfront);
-    $('#revenue-monthly').textContent = money(res.monthly);
+    countUp($('#revenue-value'), res.total, money);
+    countUp($('#revenue-upfront'), res.upfront, money);
+    countUp($('#revenue-monthly'), res.monthly, money);
 
     // Only shown once a fee has actually been charged, so a cash-only stretch
     // isn't cluttered with two extra zero rows.
@@ -1732,7 +1840,7 @@ function renderMoney() {
   const monthNet = monthGross - monthFees;
 
   $('#money-month-label').textContent = formatMonth(ym);
-  $('#money-month-total').textContent = money(monthGross);
+  countUp($('#money-month-total'), monthGross, money);
 
   // Build the calendar grid.
   const firstDow = new Date(y, m - 1, 1).getDay();
@@ -2012,7 +2120,7 @@ async function runBuildRefine(instruction, btn, busyLabel) {
     // existing form wiring from the previous version.
     const newHtml = buildState.notifyEmail ? res.html : preserveForms(buildState.html, res.html);
     buildState.html = newHtml;
-    $('#build-frame').srcdoc = newHtml;
+    swapFrame($('#build-frame'), newHtml);
     $('#build-link-output').hidden = true; // any earlier link now points at the old version
     toast('Change applied — save a new link to share this version');
     return true;

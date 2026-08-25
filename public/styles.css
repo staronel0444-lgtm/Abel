@@ -1143,3 +1143,161 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
   .email-types { grid-template-columns: 1fr; }
   .lead-batch-bar .btn { margin-left: 0; width: 100%; }
 }
+
+/* =====================================================================
+   Motion layer
+   ---------------------------------------------------------------------
+   Everything below is presentation only — it never changes what a
+   control does, just how it feels. All of it collapses to nothing under
+   prefers-reduced-motion (see the very bottom of this file), so the app
+   stays fully usable for anyone who doesn't want movement.
+   ===================================================================== */
+
+/* Tabs cross-fade and settle instead of snapping. */
+.panel.is-active {
+  animation: panel-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Buttons physically depress. */
+.btn, .tab-btn, .decide-btn, .style-card, .email-type-btn, .email-client-row {
+  transition: transform 0.12s ease, background-color 0.15s ease,
+              border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.btn:active:not(:disabled),
+.decide-btn:active,
+.style-card:active,
+.email-type-btn:active,
+.email-client-row:active { transform: translateY(1px) scale(0.995); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* The active tab's underline slides rather than jumping. */
+.tab-btn { position: relative; }
+.tab-btn::after {
+  content: "";
+  position: absolute;
+  left: 12px; right: 12px; bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tab-btn.is-active::after { transform: scaleX(1); }
+
+/* Cards lift a little when you point at them. */
+.lead-card, .site-card, .client-card, .prospect-card, .history-row, .traffic-row {
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.lead-card:hover, .site-card:hover, .prospect-card:hover, .traffic-row:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.history-row:hover { transform: translateX(3px); }
+
+/* Lists deal themselves in, slightly staggered, instead of appearing at once.
+   The delay is capped so a long list never feels slow to arrive. */
+.stagger-in { animation: card-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+.stagger-in:nth-child(1)  { animation-delay: 0.00s; }
+.stagger-in:nth-child(2)  { animation-delay: 0.04s; }
+.stagger-in:nth-child(3)  { animation-delay: 0.08s; }
+.stagger-in:nth-child(4)  { animation-delay: 0.12s; }
+.stagger-in:nth-child(5)  { animation-delay: 0.16s; }
+.stagger-in:nth-child(6)  { animation-delay: 0.20s; }
+.stagger-in:nth-child(7)  { animation-delay: 0.24s; }
+.stagger-in:nth-child(8)  { animation-delay: 0.28s; }
+.stagger-in:nth-child(n+9) { animation-delay: 0.32s; }
+
+/* Modals fade the backdrop and scale the panel in. */
+.modal-backdrop:not([hidden]) { animation: fade-in 0.18s ease both; }
+.modal-backdrop:not([hidden]) > .modal { animation: modal-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Toasts slide up from the edge. */
+.toast:not([hidden]) { animation: toast-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* Skeleton placeholders, so a loading list has shape instead of blankness. */
+.skeleton-list { display: flex; flex-direction: column; gap: 12px; }
+.skeleton {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  overflow: hidden;
+}
+.skeleton .sk-line {
+  height: 11px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  animation: sk-shimmer 1.3s ease-in-out infinite;
+  margin-bottom: 9px;
+}
+.skeleton .sk-line:last-child { margin-bottom: 0; }
+.skeleton .sk-line.w-40 { width: 40%; }
+.skeleton .sk-line.w-60 { width: 60%; }
+.skeleton .sk-line.w-80 { width: 80%; }
+@keyframes sk-shimmer {
+  from { background-position: 100% 50%; }
+  to   { background-position: 0 50%; }
+}
+.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+
+/* Money split bar grows into place. */
+.stackbar span { transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* The usage badge pulses once when the number changes. */
+.lead-usage.just-changed { animation: badge-bump 0.4s ease; }
+@keyframes badge-bump {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* A generated site fades in rather than flashing. */
+.site-frame { transition: opacity 0.25s ease; }
+.site-frame.is-swapping { opacity: 0.35; }
+
+/* First-client celebration. Purely decorative, cleaned up after itself. */
+.confetti-piece {
+  position: fixed;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  z-index: 200;
+  pointer-events: none;
+  animation: confetti-fall linear forwards;
+}
+@keyframes confetti-fall {
+  from { transform: translateY(0) rotate(0deg); opacity: 1; }
+  to   { transform: translateY(105vh) rotate(720deg); opacity: 0.9; }
+}
+
+/* One switch turns all of it off. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .lead-card:hover, .site-card:hover, .prospect-card:hover,
+  .traffic-row:hover, .history-row:hover { transform: none; }
+  .confetti-piece { display: none; }
+}
