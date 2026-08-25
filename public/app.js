@@ -188,6 +188,7 @@ function switchTab(name) {
     b.classList.toggle('is-active', b.dataset.tab === name);
   });
   if (name === 'sites') loadSites();
+  if (name === 'leads') loadLeadUsage();
   if (name === 'history') loadHistory();
   if (name === 'prospects') loadProspects();
   if (name === 'clients') loadClients();
@@ -694,6 +695,31 @@ $('#multi-set-email')?.addEventListener('click', async () => {
 
 const leadState = { niche: '', leads: [], selected: new Set() };
 
+// Google gives 1,000 free Places searches a month and Forge uses exactly one
+// per search, so this count is the free-tier count. Shown on every search so
+// the number is never a surprise.
+function renderLeadUsage(usage) {
+  const box = $('#lead-usage');
+  if (!box || !usage) return;
+  const today = Number(usage.today) || 0;
+  const remaining = Number(usage.monthRemaining) || 0;
+  const target = Number(usage.dayTarget) || 30;
+
+  $('#lu-today').textContent = today;
+  $('#lu-month-remaining').textContent = remaining.toLocaleString();
+  // Warn once the day's pace or the month's allowance starts running out.
+  box.classList.toggle('is-warn', today >= target || remaining <= 100);
+  box.hidden = false;
+}
+
+async function loadLeadUsage() {
+  try {
+    renderLeadUsage(await api(`/api/leads/usage?day=${encodeURIComponent(localToday())}`));
+  } catch {
+    // A missing counter shouldn't get in the way of finding leads.
+  }
+}
+
 function resolveNiche() {
   const sel = $('#lead-niche').value;
   if (sel !== '__other') return sel;
@@ -873,10 +899,16 @@ $('#lead-form').addEventListener('submit', async (e) => {
   try {
     const res = await api('/api/leads/search', {
       method: 'POST',
-      body: { zip, niche, minRating: minRating || undefined, minReviews: minReviews || undefined },
+      body: {
+        zip, niche,
+        minRating: minRating || undefined,
+        minReviews: minReviews || undefined,
+        day: localToday(), // so "today" resets at your midnight, not UTC's
+      },
     });
     leadState.niche = niche;
     leadState.leads = res.leads;
+    renderLeadUsage(res.usage);
 
     const s = res.stats;
     const filterNote = s.belowThreshold ? ` · ${s.belowThreshold} below your rating/review filter` : '';

@@ -7,6 +7,7 @@
 
 import { handle, json, readJson, requireString } from '../../../lib/http.js';
 import { searchPlaces } from '../../../lib/places.js';
+import { cleanDay, recordSearch, readUsage } from '../../../lib/usage.js';
 
 // Optional lead-quality filters: only reads a number out of a request field
 // if it's a finite value within a sane range, otherwise treats it as unset.
@@ -27,8 +28,19 @@ export const onRequestPost = handle(async ({ request, env }) => {
 
   const places = await searchPlaces(env, { zip, niche });
 
+  // The Google call succeeded, so it counted against the free tier whether or
+  // not it found anything. Counting must never break the search itself.
+  const day = cleanDay(body.day);
+  let usage = null;
+  try {
+    await recordSearch(env.DB, day);
+    usage = await readUsage(env.DB, day);
+  } catch {
+    // Usage tracking is a convenience, not part of the result.
+  }
+
   if (places.length === 0) {
-    return json({ leads: [], stats: { total: 0, withWebsite: 0, dismissed: 0, belowThreshold: 0 } });
+    return json({ leads: [], stats: { total: 0, withWebsite: 0, dismissed: 0, belowThreshold: 0 }, usage });
   }
 
   // Log every result to view history. Keep the original first_viewed_at on
@@ -69,5 +81,6 @@ export const onRequestPost = handle(async ({ request, env }) => {
   return json({
     leads,
     stats: { total: places.length, withWebsite, dismissed: dismissedCount, belowThreshold },
+    usage,
   });
 });

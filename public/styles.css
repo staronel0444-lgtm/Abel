@@ -301,6 +301,25 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 .page-progress .chip.fail { color: var(--bad); border-color: rgba(229, 105, 94, 0.5); }
 
 /* ---------- Lead Finder ---------- */
+/* Running count against Google's free 1,000-a-month Places allowance. */
+.lead-usage {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  margin-bottom: 14px;
+  font-size: 0.84rem;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.lead-usage b { color: var(--ink); font-weight: 700; }
+.lead-usage .lu-sep { color: var(--ink-3); }
+.lead-usage.is-warn { border-color: var(--accent); color: var(--accent); }
+.lead-usage.is-warn b { color: var(--accent); }
+
 .lead-search {
   display: flex;
   gap: 10px;

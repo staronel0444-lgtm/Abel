@@ -110,6 +110,15 @@ CREATE TABLE IF NOT EXISTS prospects (
   updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 
+-- One row per calendar day, counting successful Google Places searches. Places
+-- gives 1,000 free calls a month and Forge makes exactly one call per search,
+-- so this doubles as a running count against the free tier. Keyed by the
+-- user's LOCAL day (sent by the browser) so "today" means what they expect.
+CREATE TABLE IF NOT EXISTS places_usage (
+  day      TEXT    PRIMARY KEY,               -- YYYY-MM-DD
+  searches INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE INDEX IF NOT EXISTS idx_view_history_first_viewed ON view_history (first_viewed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON client_payments (paid_at);
 CREATE INDEX IF NOT EXISTS idx_site_views_views ON site_views (views DESC);
