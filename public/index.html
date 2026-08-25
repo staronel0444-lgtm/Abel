@@ -165,13 +165,88 @@
         <form class="lead-search" id="lead-form">
           <input type="text" id="lead-zip" placeholder="ZIP code or address" required maxlength="120" autocomplete="postal-code">
           <select id="lead-niche">
-            <option value="electrician">Electrician</option>
-            <option value="plumber">Plumber</option>
-            <option value="auto body shop">Auto body shop</option>
-            <option value="landscaper">Landscaper</option>
-            <option value="HVAC contractor">HVAC</option>
-            <option value="roofer">Roofer</option>
-            <option value="general contractor">General contractor</option>
+            <optgroup label="Auto — best starting point">
+              <option value="auto body shop">Auto body shop</option>
+              <option value="auto repair shop">Auto repair shop</option>
+              <option value="auto detailing">Auto detailing</option>
+              <option value="tire shop">Tire shop</option>
+              <option value="towing service">Towing service</option>
+              <option value="auto glass repair">Auto glass repair</option>
+              <option value="car wash">Car wash</option>
+            </optgroup>
+            <optgroup label="Home &amp; trades">
+              <option value="electrician">Electrician</option>
+              <option value="plumber">Plumber</option>
+              <option value="HVAC contractor">HVAC</option>
+              <option value="roofer">Roofer</option>
+              <option value="general contractor">General contractor</option>
+              <option value="landscaper">Landscaper</option>
+              <option value="lawn care service">Lawn care</option>
+              <option value="tree service">Tree service</option>
+              <option value="painter">Painter</option>
+              <option value="flooring contractor">Flooring</option>
+              <option value="masonry contractor">Masonry / concrete</option>
+              <option value="fence installer">Fence installer</option>
+              <option value="gutter installation">Gutters</option>
+              <option value="garage door repair">Garage doors</option>
+              <option value="handyman">Handyman</option>
+              <option value="pest control">Pest control</option>
+              <option value="locksmith">Locksmith</option>
+              <option value="junk removal">Junk removal</option>
+              <option value="moving company">Movers</option>
+              <option value="pressure washing">Pressure washing</option>
+            </optgroup>
+            <optgroup label="Cleaning">
+              <option value="cleaning service">House cleaning</option>
+              <option value="commercial cleaning service">Commercial cleaning</option>
+              <option value="carpet cleaning">Carpet cleaning</option>
+            </optgroup>
+            <optgroup label="Beauty &amp; personal care">
+              <option value="barber shop">Barbershop</option>
+              <option value="hair salon">Hair salon</option>
+              <option value="nail salon">Nail salon</option>
+              <option value="tattoo shop">Tattoo shop</option>
+              <option value="massage therapist">Massage therapy</option>
+              <option value="med spa">Med spa</option>
+            </optgroup>
+            <optgroup label="Food &amp; drink">
+              <option value="restaurant">Restaurant</option>
+              <option value="bakery">Bakery</option>
+              <option value="catering service">Catering</option>
+              <option value="food truck">Food truck</option>
+              <option value="coffee shop">Coffee shop</option>
+            </optgroup>
+            <optgroup label="Health &amp; fitness">
+              <option value="gym">Gym</option>
+              <option value="personal trainer">Personal trainer</option>
+              <option value="yoga studio">Yoga studio</option>
+              <option value="martial arts school">Martial arts school</option>
+              <option value="dance studio">Dance studio</option>
+            </optgroup>
+            <optgroup label="Pets">
+              <option value="dog groomer">Dog groomer</option>
+              <option value="dog trainer">Dog trainer</option>
+              <option value="pet boarding">Pet boarding</option>
+              <option value="veterinarian">Veterinarian</option>
+            </optgroup>
+            <optgroup label="Events &amp; creative">
+              <option value="photographer">Photographer</option>
+              <option value="wedding photographer">Wedding photographer</option>
+              <option value="DJ service">DJ</option>
+              <option value="florist">Florist</option>
+              <option value="event venue">Event venue</option>
+              <option value="party rental service">Party rentals</option>
+            </optgroup>
+            <optgroup label="Local services">
+              <option value="daycare">Daycare</option>
+              <option value="driving school">Driving school</option>
+              <option value="tutoring service">Tutoring</option>
+              <option value="tax preparer">Tax preparer / accountant</option>
+              <option value="insurance agent">Insurance agent</option>
+              <option value="real estate agent">Real estate agent</option>
+              <option value="law office">Law office</option>
+              <option value="storage facility">Storage facility</option>
+            </optgroup>
             <option value="__other">Other…</option>
           </select>
           <input type="text" id="lead-niche-other" placeholder="Custom niche" maxlength="80" hidden>

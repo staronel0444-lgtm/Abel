@@ -704,16 +704,29 @@ $('#lead-niche').addEventListener('change', () => {
   $('#lead-niche-other').hidden = $('#lead-niche').value !== '__other';
 });
 
+// "a electrician" and "a auto detailing" read as sloppy in a prompt the user
+// can see on the lead card. Vowel sounds take "an" — including acronyms like
+// HVAC, which is spoken "aitch-vack" even though H is a consonant.
+const AN_ACRONYM_INITIALS = new Set(['A', 'E', 'F', 'H', 'I', 'L', 'M', 'N', 'O', 'R', 'S', 'X']);
+function article(word) {
+  const w = String(word || '').trim();
+  if (!w) return 'a';
+  if (/^[aeiou]/i.test(w)) return 'an';
+  // Treat a leading run of capitals as an acronym read letter by letter.
+  if (/^[A-Z]{2,}/.test(w) && AN_ACRONYM_INITIALS.has(w[0])) return 'an';
+  return 'a';
+}
+
 // Auto-generated prompt in the exact format Sections 1/2 consume — built
 // from the structured lead fields instead of pasted text.
 function buildLeadPrompt(lead, niche) {
   const bits = [];
-  bits.push(`Create a professional single-page website for ${lead.name}, a ${niche} business located at ${lead.address || 'a local service area'}.`);
+  bits.push(`Create a professional single-page website for ${lead.name}, ${article(niche)} ${niche} business located at ${lead.address || 'a local service area'}.`);
   if (lead.phone) bits.push(`Their phone number is ${lead.phone} — feature it prominently in the header and a click-to-call button.`);
   if (lead.rating && lead.reviewCount) {
     bits.push(`They have a ${lead.rating}-star rating across ${lead.reviewCount} Google reviews — highlight this as social proof with a testimonials section.`);
   }
-  bits.push(`Include: a strong hero with a clear call to action, a services section typical for a ${niche}, a why-choose-us section (licensed, local, responsive), and a contact section with a quote-request form.`);
+  bits.push(`Include: a strong hero with a clear call to action, a services section typical for ${article(niche)} ${niche}, a why-choose-us section (licensed, local, responsive), and a contact section with a quote-request form.`);
   bits.push(`Tone: trustworthy local ${niche}. The goal of the page is to make the phone ring.`);
   return bits.join(' ');
 }
