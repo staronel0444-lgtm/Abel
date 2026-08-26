@@ -1130,6 +1130,56 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
 .batch-row.is-failed .br-status { color: var(--bad); }
 .batch-row .br-link { display: block; margin-top: 8px; font-size: 0.85rem; word-break: break-all; color: var(--accent); }
 .batch-row .br-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.batch-row .br-niche {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+/* ---- The basket (leads picked across several searches) ---- */
+.lead-basket-btn {
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+.lead-basket-btn:hover:not(:disabled),
+.lead-basket-btn:focus-visible:not(:disabled) {
+  border-color: var(--accent);
+  border-style: solid;
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.lead-basket-btn:disabled { opacity: 0.6; cursor: default; }
+
+.basket-list { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; max-height: 56vh; overflow-y: auto; }
+.basket-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.basket-row .bk-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.basket-row .bk-name { font-weight: 600; }
+.basket-row .bk-meta {
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.basket-row .bk-remove { margin-left: auto; flex-shrink: 0; }
 
 @media (max-width: 640px) {
   .golive-btn { display: none; }

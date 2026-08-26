@@ -336,7 +336,10 @@ function switchTab(name) {
     b.classList.toggle('is-active', b.dataset.tab === name);
   });
   if (name === 'sites') loadSites();
-  if (name === 'leads') loadLeadUsage();
+  if (name === 'leads') {
+    loadLeadUsage();
+    updateBatchBar();   // a basket restored from last session shows up right away
+  }
   if (name === 'history') loadHistory();
   if (name === 'prospects') loadProspects();
   if (name === 'clients') loadClients();
@@ -846,7 +849,71 @@ $('#multi-set-email')?.addEventListener('click', async () => {
 
 // ------------------------------------------------- Section 3: Lead Finder
 
-const leadState = { niche: '', leads: [], selected: new Set() };
+// `selected` is the basket: place ID -> { lead, niche }. It deliberately
+// outlives a search, so leads picked in one ZIP or niche are still there after
+// searching another. Every entry carries its own niche because a mixed basket
+// can't share one — the prompt for a plumber isn't the prompt for a bakery.
+const BASKET_KEY = 'forge.leadBasket';
+const leadState = { niche: '', leads: [], selected: new Map() };
+
+function saveBasket() {
+  try {
+    localStorage.setItem(BASKET_KEY, JSON.stringify(Array.from(leadState.selected.values())));
+  } catch {
+    // Storage blocked or full — the basket still works for this session.
+  }
+}
+
+// Survives an accidental refresh, so an afternoon's picks aren't one stray
+// reload away from being gone.
+function loadBasket() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BASKET_KEY) || '[]');
+    if (!Array.isArray(saved)) return;
+    for (const entry of saved) {
+      if (entry && entry.lead && entry.lead.placeId) {
+        leadState.selected.set(entry.lead.placeId, { lead: entry.lead, niche: entry.niche || '' });
+      }
+    }
+  } catch {
+    // A corrupt basket just starts empty rather than breaking the tab.
+  }
+}
+
+function basketAdd(lead, niche) {
+  leadState.selected.set(lead.placeId, { lead, niche });
+  saveBasket();
+  updateBatchBar();
+  syncSelectCheckboxes(lead.placeId, true);
+}
+
+function basketRemove(placeId) {
+  leadState.selected.delete(placeId);
+  saveBasket();
+  updateBatchBar();
+  syncSelectCheckboxes(placeId, false);
+}
+
+// Every rendered lead card carries a select box. This makes one of them live,
+// pre-ticked if the lead is already in the basket.
+function wireSelectCheckbox(container, lead, niche) {
+  const cb = container.querySelector('.lead-select-cb');
+  if (!cb) return;
+  cb.checked = leadState.selected.has(lead.placeId);
+  cb.addEventListener('change', () => {
+    if (cb.checked) basketAdd(lead, niche);
+    else basketRemove(lead.placeId);
+  });
+}
+
+// One lead can have a checkbox in the results grid and another in the detail
+// modal at the same time. Whichever one is clicked, both follow.
+function syncSelectCheckboxes(placeId, checked) {
+  document.querySelectorAll(`.lead-select-cb[data-place-id="${CSS.escape(placeId)}"]`)
+    .forEach((cb) => { cb.checked = checked; });
+}
+
+loadBasket();
 
 // Google gives 1,000 free Places searches a month and Forge uses exactly one
 // per search, so this count is the free-tier count. Shown on every search so
@@ -1015,11 +1082,11 @@ function openLeadDetail(lead, niche, sourceCard) {
   const holder = $('#detail-card');
   const render = (status) => {
     holder.innerHTML = `<article class="lead-card">${leadCardHtml(lead, niche, status)}</article>`;
+    wireSelectCheckbox(holder, lead, niche);
     wireLeadCard(holder.firstElementChild, lead, niche, (newStatus) => {
       $('#detail-modal').hidden = true;
       if ((newStatus === 'client' || newStatus === 'no') && sourceCard) {
-        leadState.selected.delete(lead.placeId);
-        updateBatchBar();
+        basketRemove(lead.placeId);
         sourceCard.classList.add('is-leaving');
         setTimeout(() => {
           sourceCard.remove();
@@ -1049,9 +1116,8 @@ function renderLeadResults(leads, niche) {
 
     wireLeadCard(card, lead, niche, (newStatus) => {
       if (newStatus === 'client' || newStatus === 'no') {
-        // Decided → drops out of the active results.
-        leadState.selected.delete(lead.placeId);
-        updateBatchBar();
+        // Decided → drops out of the active results and out of the basket.
+        basketRemove(lead.placeId);
         card.classList.add('is-leaving');
         setTimeout(() => {
           card.remove();
@@ -1059,14 +1125,8 @@ function renderLeadResults(leads, niche) {
         }, 350);
       }
     });
-    const cb = card.querySelector('.lead-select-cb');
-    if (cb) {
-      cb.addEventListener('change', () => {
-        if (cb.checked) leadState.selected.add(lead.placeId);
-        else leadState.selected.delete(lead.placeId);
-        updateBatchBar();
-      });
-    }
+    // Already in the basket from an earlier search? It renders pre-ticked.
+    wireSelectCheckbox(card, lead, niche);
     grid.appendChild(card);
   }
   staggerIn(grid);
@@ -1084,9 +1144,8 @@ $('#lead-form').addEventListener('submit', async (e) => {
   $('#lead-empty').hidden = true;
   $('#lead-stats').hidden = true;
   $('#lead-results').innerHTML = '';
-  leadState.selected = new Set();
   leadState.leads = [];
-  updateBatchBar();
+  updateBatchBar();   // note: the basket is left alone — picks carry over
 
   if (!zip) { errEl.textContent = 'Enter a ZIP code or address.'; errEl.hidden = false; return; }
   if (!niche) { errEl.textContent = 'Pick a niche (or type a custom one).'; errEl.hidden = false; return; }
@@ -1133,24 +1192,97 @@ $('#lead-form').addEventListener('submit', async (e) => {
 function updateBatchBar() {
   const bar = $('#lead-batch-bar');
   const total = leadState.leads.length;
-  if (!total) { bar.hidden = true; return; }
-  bar.hidden = false;
   const n = leadState.selected.size;
-  $('#lead-selected-count').textContent = `${n} selected`;
+  // The bar stays up with an empty results grid whenever the basket has
+  // something in it — otherwise picks made before a fruitless search would
+  // look like they'd vanished.
+  if (!total && !n) { bar.hidden = true; return; }
+  bar.hidden = false;
+
+  const countBtn = $('#lead-selected-count');
+  countBtn.textContent = `${n} selected`;
+  countBtn.disabled = n === 0;
   $('#lead-batch-generate').disabled = n === 0;
+
   const allCb = $('#lead-select-all-cb');
-  allCb.checked = n > 0 && n === total;
-  allCb.indeterminate = n > 0 && n < total;
+  // "Select all" only ever speaks for what's on screen right now.
+  const here = leadState.leads.filter((l) => leadState.selected.has(l.placeId)).length;
+  allCb.disabled = total === 0;
+  allCb.checked = total > 0 && here === total;
+  allCb.indeterminate = here > 0 && here < total;
 }
 
 $('#lead-select-all-cb').addEventListener('change', (e) => {
   const checked = e.target.checked;
   leadState.leads.forEach((l) => {
-    if (checked) leadState.selected.add(l.placeId);
+    if (checked) leadState.selected.set(l.placeId, { lead: l, niche: leadState.niche });
     else leadState.selected.delete(l.placeId);
   });
+  saveBasket();
   $('#lead-results').querySelectorAll('.lead-select-cb').forEach((cb) => { cb.checked = checked; });
   updateBatchBar();
+});
+
+// ---- The basket: everything picked so far, across every search ----
+
+function basketRowHtml(entry) {
+  const { lead, niche } = entry;
+  const meta = [niche, lead.address].filter(Boolean).join(' · ');
+  return `
+    <div class="basket-row" data-place-id="${escapeHtml(lead.placeId)}">
+      <div class="bk-text">
+        <span class="bk-name">${escapeHtml(lead.name)}</span>
+        ${meta ? `<span class="bk-meta">${escapeHtml(meta)}</span>` : ''}
+      </div>
+      <button type="button" class="btn btn-sm bk-remove" data-remove="${escapeHtml(lead.placeId)}" aria-label="Remove ${escapeHtml(lead.name)}">Remove</button>
+    </div>`;
+}
+
+function renderBasket() {
+  const list = $('#basket-list');
+  const entries = Array.from(leadState.selected.values());
+  const n = entries.length;
+  $('#basket-modal-sub').textContent = n
+    ? `${n} business${n === 1 ? '' : 'es'} · ${n} AI credit${n === 1 ? '' : 's'} to generate them all`
+    : 'Nothing picked yet. Tick a lead in the results to add it here.';
+  list.innerHTML = entries.map(basketRowHtml).join('');
+  $('#basket-generate').disabled = n === 0;
+  $('#basket-clear').disabled = n === 0;
+}
+
+function openBasket() {
+  renderBasket();
+  $('#basket-modal').hidden = false;
+}
+
+$('#lead-selected-count').addEventListener('click', openBasket);
+$('#basket-modal-close').addEventListener('click', () => { $('#basket-modal').hidden = true; });
+$('#basket-modal').addEventListener('click', (e) => {
+  if (e.target === $('#basket-modal')) $('#basket-modal').hidden = true;
+});
+
+$('#basket-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-remove]');
+  if (!btn) return;
+  const row = btn.closest('.basket-row');
+  basketRemove(btn.dataset.remove);
+  if (row) row.remove();
+  renderBasket();
+});
+
+$('#basket-clear').addEventListener('click', () => {
+  if (!leadState.selected.size) return;
+  if (!confirm('Take everything out of the basket?')) return;
+  leadState.selected.clear();
+  saveBasket();
+  $('#lead-results').querySelectorAll('.lead-select-cb').forEach((cb) => { cb.checked = false; });
+  updateBatchBar();
+  renderBasket();
+});
+
+$('#basket-generate').addEventListener('click', () => {
+  $('#basket-modal').hidden = true;
+  runBatchGenerate(Array.from(leadState.selected.values()));
 });
 
 // Reuses the "from" identity already saved by the Invoice/Emails tabs so the
@@ -1161,13 +1293,15 @@ function pitchTextFor(lead, url) {
   return `Hi, is this the owner of ${lead.name}? ${intro}I build websites for local businesses. I already made one for you — want to see it? ${url}`;
 }
 
-function batchRowHtml(lead) {
+function batchRowHtml(entry) {
+  const { lead, niche } = entry;
   return `
     <div class="batch-row" data-place-id="${escapeHtml(lead.placeId)}">
       <div class="br-top">
         <span class="br-name">${escapeHtml(lead.name)}</span>
         <span class="br-status">Waiting…</span>
       </div>
+      ${niche ? `<span class="br-niche">${escapeHtml(niche)}</span>` : ''}
     </div>`;
 }
 
@@ -1176,16 +1310,19 @@ let batchCancelled = false;
 // being spent, so it stays put until the run ends or Cancel is pressed.
 let batchRunning = false;
 
-async function runBatchGenerate(leads, niche) {
-  if (!leads.length) return;
-  const n = leads.length;
+// `entries` are basket entries — { lead, niche } — not bare leads. A basket
+// built across several searches holds several niches, so the prompt for each
+// site has to come from the niche that lead was found under.
+async function runBatchGenerate(entries) {
+  if (!entries.length) return;
+  const n = entries.length;
   if (!confirm(`Generate ${n} demo site${n === 1 ? '' : 's'}? This uses ${n} AI credit${n === 1 ? '' : 's'} — one per site.`)) return;
 
   batchCancelled = false;
   batchRunning = true;
   $('#batch-modal-title').textContent = 'Generating demos…';
   $('#batch-modal-sub').textContent = `0 of ${n} done`;
-  $('#batch-list').innerHTML = leads.map(batchRowHtml).join('');
+  $('#batch-list').innerHTML = entries.map(batchRowHtml).join('');
   const rows = Array.from($('#batch-list').querySelectorAll('.batch-row'));
   const cancelBtn = $('#batch-modal-cancel');
   cancelBtn.textContent = 'Cancel';
@@ -1194,9 +1331,9 @@ async function runBatchGenerate(leads, niche) {
 
   let done = 0;
   try {
-    for (let i = 0; i < leads.length; i++) {
+    for (let i = 0; i < entries.length; i++) {
       if (batchCancelled) break;
-      const lead = leads[i];
+      const { lead, niche } = entries[i];
       const row = rows[i];
       const statusEl = row.querySelector('.br-status');
       statusEl.textContent = 'Generating…';
@@ -1224,6 +1361,9 @@ async function runBatchGenerate(leads, niche) {
           </div>`);
         row.querySelector('[data-copy-link]').addEventListener('click', (e) => copyText(e.target.dataset.copyLink));
         row.querySelector('[data-copy-pitch]').addEventListener('click', (e) => copyText(e.target.dataset.copyPitch));
+        // Its demo exists now, so it leaves the basket. Anything that failed
+        // stays put, ready for another go.
+        basketRemove(lead.placeId);
       } catch (err) {
         row.classList.add('is-failed');
         statusEl.textContent = `Failed — ${err.message}`;
@@ -1244,8 +1384,7 @@ async function runBatchGenerate(leads, niche) {
 }
 
 $('#lead-batch-generate').addEventListener('click', () => {
-  const chosen = leadState.leads.filter((l) => leadState.selected.has(l.placeId));
-  runBatchGenerate(chosen, leadState.niche);
+  runBatchGenerate(Array.from(leadState.selected.values()));
 });
 
 // Tapping the backdrop closes the modal only once nothing is left running —
@@ -1290,6 +1429,7 @@ function openHistoryDetail(entry) {
   const holder = $('#detail-card');
   const render = (status) => {
     holder.innerHTML = `<article class="lead-card">${leadCardHtml(lead, entry.niche, status === 'yes' ? 'client' : status)}</article>`;
+    wireSelectCheckbox(holder, lead, entry.niche);
     wireLeadCard(holder.firstElementChild, lead, entry.niche, (newStatus) => {
       render(newStatus === 'client' ? 'client' : newStatus);
       loadHistory();

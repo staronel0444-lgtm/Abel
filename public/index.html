@@ -282,7 +282,7 @@
       <p class="muted stats-line" id="lead-stats" hidden></p>
       <div class="lead-batch-bar" id="lead-batch-bar" hidden>
         <label class="lead-select-all"><input type="checkbox" id="lead-select-all-cb"> Select all</label>
-        <span class="muted" id="lead-selected-count">0 selected</span>
+        <button type="button" class="lead-basket-btn" id="lead-selected-count" disabled>0 selected</button>
         <button class="btn btn-primary" type="button" id="lead-batch-generate" disabled>Generate demos for selected</button>
       </div>
       <div class="card-grid" id="lead-results"></div>
@@ -613,6 +613,20 @@
       <div class="batch-list" id="batch-list"></div>
       <div class="modal-actions">
         <button type="button" class="btn" id="batch-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- The basket: every lead picked so far, across every search -->
+  <div class="modal-backdrop" id="basket-modal" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="basket-modal-title">
+      <h2 id="basket-modal-title">Your picks</h2>
+      <p class="muted" id="basket-modal-sub">Nothing picked yet.</p>
+      <div class="basket-list" id="basket-list"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="basket-clear">Clear all</button>
+        <button type="button" class="btn" id="basket-modal-close">Close</button>
+        <button type="button" class="btn btn-primary" id="basket-generate">Generate demos</button>
       </div>
     </div>
   </div>
