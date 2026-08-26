@@ -80,6 +80,7 @@
           <button class="btn btn-primary" id="build-enhance">✨ Make it interactive</button>
           <button class="btn btn-primary" id="build-style">🎨 Change style</button>
           <button class="btn" id="build-preview-link">Get preview link</button>
+          <button class="btn" id="build-info">📋 Add their info</button>
           <button class="btn" id="build-photos">🖼️ Photos</button>
           <button class="btn" id="build-copy">Copy HTML</button>
           <button class="btn" id="build-download">Download HTML</button>
@@ -148,6 +149,7 @@
           <button class="btn btn-primary" id="multi-enhance">✨ Make it interactive</button>
           <button class="btn btn-primary" id="multi-style">🎨 Change style</button>
           <button class="btn" id="multi-preview-link">Get preview link</button>
+          <button class="btn" id="multi-info">📋 Add their info</button>
           <button class="btn" id="multi-photos">🖼️ Photos</button>
           <button class="btn" id="multi-download">Download page</button>
           <button class="btn" id="multi-download-all">Download all (.zip)</button>
@@ -554,6 +556,22 @@
           <button type="submit" class="btn btn-primary" id="client-form-submit">Save client</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Paste what the client told you about their business, straight into the site -->
+  <div class="modal-backdrop" id="clientinfo-modal" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="clientinfo-title">
+      <button class="modal-close" id="clientinfo-close" aria-label="Close">&times;</button>
+      <h2 id="clientinfo-title">Add their real info</h2>
+      <p class="muted" id="clientinfo-sub">Paste whatever the owner told you — hours, services, how long they've been open, anything. It goes into the site and replaces the guessed bits.</p>
+      <textarea id="clientinfo-text" class="autogrow" rows="8" maxlength="6000"
+        placeholder="Paste it here, messy is fine. For example:&#10;&#10;Open Mon-Fri 7am-6pm, Sat 8am-2pm, closed Sunday&#10;Been in business since 2011, family owned&#10;We do brakes, exhaust, suspension, state inspections&#10;Free estimates, most repairs same day&#10;Owner is Mike Farfan&#10;We serve Worcester, Shrewsbury and Auburn"></textarea>
+      <p class="inline-error" id="clientinfo-error" hidden></p>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="clientinfo-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="clientinfo-apply">Add it to the site</button>
+      </div>
     </div>
   </div>
 

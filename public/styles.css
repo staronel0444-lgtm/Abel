@@ -1450,3 +1450,21 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
   .btn-primary:hover:not(:disabled) { transform: none; }
   .lead-card.is-compact:hover .lead-open-hint .chev { transform: none; }
 }
+
+/* ---- "Add their info" paste box ---- */
+#clientinfo-text {
+  width: 100%;
+  margin: 14px 0 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font: inherit;
+  resize: vertical;
+  min-height: 170px;
+  max-height: 46vh;
+  line-height: 1.5;
+}
+#clientinfo-text:focus { outline: none; border-color: var(--accent); }
+#clientinfo-text::placeholder { color: var(--ink-3); }

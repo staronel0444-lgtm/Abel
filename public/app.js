@@ -2288,6 +2288,124 @@ $('#multi-enhance')?.addEventListener('click', () => {
   runMultiRefine(ENHANCE_INSTRUCTION, $('#multi-enhance'), 'Enhancing…');
 });
 
+// ---- "Add their info": paste what the owner told you, straight into the site ----
+// Pre-built demos are made from whatever Google knew, which is thin — a name, a
+// phone, an address. Once the owner actually talks to you, this folds their real
+// details in without you having to describe every change by hand.
+
+const clientInfoState = { target: 'build' };
+
+function clientInfoInstruction(raw) {
+  const info = String(raw).trim().slice(0, 6000);
+  return `The business has now given us their real details. Update this page to use them.
+
+Here is exactly what they said, verbatim:
+"""
+${info}
+"""
+
+How to apply it:
+- Use ONLY facts stated above. Do not invent, embellish, guess or infer anything that is not written there. If they did not mention it, do not add it.
+- Where the page currently shows placeholder, generic or guessed content that the text above corrects — services offered, opening hours, years in business, owner or staff names, service area, specialities, certifications, guarantees, pricing — replace it with what they actually said.
+- Work genuinely new information into the sections where it naturally belongs. Only add a brand-new section if something important has nowhere sensible to go.
+- Update the LocalBusiness JSON-LD block to match: openingHours, address, telephone, areaServed — but only for values actually given above.
+- Where their information contradicts what is currently on the page, their information wins.
+- Testimonials stay generic unless real reviews were included above. Never turn a fact into a fake quote.
+
+Do NOT change the visual design. Same colours, fonts, layout, section order, images, spacing and styling. This is a content update, not a redesign. Keep the contact form, phone links, map embed, footer and all head metadata working exactly as they are.
+
+Return the complete updated HTML document.`;
+}
+
+function openClientInfo(target) {
+  if (target === 'build' && !buildState.html) { toast('Generate a site first', true); return; }
+  if (target === 'multi' && !(multiState.current && multiState.pages[multiState.current])) {
+    toast('Generate or open a site first', true); return;
+  }
+  clientInfoState.target = target;
+  const pages = target === 'multi' ? Object.keys(multiState.pages).length : 1;
+  $('#clientinfo-sub').textContent = pages > 1
+    ? `Paste whatever the owner told you — hours, services, how long they've been open, anything. It updates all ${pages} pages, so it uses ${pages} credits.`
+    : "Paste whatever the owner told you — hours, services, how long they've been open, anything. It goes into the site and replaces the guessed bits. Uses 1 credit.";
+  $('#clientinfo-error').hidden = true;
+  $('#clientinfo-text').value = '';
+  $('#clientinfo-modal').hidden = false;
+  $('#clientinfo-text').focus();
+}
+
+async function applyClientInfo() {
+  const raw = $('#clientinfo-text').value.trim();
+  const errEl = $('#clientinfo-error');
+  if (raw.length < 15) {
+    errEl.textContent = 'Paste a bit more — a line or two at least, so there is something to work with.';
+    errEl.hidden = false;
+    return;
+  }
+  const instruction = clientInfoInstruction(raw);
+  const target = clientInfoState.target;
+  $('#clientinfo-modal').hidden = true;
+
+  if (target === 'build') {
+    const ok = await runBuildRefine(instruction, $('#build-info'), 'Adding their info…');
+    if (ok) toast('Their details are in — read it over and check nothing is wrong');
+    return;
+  }
+
+  const filenames = Object.keys(multiState.pages);
+  if (!confirm(`Add their info to all ${filenames.length} pages? This uses ${filenames.length} credits — one per page.`)) return;
+
+  const btn = $('#multi-info');
+  const label = btn.textContent;
+  btn.disabled = true;
+  if (!multiState.siteId) multiState.siteId = extractSiteId(multiState.pages[filenames[0]]) || newSiteId();
+
+  let done = 0;
+  let failed = 0;
+  try {
+    for (const filename of filenames) {
+      btn.textContent = `Updating ${done + 1}/${filenames.length}…`;
+      try {
+        const res = await api('/api/generate', {
+          method: 'POST',
+          body: {
+            mode: 'refine',
+            html: multiState.pages[filename],
+            instruction,
+            notifyEmail: multiState.notifyEmail || '',
+            siteId: multiState.siteId,
+          },
+        });
+        multiState.pages[filename] = multiState.notifyEmail
+          ? res.html
+          : preserveForms(multiState.pages[filename], res.html);
+      } catch (err) {
+        failed++;
+        toast(`${filename}: ${err.message}`, true);
+      }
+      done++;
+    }
+    showMultiPage(multiState.current);
+    $('#multi-link-output').hidden = true;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+
+  if (failed === filenames.length) toast('Nothing was updated — the site is unchanged', true);
+  else toast(failed
+    ? `Updated, but ${failed} page${failed === 1 ? '' : 's'} failed — try those again`
+    : `All ${filenames.length} pages updated with their details`);
+}
+
+$('#build-info')?.addEventListener('click', () => openClientInfo('build'));
+$('#multi-info')?.addEventListener('click', () => openClientInfo('multi'));
+$('#clientinfo-apply')?.addEventListener('click', applyClientInfo);
+$('#clientinfo-cancel')?.addEventListener('click', () => { $('#clientinfo-modal').hidden = true; });
+$('#clientinfo-close')?.addEventListener('click', () => { $('#clientinfo-modal').hidden = true; });
+$('#clientinfo-modal')?.addEventListener('click', (e) => {
+  if (e.target === $('#clientinfo-modal')) $('#clientinfo-modal').hidden = true;
+});
+
 // ---- Style picker: swap a finished site's whole look ----
 // Built for the sales moment — show the demo, let the client say "not my
 // colours", and change the entire look in front of them.
@@ -2987,6 +3105,7 @@ document.addEventListener('keydown', (e) => {
     $('#money-modal').hidden = true;
     $('#email-client-modal').hidden = true;
     $('#style-modal').hidden = true;
+    $('#clientinfo-modal').hidden = true;
     $('#paymethod-cancel')?.click(); // resolves its pending promise, then closes
   }
 });
