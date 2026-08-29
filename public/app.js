@@ -491,7 +491,10 @@ $('#sites-refresh').addEventListener('click', loadSites);
 
 const buildState = { html: null, placeId: null, notifyEmail: '', siteId: null };
 
-async function generateSingle(prompt, placeId = null) {
+// `layout` is passed in when the caller already fixed one (a lead card shows
+// its prompt before you click, so the promise has to match the page). A manual
+// build takes the next one in the rotation.
+async function generateSingle(prompt, placeId = null, layout = null) {
   const errEl = $('#build-error');
   errEl.hidden = true;
   $('#build-result').hidden = true;
@@ -504,9 +507,10 @@ async function generateSingle(prompt, placeId = null) {
   const siteId = newSiteId();
   try {
     const context = extractKeywords(prompt);
+    const fullPrompt = layout ? prompt : `${prompt}\n\n${layoutInstruction(nextLayout())}`;
     const res = await api('/api/generate', {
       method: 'POST',
-      body: { mode: 'page', prompt, context, notifyEmail, siteId },
+      body: { mode: 'page', prompt: fullPrompt, context, notifyEmail, siteId },
     });
     buildState.html = res.html;
     buildState.placeId = placeId;
@@ -969,18 +973,133 @@ function article(word) {
   return 'a';
 }
 
+// ---- Layout archetypes ----------------------------------------------------
+// The art-style picker only ever changed the paint: colours, fonts, texture.
+// The bones underneath never moved, so a Brutalist bakery and a Luxury plumber
+// still came out as the same page. These are the bones. Each one is a genuinely
+// different structure — different section order, different hero, different
+// things left out — so two demos never read as the same template wearing a
+// different coat.
+const LAYOUTS = [
+  {
+    key: 'gallery',
+    name: 'Gallery-first',
+    blurb: 'The work leads. Barely any text above the photos.',
+    brief: `Structure the page around the WORK, not around words. Open with a full-bleed image grid or a large photo mosaic — the business name and phone sit over or beside it, small. No paragraph of intro copy before the images; the visitor should be looking at work within one second. Below the grid: a short band of what they do (a compact list, not cards), then reviews, then contact. Omit any "why choose us" section entirely — the photographs are the argument. Clicking a photo opens a lightbox.`,
+  },
+  {
+    key: 'split',
+    name: 'Split screen',
+    blurb: 'Image locked on one side, content scrolls past it.',
+    brief: `Build a two-column split. On desktop, one half of the viewport holds a fixed, full-height image or solid colour panel that stays put; the other half scrolls through the content. The business name, tagline and phone live in the fixed panel and remain visible the whole way down. The scrolling half moves through short, generously spaced blocks — one idea per screen. Collapse to a single column on mobile with the panel becoming a tall hero. No card grids anywhere.`,
+  },
+  {
+    key: 'onescreen',
+    name: 'One screen',
+    blurb: 'Everything above the fold. Almost nothing to scroll.',
+    brief: `Fit the ENTIRE business onto roughly one screen. Name, what they do, the three things that matter, the phone number as a large tappable target, hours, and address — arranged as a single composed layout, not stacked sections. Below the fold there is at most a short contact form and the footer, nothing else. Ruthlessly cut: no FAQ, no testimonials carousel, no long services list. This suits a business with three things to say and no patience for a brochure.`,
+  },
+  {
+    key: 'menu',
+    name: 'Price list',
+    blurb: 'Services and prices are the whole page.',
+    brief: `Make the service-and-price list the centrepiece and the largest thing on the page. Present it as a real menu — an aligned list with leader dots or a clean two-column rule between service and price, typeset properly, not as a grid of cards. A compact header with the name and phone sits above it; hours and location sit below it. Keep everything else minimal. If no prices were provided, list the services in the same menu form with "Call for a quote" where prices would be. No hero image larger than a narrow banner.`,
+  },
+  {
+    key: 'story',
+    name: 'Long-form',
+    blurb: 'One column, real writing, no cards at all.',
+    brief: `Write it as one continuous single-column page with a comfortable reading measure, like a well-set article. Real prose paragraphs with proper typography — no card grids, no icon rows, no three-across feature blocks anywhere on the page. Section breaks are typographic: a rule, a change in type size, generous white space. The story runs: who they are, what they do and how, who they do it for, what people say, then how to reach them. Pull-quotes for the reviews.`,
+  },
+  {
+    key: 'booking',
+    name: 'Booking-first',
+    blurb: 'The form is the hero. Everything else supports it.',
+    brief: `The contact/quote form IS the hero — put it in the first screen, right-hand side on desktop, directly under a one-line headline on mobile. It should be the largest and most visually dominant element on the page. Everything below exists only to justify filling it in: a short trust band (rating, years, service area), a compact list of services, a few short reviews, hours. Repeat a smaller version of the form once more at the bottom. No FAQ accordion, no large photo galleries competing with the form.`,
+  },
+  {
+    key: 'beforeafter',
+    name: 'Before & after',
+    blurb: 'Transformation pairs carry the page.',
+    brief: `Lead with transformation. The hero is a before/after pair — either side by side, or one image with a draggable divider that actually works. Follow with two or three more before/after pairs, each with a one-line caption saying what was done. Then a short process section — three steps, numbered, because the order genuinely matters here — then reviews, then contact. Omit a generic services grid; the pairs already show the services.`,
+  },
+  {
+    key: 'proof',
+    name: 'Reviews-led',
+    blurb: 'The rating and the reviews come first, not last.',
+    brief: `Put the social proof at the very top instead of buried near the footer. Open with the star rating and review count set large and typographically, with two or three short review quotes immediately beneath — before any description of what the business does. Then what they do, kept brief. Then the phone and contact. This inverts the usual order on purpose: the visitor learns the business is trusted before they learn what it sells. No hero photograph competing with the rating.`,
+  },
+  {
+    key: 'magazine',
+    name: 'Editorial grid',
+    blurb: 'Asymmetric magazine layout, nothing centred.',
+    brief: `Lay the page out on an asymmetric editorial grid — uneven column widths, deliberate overlaps, content that starts off-centre and stays there. Nothing is centre-aligned. A large display headline breaks across the grid at the top. Blocks are different sizes on purpose: a wide image beside a narrow text column, a small caption block hanging in white space, a full-width band that interrupts. It should read like a spread, not a page of stacked sections.`,
+  },
+  {
+    key: 'findus',
+    name: 'Find us',
+    blurb: 'Hours, address and map dominate. For walk-ins.',
+    brief: `Build it for someone standing outside trying to work out if the place is open. Hours, address, phone and the map are the largest and highest things on the page — hours set big and legible, today's row emphasised. The map is full-width and substantial, not a small box near the footer. What they do is a short list underneath. Reviews are one compact line. Everything else is cut. This suits a business people physically visit rather than call for a quote.`,
+  },
+  {
+    key: 'poster',
+    name: 'Poster',
+    blurb: 'Type-driven. Almost no sections.',
+    brief: `Treat the first screen as a poster: enormous display typography carrying the business name and what they do, minimal or no photography, one striking colour relationship. The type IS the design. Below the poster, only three things — a short service list, the phone as a large element, and a contact form. Four sections total on the entire page including the footer. Nothing else. Silence is part of the design; do not fill it.`,
+  },
+  {
+    key: 'classic',
+    name: 'Classic service page',
+    blurb: 'The familiar one. Still right for some trades.',
+    brief: `A well-executed conventional service page: hero with a clear call to action, services, a short reasons-to-choose band, reviews, FAQ, then contact. Keep it tight and confident rather than long — this layout earns its place by being fast and familiar, not by having the most sections. Do not pad it out.`,
+  },
+];
+
+const LAYOUT_KEY = 'forge.layoutCursor';
+
+// Hand out a different archetype every time. The cursor persists, so the first
+// site of a new session doesn't repeat the last site of the previous one.
+function nextLayout() {
+  let i = 0;
+  try { i = parseInt(localStorage.getItem(LAYOUT_KEY) || '0', 10) || 0; } catch { /* ignore */ }
+  const layout = LAYOUTS[i % LAYOUTS.length];
+  try { localStorage.setItem(LAYOUT_KEY, String((i + 1) % LAYOUTS.length)); } catch { /* ignore */ }
+  return layout;
+}
+
+// A lead's archetype has to be stable: the card shows the prompt, and clicking
+// Generate rebuilds it. If it were re-rolled each call the visitor would be
+// promised one page and handed another.
+const leadLayouts = new Map();
+function layoutForLead(lead) {
+  if (!leadLayouts.has(lead.placeId)) leadLayouts.set(lead.placeId, nextLayout());
+  return leadLayouts.get(lead.placeId);
+}
+
+function layoutInstruction(layout) {
+  return `Page structure — "${layout.name}": ${layout.brief}
+
+Follow this structure over any default arrangement of sections. Sections not called for here should be left out rather than added back in — a shorter page that commits to a shape beats a longer one that hedges.`;
+}
+
 // Auto-generated prompt in the exact format Sections 1/2 consume — built
 // from the structured lead fields instead of pasted text.
 function buildLeadPrompt(lead, niche) {
   const bits = [];
   bits.push(`Create a professional single-page website for ${lead.name}, ${article(niche)} ${niche} business located at ${lead.address || 'a local service area'}.`);
-  if (lead.phone) bits.push(`Their phone number is ${lead.phone} — feature it prominently in the header and a click-to-call button.`);
+  if (lead.phone) bits.push(`Their phone number is ${lead.phone} — feature it prominently and make it tappable.`);
   if (lead.rating && lead.reviewCount) {
-    bits.push(`They have a ${lead.rating}-star rating across ${lead.reviewCount} Google reviews — highlight this as social proof with a testimonials section.`);
+    bits.push(`They have a ${lead.rating}-star rating across ${lead.reviewCount} Google reviews — use it as social proof.`);
   }
-  bits.push(`Include: a strong hero with a clear call to action, a services section typical for ${article(niche)} ${niche}, a why-choose-us section (licensed, local, responsive), and a contact section with a quote-request form.`);
   bits.push(`Tone: trustworthy local ${niche}. The goal of the page is to make the phone ring.`);
   return bits.join(' ');
+}
+
+// What actually gets sent. The structure used to be hardcoded into the prompt
+// above, which is exactly why every site came out the same; it now comes from
+// this lead's own archetype and differs from the one before it.
+function fullLeadPrompt(lead, niche) {
+  return `${buildLeadPrompt(lead, niche)}\n\n${layoutInstruction(layoutForLead(lead))}`;
 }
 
 // `compact` renders a scannable summary card for the results grid — tapping it
@@ -988,6 +1107,7 @@ function buildLeadPrompt(lead, niche) {
 // the whole prompt on every card made the grid enormous and hard to skim.
 function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {}) {
   const prompt = buildLeadPrompt(lead, niche);
+  const layout = layoutForLead(lead);
   const rating = lead.rating
     ? `<div class="rating">★ ${escapeHtml(lead.rating)} · ${escapeHtml(lead.reviewCount)} reviews</div>`
     : '<div class="rating muted">No reviews yet</div>';
@@ -1017,10 +1137,11 @@ function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {
       ${rating}
     </div>
     ${compact
-      ? `<div class="lead-open-hint"><span>Tap for the full prompt</span><span class="chev">›</span></div>`
+      ? `<div class="lead-open-hint"><span class="ll-tag">${escapeHtml(layout.name)}</span><span class="chev">›</span></div>`
       : `<div class="lead-prompt">
       <h4>Auto-generated prompt</h4>
       <p>${escapeHtml(prompt)}</p>
+      <p class="lead-layout"><span class="ll-tag">Layout</span> <strong>${escapeHtml(layout.name)}</strong> — ${escapeHtml(layout.blurb)}</p>
     </div>
     <div class="lead-generate">
       <button class="btn btn-primary" data-act="generate">Generate site</button>
@@ -1035,11 +1156,11 @@ function wireLeadCard(cardEl, lead, niche, onDecided) {
   const genBtn = cardEl.querySelector('[data-act="generate"]');
   if (genBtn) {
     genBtn.addEventListener('click', () => {
-      const prompt = buildLeadPrompt(lead, niche);
+      const prompt = fullLeadPrompt(lead, niche);
       $('#build-prompt').value = prompt;
       $('#build-prompt').dispatchEvent(new Event('input'));
       switchTab('build');
-      generateSingle(prompt, lead.placeId);
+      generateSingle(prompt, lead.placeId, layoutForLead(lead));
     });
   }
 
@@ -1338,7 +1459,7 @@ async function runBatchGenerate(entries) {
       const statusEl = row.querySelector('.br-status');
       statusEl.textContent = 'Generating…';
       try {
-        const prompt = buildLeadPrompt(lead, niche);
+        const prompt = fullLeadPrompt(lead, niche);
         const context = extractKeywords(prompt);
         const siteId = newSiteId();
         const genRes = await api('/api/generate', {

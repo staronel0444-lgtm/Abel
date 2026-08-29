@@ -1140,6 +1140,30 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
 }
 
 /* ---- The basket (leads picked across several searches) ---- */
+.lead-layout {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  font-size: 0.84rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.lead-layout strong { color: var(--ink); }
+.ll-tag {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  vertical-align: middle;
+}
+.lead-open-hint .ll-tag { color: var(--ink-2); }
+
 .lead-basket-btn {
   background: transparent;
   border: 1px dashed var(--border);
