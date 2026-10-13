@@ -388,3 +388,19 @@ svg { display: block; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Debug readout (?debug=1) ---------- */
+
+.debug {
+  position: absolute;
+  left: 12px;
+  top: calc(var(--safe-top) + 64px);
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--glass-strong);
+  color: var(--ink);
+  font: 11px/1.45 'Share Tech Mono', ui-monospace, monospace;
+  pointer-events: none;
+  z-index: 5;
+}
