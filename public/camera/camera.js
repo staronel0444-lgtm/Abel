@@ -44,6 +44,7 @@
     digitalZoom: 1,
     hwZoom: null,                 // { base, value } when the camera zooms optically
     exposure: null,               // original exposureCompensation, to restore
+    frameMs: 0,                   // how long the last scene read took
     loopOn: false,
   };
 
@@ -151,79 +152,186 @@
 
   // ---------- Motion tracking ----------
   //
-  // The crop Claude returns describes the frame at the moment of the tap, so
-  // once the phone turns, that spot moves on screen and the target has to
-  // move with the scene. Two sources feed one position:
-  //   - the gyroscope, read ~60 times a second: smooth and instant, but it
-  //     only knows how far the phone turned, not exactly how many pixels that
-  //     is on screen;
-  //   - a few times a second, a small grayscale copy of the view is matched
-  //     against the copy taken at the tap. That's the ground truth: it nudges
-  //     the position back on course and teaches the gyro its pixel scale.
-  // Without a gyro (desktop, permission denied) the picture match runs alone.
+  // The crop Claude returns describes the frame at the moment of the tap. The
+  // target has to stay on that spot in the world, not on the screen:
+  //   - At the tap, the target's screen point becomes a direction in 3D,
+  //     relative to the phone.
+  //   - The orientation sensor says how the phone has turned since, around all
+  //     three axes (wrist roll included). Turning that direction back by the
+  //     same amount and projecting it through a pinhole camera gives where the
+  //     spot is on screen now, however far the phone has turned.
+  //   - The camera picture on screen runs a little behind the sensor. The
+  //     target is drawn with the orientation from that long ago, so it moves
+  //     in step with the picture instead of ahead of it.
+  //   - A few times a second, a small grayscale copy of the view is matched
+  //     against the copy taken at the tap. That's the ground truth: it
+  //     measures the picture's delay and the camera's real field of view, and
+  //     corrects slow sensor drift.
+  // Without the sensor (desktop, permission denied) the picture match runs
+  // alone, as before.
 
   const MATCH_EVERY_MS = 140;
   const ASSUMED_FOV_DEG = 69;   // across the long side of a phone's main camera
+  const LAGS_MS = [0, 20, 40, 60, 80, 100, 120, 150, 180, 220, 260]; // candidate picture delays
+  const DEG = Math.PI / 180;
 
   const trackCanvas = document.createElement('canvas');
   const trackCtx = trackCanvas.getContext('2d', { willReadFrequently: true });
 
   const motion = {
-    available: false,     // gyro events are arriving
-    asked: false,
-    lastT: 0,
-    k: { x: 0, y: 0 },    // screen px per degree of rotation, learned live
-    turned: { x: 0, y: 0 }, // degrees turned since the tap
-    corr: { x: 0, y: 0 }, // correction still to blend in, screen px
+    perm: 'unknown',        // unknown | asking | granted | denied | unsupported
+    warned: false,          // told the person motion access is off
+    available: false,       // orientation events with real values are arriving
+    events: 0,              // count, for the debug readout's rate
+    hist: [],               // last second of { t, m } samples (m: 3×3 rotation, phone → world)
+    tapHist: [],            // the samples around the tap, frozen
+    tapT: 0,
+    fPrior: 1,              // focal length in screen px, from the assumed field of view
+    fScale: 1,              // learned correction to it (kept across taps)
+    lag: 80,                // picture delay behind the sensor, ms (learned, kept across taps)
+    lagErr: LAGS_MS.map(() => 0),
+    corr: { x: 0, y: 0 },   // drift correction on screen, eased toward corrGoal
+    corrGoal: { x: 0, y: 0 },
+    prevMatch: null,        // { t, x, y } of the last good match
+    picGoal: { x: 0, y: 0 }, // picture-only mode: where the match says the scene is
     lastMatch: 0,
+    hits: 0,
+    misses: 0,
   };
 
   // iOS only hands out motion data after asking, and only from a tap.
   function askForMotion() {
-    if (motion.asked) return;
-    motion.asked = true;
-    const DME = window.DeviceMotionEvent;
-    if (DME && typeof DME.requestPermission === 'function') {
-      DME.requestPermission().then((r) => { if (r === 'granted') listenMotion(); }).catch(() => {});
-    } else if (DME) {
+    if (motion.perm === 'granted' || motion.perm === 'asking' || motion.perm === 'unsupported') return;
+    const DOE = window.DeviceOrientationEvent;
+    if (!DOE) { motion.perm = 'unsupported'; return; }
+    if (typeof DOE.requestPermission !== 'function') {
+      motion.perm = 'granted';
       listenMotion();
+      return;
     }
+    const before = motion.perm;
+    motion.perm = 'asking';
+    DOE.requestPermission().then((r) => {
+      motion.perm = r === 'granted' ? 'granted' : 'denied';
+      if (r === 'granted') listenMotion();
+    }).catch(() => {
+      motion.perm = before; // not called from a tap; the next tap tries again
+    });
   }
 
   function listenMotion() {
-    window.addEventListener('devicemotion', onMotion);
+    window.addEventListener('deviceorientation', onOrientation);
   }
 
-  function onMotion(e) {
-    const rr = e.rotationRate;
-    if (!rr || rr.beta == null || rr.gamma == null) return;
-    motion.available = true;
+  function onOrientation(e) {
+    if (e.alpha == null || e.beta == null || e.gamma == null) return;
     const now = performance.now();
-    const dt = motion.lastT ? Math.min(0.1, (now - motion.lastT) / 1000) : 0;
-    motion.lastT = now;
-    if (!dt || (state.phase !== 'analyzing' && state.phase !== 'guiding')) return;
-    // Phone axes → screen axes (turning around the phone's vertical axis
-    // slides the scene sideways; tilting slides it up or down).
-    let gx = rr.gamma, gy = rr.beta;
-    const a = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * Math.PI / 180;
-    if (a) {
-      const c = Math.cos(a), s = Math.sin(a);
-      [gx, gy] = [gx * c + gy * s, -gx * s + gy * c];
+    // The sensor's own timestamp when it's on the same clock; arrival time
+    // drifts when the page is busy.
+    const t = e.timeStamp > now - 1000 && e.timeStamp <= now + 5 ? e.timeStamp : now;
+    const s = { t, m: rotation(e.alpha * DEG, e.beta * DEG, e.gamma * DEG) };
+    motion.available = true;
+    motion.events++;
+    const h = motion.hist;
+    h.push(s);
+    while (h.length > 2 && h[0].t < t - 1000) h.shift();
+    // Permission came through after the tap: anchor here, continuing from
+    // wherever the picture match had got to.
+    if (state.ref && !motion.tapHist.length) {
+      motion.tapHist = [s];
+      motion.tapT = t;
+      motion.corr = { ...state.offset };
+      motion.corrGoal = { ...state.offset };
+      motion.prevMatch = null;
     }
-    motion.turned.x += gx * dt;
-    motion.turned.y += gy * dt;
-    state.offset.x += motion.k.x * gx * dt;
-    state.offset.y += motion.k.y * gy * dt;
   }
 
-  // Starting guess for the gyro scale, from the visible slice of the frame.
-  function priorScale() {
+  // Phone → world rotation from the orientation angles (W3C order Z-X'-Y'').
+  // Row-major 3×3.
+  function rotation(a, b, g) {
+    const cX = Math.cos(b), cY = Math.cos(g), cZ = Math.cos(a);
+    const sX = Math.sin(b), sY = Math.sin(g), sZ = Math.sin(a);
+    return [
+      cZ * cY - sZ * sX * sY, -cX * sZ, cY * sZ * sX + cZ * sY,
+      cY * sZ + cZ * sX * sY, cZ * cX, sZ * sY - cZ * cY * sX,
+      -cX * sY, sX, cX * cY,
+    ];
+  }
+
+  // Orientation at time t, blended between the two nearest samples.
+  function orientationAt(h, t) {
+    if (t >= h[h.length - 1].t) return h[h.length - 1].m;
+    for (let i = h.length - 1; i > 0; i--) {
+      const a = h[i - 1], b = h[i];
+      if (a.t <= t) {
+        const u = (t - a.t) / (b.t - a.t || 1);
+        return a.m.map((v, k) => v + (b.m[k] - v) * u);
+      }
+    }
+    return h[0].m;
+  }
+
+  // How the phone has turned between the tap and time t, both seen through
+  // a picture delay of `lag` ms: R(t - lag)ᵀ · R(tap - lag).
+  function turnSinceTap(t, lag) {
+    const r = orientationAt(motion.hist, t - lag);
+    const r0 = orientationAt(motion.tapHist, motion.tapT - lag);
+    const m = new Array(9);
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        m[i * 3 + j] = r[i] * r0[j] + r[3 + i] * r0[3 + j] + r[6 + i] * r0[6 + j];
+      }
+    }
+    return m;
+  }
+
+  function screenAngle() {
+    return ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * DEG;
+  }
+
+  // Where a screen point from the tap (relative to the screen center, CSS px)
+  // is now, after the phone turned by m. Points behind the phone come back
+  // far off screen in the right direction, so the arrow still points to them.
+  function reproject(X, Y, m) {
+    // Screen axes → phone axes (the screen may be rotated to landscape).
+    const a = screenAngle(), c = Math.cos(a), s = Math.sin(a);
+    const px = X * c - Y * s, py = X * s + Y * c;
+    // The back camera looks out of the phone's back (-z), the front one out
+    // of its face (+z); the front preview is mirrored, so x needs no flip.
+    const k = state.mirrored ? 1 : -1;
+    const f = motion.fPrior * motion.fScale;
+    const d0 = [px, -py, k * f];
+    const dx = m[0] * d0[0] + m[1] * d0[1] + m[2] * d0[2];
+    const dy = m[3] * d0[0] + m[4] * d0[1] + m[5] * d0[2];
+    const dz = m[6] * d0[0] + m[7] * d0[1] + m[8] * d0[2];
+    const depth = k * dz;
+    let qx, qy;
+    if (depth > f * 0.02) {
+      qx = f * dx / depth;
+      qy = -f * dy / depth;
+    } else {
+      const n = Math.hypot(dx, dy) || 1;
+      qx = dx / n * 1e5;
+      qy = -dy / n * 1e5;
+    }
+    return { x: qx * c + qy * s, y: -qx * s + qy * c };
+  }
+
+  // How far the scene has slid on screen since the tap, per the sensor.
+  function sensorShift(t, lag) {
+    return reproject(0, 0, turnSinceTap(t, lag));
+  }
+
+  function gyroOn() {
+    return motion.available && motion.tapHist.length > 0;
+  }
+
+  // Focal length from the visible slice of the frame, in screen px.
+  function priorFocal() {
     const r = visibleRect(1);
     const longSide = Math.max(els.video.videoWidth, els.video.videoHeight) || 1;
-    const degPerVideoPx = ASSUMED_FOV_DEG / longSide;
-    const W = els.viewfinder.clientWidth;
-    const k = W / (r.sw * degPerVideoPx);
-    return { x: state.mirrored ? -k : k, y: k };
+    const fVideo = (longSide / 2) / Math.tan(ASSUMED_FOV_DEG / 2 * DEG);
+    return fVideo * els.viewfinder.clientWidth / r.sw;
   }
 
   function grabGray() {
@@ -281,73 +389,131 @@
     if (!n || best === Infinity) return null;
     const avg = total / n;
     if (avg < 1.5 || (avg - best) / avg < 0.12) return null;
-    return { x: bx, y: by };
+    return { x: bx, y: by, cost: best };
+  }
+
+  // Sub-pixel refinement: fit a parabola through the cost on each side.
+  function refine(cur, ref, m) {
+    const at = (dx, dy) => matchCost(cur, ref, m.x + dx, m.y + dy, 2);
+    const vertex = (l, c, r) => {
+      const den = l - 2 * c + r;
+      return Number.isFinite(den) && den > 0 ? clamp((l - r) / (2 * den), -0.5, 0.5) : 0;
+    };
+    return { x: m.x + vertex(at(-1, 0), m.cost, at(1, 0)), y: m.y + vertex(at(0, -1), m.cost, at(0, 1)) };
   }
 
   function updateMatch(now) {
     const ref = state.ref;
     if (!ref) return;
-    const gyro = motion.available;
+    const gyro = gyroOn();
     if (gyro && now - motion.lastMatch < MATCH_EVERY_MS) return;
     motion.lastMatch = now;
     const cur = grabGray();
     if (cur.w !== ref.w || cur.h !== ref.h) return;
     const W = els.viewfinder.clientWidth, H = els.viewfinder.clientHeight;
     const sx = ref.w / W, sy = ref.h / H;
-    const px = Math.round((state.offset.x + motion.corr.x) * sx);
-    const py = Math.round((state.offset.y + motion.corr.y) * sy);
-    let m = gyro ? matchAround(cur, ref, px, py, 5, 1) : matchAround(cur, ref, px, py, 14, 2);
-    if (m && !gyro) m = matchAround(cur, ref, m.x, m.y, 2, 1) || m;
-    if (!m) return;
-    const mx = m.x / sx, my = m.y / sy;
-    // Spread the fix over the next frames instead of jumping.
-    motion.corr.x = mx - state.offset.x;
-    motion.corr.y = my - state.offset.y;
-    // Teach the gyro its scale once the phone has turned far enough to tell.
-    for (const ax of ['x', 'y']) {
-      const t = motion.turned[ax];
-      if (Math.abs(t) > 3) {
-        const ratio = (ax === 'x' ? mx : my) / t;
-        const k0 = Math.abs(motion.k[ax]) || 1;
-        if (Math.abs(ratio) > k0 * 3 || Math.abs(ratio) < k0 / 3) continue; // implausible
-        if (Math.sign(ratio) !== Math.sign(motion.k[ax])) {
-          motion.k[ax] = -motion.k[ax]; // this device reports the axis the other way round
-        } else {
-          motion.k[ax] = motion.k[ax] * 0.7 + ratio * 0.3;
-        }
-      }
+
+    if (!gyro) {
+      const px = Math.round(motion.picGoal.x * sx), py = Math.round(motion.picGoal.y * sy);
+      let m = matchAround(cur, ref, px, py, 14, 2);
+      if (m) m = matchAround(cur, ref, m.x, m.y, 2, 1) || m;
+      if (!m) { motion.misses++; return; }
+      motion.hits++;
+      const r = refine(cur, ref, m);
+      motion.picGoal = { x: r.x / sx, y: r.y / sy };
+      return;
     }
+
+    // This frame shows the world as it was `lag` ms ago, and so does the
+    // sensor prediction below, so the two line up.
+    const p = sensorShift(now, motion.lag);
+    const gx = Math.round((p.x + motion.corrGoal.x) * sx);
+    const gy = Math.round((p.y + motion.corrGoal.y) * sy);
+    const m = matchAround(cur, ref, gx, gy, 5, 1);
+    if (!m) { motion.misses++; motion.prevMatch = null; return; }
+    motion.hits++;
+    const r = refine(cur, ref, m);
+    const mx = r.x / sx, my = r.y / sy;
+
+    learnLag(now, mx, my);
+    learnFocal(now, mx, my);
+
+    // What's left is sensor drift; fold it in gently.
+    const q = sensorShift(now, motion.lag);
+    motion.corrGoal.x += (mx - q.x - motion.corrGoal.x) * 0.5;
+    motion.corrGoal.y += (my - q.y - motion.corrGoal.y) * 0.5;
+    motion.prevMatch = { t: now, x: mx, y: my };
+  }
+
+  // Compares how far the picture moved since the last match with how far
+  // the sensor says it should have, under each candidate delay. Using the
+  // change (not the position) keeps drift out of it.
+  function learnLag(now, mx, my) {
+    const prev = motion.prevMatch;
+    if (!prev || now - prev.t > MATCH_EVERY_MS * 3) return;
+    const moved = Math.hypot(mx - prev.x, my - prev.y);
+    if (moved < 6) return; // standing still says nothing about delay
+    const cap = (els.viewfinder.clientWidth * 0.1) ** 2;
+    let best = 0;
+    LAGS_MS.forEach((L, i) => {
+      const a = sensorShift(prev.t, L), b = sensorShift(now, L);
+      const e = (mx - prev.x - (b.x - a.x)) ** 2 + (my - prev.y - (b.y - a.y)) ** 2;
+      motion.lagErr[i] = motion.lagErr[i] * 0.85 + Math.min(e, cap) * 0.15;
+      if (motion.lagErr[i] < motion.lagErr[best]) best = i;
+    });
+    const cur = LAGS_MS.indexOf(motion.lag);
+    if (cur < 0 || motion.lagErr[best] < motion.lagErr[cur] * 0.85) motion.lag = LAGS_MS[best];
+  }
+
+  // Once the phone has turned far enough to tell, the ratio of measured to
+  // predicted shift says how wrong the assumed field of view is.
+  function learnFocal(now, mx, my) {
+    const p = sensorShift(now, motion.lag);
+    const len2 = p.x * p.x + p.y * p.y;
+    if (len2 < (els.viewfinder.clientWidth * 0.08) ** 2) return;
+    const ratio = clamp(((mx - motion.corrGoal.x) * p.x + (my - motion.corrGoal.y) * p.y) / len2, 0.8, 1.25);
+    motion.fScale = clamp(motion.fScale * (1 + (ratio - 1) * 0.3), 0.5, 2);
   }
 
   function startTracking() {
     state.ref = grabGray();
     state.offset = { x: 0, y: 0 };
-    motion.turned = { x: 0, y: 0 };
+    motion.tapT = performance.now();
+    motion.tapHist = motion.hist.slice();
     motion.corr = { x: 0, y: 0 };
-    motion.lastT = 0;
+    motion.corrGoal = { x: 0, y: 0 };
+    motion.picGoal = { x: 0, y: 0 };
+    motion.prevMatch = null;
     motion.lastMatch = 0;
-    motion.k = priorScale();
+    motion.hits = 0;
+    motion.misses = 0;
+    motion.fPrior = priorFocal();
   }
 
   // Where the target center is on screen now, in CSS px.
   function targetPoint() {
     const { crop } = state.analysis;
     const W = els.viewfinder.clientWidth, H = els.viewfinder.clientHeight;
-    return {
-      x: (crop.x + crop.w / 2) * W + state.offset.x,
-      y: (crop.y + crop.h / 2) * H + state.offset.y,
-    };
+    const tx = (crop.x + crop.w / 2) * W, ty = (crop.y + crop.h / 2) * H;
+    if (!gyroOn()) return { x: tx + state.offset.x, y: ty + state.offset.y };
+    const p = reproject(tx - W / 2, ty - H / 2, turnSinceTap(performance.now(), motion.lag));
+    return { x: W / 2 + p.x + motion.corr.x, y: H / 2 + p.y + motion.corr.y };
   }
 
   function loop(now) {
     if (!state.loopOn) return;
     if ((state.phase === 'analyzing' || state.phase === 'guiding') && els.video.readyState >= 2) {
       updateMatch(now);
-      const fx = motion.corr.x * 0.25, fy = motion.corr.y * 0.25;
-      state.offset.x += fx; state.offset.y += fy;
-      motion.corr.x -= fx; motion.corr.y -= fy;
+      if (gyroOn()) {
+        motion.corr.x += (motion.corrGoal.x - motion.corr.x) * 0.15;
+        motion.corr.y += (motion.corrGoal.y - motion.corr.y) * 0.15;
+      } else {
+        state.offset.x += (motion.picGoal.x - state.offset.x) * 0.25;
+        state.offset.y += (motion.picGoal.y - state.offset.y) * 0.25;
+      }
       if (state.phase === 'guiding') renderGuide();
     }
+    if (debug) renderDebug(now);
     requestAnimationFrame(loop);
   }
 
@@ -355,6 +521,33 @@
     if (state.loopOn) return;
     state.loopOn = true;
     requestAnimationFrame(loop);
+  }
+
+  // ---------- Debug readout (?debug=1) ----------
+
+  const debug = new URLSearchParams(location.search).has('debug') ? document.createElement('pre') : null;
+  if (debug) {
+    debug.className = 'debug';
+    els.shoot.append(debug);
+  }
+  const dbg = { t: 0, events: 0, rate: 0 };
+
+  function renderDebug(now) {
+    if (now - dbg.t < 250) return;
+    dbg.rate = Math.round((motion.events - dbg.events) * 1000 / (now - dbg.t || 1));
+    dbg.t = now;
+    dbg.events = motion.events;
+    const W = els.viewfinder.clientWidth;
+    const fov = 2 * Math.atan(W / 2 / (motion.fPrior * motion.fScale)) / DEG;
+    debug.textContent = [
+      `motion   ${motion.perm}, ${motion.available ? `${dbg.rate}/s` : 'no events'}`,
+      `tracking ${state.ref ? (gyroOn() ? 'sensor + picture' : 'picture only') : '-'} (${state.phase})`,
+      `delay    ${motion.lag} ms`,
+      `fov      ${fov.toFixed(1)}° wide (x${motion.fScale.toFixed(2)})`,
+      `match    ${motion.hits} hit / ${motion.misses} miss`,
+      `drift    ${motion.corr.x.toFixed(0)}, ${motion.corr.y.toFixed(0)} px`,
+      `claude   ${state.frameMs ? `${(state.frameMs / 1000).toFixed(1)} s` : '-'}`,
+    ].join('\n');
   }
 
   // ---------- Guide overlay ----------
@@ -423,6 +616,10 @@
 
   async function analyze() {
     if (state.phase === 'analyzing' || els.video.readyState < 2) return;
+    if (motion.perm === 'denied' && !motion.warned) {
+      motion.warned = true;
+      toast('Motion access is off, so the target tracks roughly. Reopen the page to allow it.', 4500);
+    }
     askForMotion(); // before any await: iOS needs it inside the tap
     await resetGuide();
 
@@ -442,6 +639,7 @@
     startLoop();
 
     let res, data;
+    const sentAt = performance.now();
     try {
       res = await fetch('/api/frame', {
         method: 'POST',
@@ -453,6 +651,7 @@
       data = { error: "Couldn't reach the server. Framing needs an internet connection." };
     }
     if (id !== state.requestId) return; // cancelled or superseded meanwhile
+    state.frameMs = performance.now() - sentAt;
     els.frameBtn.classList.remove('is-busy');
 
     if (res && res.status === 401) { location.reload(); return; }
@@ -977,9 +1176,12 @@
   els.flipBtn.addEventListener('click', async () => {
     await resetGuide();
     state.facing = state.facing === 'environment' ? 'user' : 'environment';
+    motion.fScale = 1; // a different lens
     startCamera();
   });
   els.blockerRetry.addEventListener('click', startCamera);
+  // Ask for motion on the first tap anywhere, so it's settled before Frame.
+  els.shoot.addEventListener('click', () => { if (motion.perm === 'unknown') askForMotion(); });
   els.retakeBtn.addEventListener('click', retake);
   els.saveBtn.addEventListener('click', save);
   els.autoBtn.addEventListener('click', () => {
@@ -1017,4 +1219,5 @@
   });
 
   startCamera();
+  if (debug) startLoop();
 })();
