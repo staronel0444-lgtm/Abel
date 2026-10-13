@@ -41,14 +41,17 @@ database, and the shareable site previews.
 | **Make it interactive** | ✨ Make it interactive on Build and Multi-page | A one-click preset refine that adds tasteful scroll-reveal animations, hover effects, and a condensing sticky header — without touching the wording, images, colors, or layout. Honors `prefers-reduced-motion`. Uses one Claude call, same as a normal Refine. On Multi-page it applies to whichever page is currently being viewed. |
 | **Motion & feedback** | throughout Forge | Tabs cross-fade, the active-tab underline slides, lists deal themselves in with a stagger, cards lift on hover, buttons depress when pressed, modals scale open, toasts slide up. Lists show shimmer **skeletons** while loading instead of blank space; revenue and month totals **count up** to their value; the money split bar grows into place; the free-search badge pulses when it changes; preview frames cross-fade instead of flashing white on regeneration. Landing your first client sets off a one-time celebration. All of it is presentation only — every animation collapses under `prefers-reduced-motion`, and nothing changes what a control does. |
 | **Change style** | 🎨 Change style on Build and Multi-page | A searchable gallery of **29 art directions** — Minimalist, Brutalist, Art Deco, Cyberpunk, Vintage 70s, Luxury, Industrial and more, grouped into Clean / Bold / Retro / Fancy / Techy / Warm / Heavy. Picking one restyles the whole site: colors, fonts, spacing, borders, shadows, section framing, decorative details. Every style carries a full design brief (specific fonts, palette, shapes, mood) rather than just a name, so the transformations are genuinely distinct. **The content is explicitly protected** — copy, images, section order, contact form and its wiring, phone/`tel:` links, map embed, all `<head>` metadata and JSON-LD, and the footer all survive untouched. Built for the sales moment: show the demo, let the client say "not my colors", change it in front of them. One Claude call per page — single-page costs 1 credit; multi-page restyles every page (so the site stays consistent) and warns about the cost first. |
+| **Camera (Sightline)** | `/camera/` on your phone | A personal smart camera. Tap **Frame** and the current view goes to Claude (one vision call, ~768px JPEG), which returns the best crop to aim for, a one-line tip, and a lighting read. A dashed target box and arrow show where to point; the box **follows the scene as you move** (a tiny in-browser block-matching tracker starts at the tap, so it is already in the right place when the answer lands). Line it up and the camera zooms in by itself — optical zoom where the browser allows it (mostly Android Chrome), digital otherwise, capped at 3× — then **you** take the shot. After capture an **Auto** pass corrects levels, white balance and brightness from the photo's own histogram; pick a filter (Original, Clean, Harbor, Dusk, Relic, Mono) and a border (Original, White, Paper, Specs, Date). **Save** opens the phone's share sheet, where *Save Image* puts it in Photos (a plain download would land in Files instead). Specs shows only real data: camera name (auto-detected on Android, editable), zoom, shutter speed and ISO when the browser reports them, megapixels, date and time — never invented lens figures. Add it to the home screen for a full-screen app. Sits behind the same password gate; route is `POST /api/frame`, model set by `CAMERA_MODEL`. |
 | **Emails** | Emails tab | Pick a template (monthly maintenance fee reminder or first-time/welcome), pick a saved client, and get a ready-to-send subject + body pulled from that client's real data (name, monthly fee). Edit before sending, then **Copy email** or **Open in Mail app** (a pre-filled `mailto:` link). Pure client-side — no AI, no server, works with zero credits. Remembers your own business name/contact (shared with the Invoice tab). |
 
 ## Architecture
 
 ```
 public/            static frontend (no build step)
+  camera/          the Camera page (Sightline): viewfinder, tracker, filters, PWA manifest
 functions/         Cloudflare Pages Functions — THE one shared serverless proxy
   api/generate.js         Anthropic Messages API (server-side key, stop_reason checks)
+  api/frame.js            Camera page scene read (Claude vision, structured JSON)
   api/leads/search.js     Google Places Text Search (server-side key, history log, dismissed filter)
   api/leads/decision.js   yes/no/undo decisions
   api/history.js          view history
@@ -120,6 +123,7 @@ production.**
 | `ANTHROPIC_API_KEY` | yes | server-side only, via `wrangler pages secret` |
 | `GOOGLE_PLACES_API_KEY` | yes | server-side only |
 | `ANTHROPIC_MODEL` | no | defaults to `claude-opus-4-8` |
+| `CAMERA_MODEL` | no | model for the Camera page's scene read; defaults to `claude-opus-5-5` (run at low effort for speed) |
 | `FORGE_PASSWORD` | no | set it to lock the app behind a login page; unset = no lock |
 | `MOCK_PLACES`, `MOCK_ANTHROPIC` | no | dev-only canned responses |
 

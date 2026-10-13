@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Sightline</title>
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Sightline">
+  <link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="camera.css">
+</head>
+<body>
+  <!-- ============ Viewfinder ============ -->
+  <section class="screen is-active" id="shoot">
+    <div class="viewfinder" id="viewfinder">
+      <video id="video" playsinline muted autoplay></video>
+      <svg class="guide" id="guide" aria-hidden="true">
+        <line id="g-line" class="g-line" />
+        <rect id="g-target" class="g-target" />
+        <path id="g-reticle" class="g-reticle" />
+        <path id="g-arrow" class="g-arrow" />
+      </svg>
+      <div class="flash" id="flash"></div>
+    </div>
+
+    <div class="top-bar">
+      <button class="icon-btn" id="flip-btn" aria-label="Switch camera" title="Switch camera">
+        <svg viewBox="0 0 24 24"><path d="M4 7h3l2-2h6l2 2h3v12H4z" /><path d="M9 13a3 3 0 0 1 5.2-2M15 13a3 3 0 0 1-5.2 2" /><path d="M14.5 9.5v1.6h-1.6M9.5 16.5v-1.6h1.6" /></svg>
+      </button>
+      <div class="hint" id="hint" role="status" aria-live="polite"></div>
+      <button class="icon-btn" id="cancel-btn" aria-label="Clear framing guide" title="Clear guide" hidden>
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></svg>
+      </button>
+    </div>
+
+    <div class="bottom-bar">
+      <a class="frame-btn forge-btn" href="/" aria-label="Back to Forge" title="Back to Forge">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" /><rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" /></svg>
+        <span class="frame-label">Forge</span>
+      </a>
+      <div class="zoom-badge" id="zoom-badge" hidden>1×</div>
+      <button class="shutter" id="shutter-btn" aria-label="Take photo"><span></span></button>
+      <button class="frame-btn" id="frame-btn" aria-label="Find the best framing" title="Find the best framing">
+        <svg viewBox="0 0 24 24"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4" /><path d="M12 8.5l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z" class="spark" /></svg>
+        <span class="frame-label">Frame</span>
+      </button>
+    </div>
+
+    <div class="blocker" id="blocker" hidden>
+      <div class="blocker-card">
+        <h1>Camera needed</h1>
+        <p id="blocker-msg">Allow camera access to start shooting.</p>
+        <button class="pill-btn" id="blocker-retry">Try again</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Review / edit ============ -->
+  <section class="screen" id="review">
+    <div class="review-top">
+      <button class="text-btn" id="retake-btn">Retake</button>
+      <button class="toggle-chip is-on" id="auto-btn" aria-pressed="true" title="Automatic brightness, contrast and color correction">Auto</button>
+      <button class="pill-btn save-btn" id="save-btn" disabled>Save</button>
+    </div>
+    <div class="stage" id="stage">
+      <canvas id="preview"></canvas>
+    </div>
+    <div class="rows">
+      <div class="row" id="filter-row" role="radiogroup" aria-label="Color filter"></div>
+      <div class="row" id="border-row" role="radiogroup" aria-label="Border style"></div>
+      <button class="text-btn device-btn" id="device-btn" hidden></button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="camera.js"></script>
+</body>
+</html>
