@@ -23,11 +23,9 @@
 
   // ---------- Tunables ----------
 
-  const SEND_LONG_SIDE = 768;     // px of the frame sent to Claude
-  const TRACK_W = 120;            // width of the grayscale frames used for tracking
-  const ALIGN_TOL = 0.05;         // box center within 5% of view center = aligned
-  const CLOSE_TOL = 0.14;
-  const ALIGN_HOLD_MS = 350;      // must stay aligned this long before zooming
+  const SEND_LONG_SIDE = 640;     // px of the frame sent to Claude
+  const TRACK_W = 96;             // width of the grayscale frames used for tracking
+  const ALIGN_HOLD_MS = 300;      // must stay aligned this long before zooming
   const MIN_ZOOM = 1.15;          // below this, zooming isn't worth the resolution
   const MAX_DIGITAL_ZOOM = 3;     // past ~3x a phone video frame turns to mush
   const MAX_OUTPUT_SIDE = 4096;
@@ -41,7 +39,7 @@
     requestId: 0,
     analysis: null,
     ref: null,                    // grayscale frame captured when Frame was tapped
-    offset: { x: 0, y: 0 },       // how far the scene has moved since, in TRACK px
+    offset: { x: 0, y: 0 },       // how far the scene has moved since, in screen px
     alignedSince: 0,
     digitalZoom: 1,
     hwZoom: null,                 // { base, value } when the camera zooms optically
@@ -95,7 +93,8 @@
     try {
       state.stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
-        video: { facingMode: { ideal: state.facing }, width: { ideal: 3840 }, height: { ideal: 2160 } },
+        // 1080p: 4K is much heavier to draw and sample every frame on a phone.
+        video: { facingMode: { ideal: state.facing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
       });
     } catch (err) {
       return block(err && err.name === 'NotAllowedError'
@@ -152,15 +151,80 @@
 
   // ---------- Motion tracking ----------
   //
-  // The crop box Claude returns describes the frame at the moment of the tap.
-  // Once the phone moves, that spot moves on screen, so the box has to follow
-  // the scene. A tiny block-matching tracker does this: compare a 120px-wide
-  // grayscale copy of each new frame against the reference frame and find the
-  // shift that lines them up best. Tracking starts at the tap, so the box is
-  // already in the right place when the answer arrives seconds later.
+  // The crop Claude returns describes the frame at the moment of the tap, so
+  // once the phone turns, that spot moves on screen and the target has to
+  // move with the scene. Two sources feed one position:
+  //   - the gyroscope, read ~60 times a second: smooth and instant, but it
+  //     only knows how far the phone turned, not exactly how many pixels that
+  //     is on screen;
+  //   - a few times a second, a small grayscale copy of the view is matched
+  //     against the copy taken at the tap. That's the ground truth: it nudges
+  //     the position back on course and teaches the gyro its pixel scale.
+  // Without a gyro (desktop, permission denied) the picture match runs alone.
+
+  const MATCH_EVERY_MS = 140;
+  const ASSUMED_FOV_DEG = 69;   // across the long side of a phone's main camera
 
   const trackCanvas = document.createElement('canvas');
   const trackCtx = trackCanvas.getContext('2d', { willReadFrequently: true });
+
+  const motion = {
+    available: false,     // gyro events are arriving
+    asked: false,
+    lastT: 0,
+    k: { x: 0, y: 0 },    // screen px per degree of rotation, learned live
+    turned: { x: 0, y: 0 }, // degrees turned since the tap
+    corr: { x: 0, y: 0 }, // correction still to blend in, screen px
+    lastMatch: 0,
+  };
+
+  // iOS only hands out motion data after asking, and only from a tap.
+  function askForMotion() {
+    if (motion.asked) return;
+    motion.asked = true;
+    const DME = window.DeviceMotionEvent;
+    if (DME && typeof DME.requestPermission === 'function') {
+      DME.requestPermission().then((r) => { if (r === 'granted') listenMotion(); }).catch(() => {});
+    } else if (DME) {
+      listenMotion();
+    }
+  }
+
+  function listenMotion() {
+    window.addEventListener('devicemotion', onMotion);
+  }
+
+  function onMotion(e) {
+    const rr = e.rotationRate;
+    if (!rr || rr.beta == null || rr.gamma == null) return;
+    motion.available = true;
+    const now = performance.now();
+    const dt = motion.lastT ? Math.min(0.1, (now - motion.lastT) / 1000) : 0;
+    motion.lastT = now;
+    if (!dt || (state.phase !== 'analyzing' && state.phase !== 'guiding')) return;
+    // Phone axes → screen axes (turning around the phone's vertical axis
+    // slides the scene sideways; tilting slides it up or down).
+    let gx = rr.gamma, gy = rr.beta;
+    const a = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * Math.PI / 180;
+    if (a) {
+      const c = Math.cos(a), s = Math.sin(a);
+      [gx, gy] = [gx * c + gy * s, -gx * s + gy * c];
+    }
+    motion.turned.x += gx * dt;
+    motion.turned.y += gy * dt;
+    state.offset.x += motion.k.x * gx * dt;
+    state.offset.y += motion.k.y * gy * dt;
+  }
+
+  // Starting guess for the gyro scale, from the visible slice of the frame.
+  function priorScale() {
+    const r = visibleRect(1);
+    const longSide = Math.max(els.video.videoWidth, els.video.videoHeight) || 1;
+    const degPerVideoPx = ASSUMED_FOV_DEG / longSide;
+    const W = els.viewfinder.clientWidth;
+    const k = W / (r.sw * degPerVideoPx);
+    return { x: state.mirrored ? -k : k, y: k };
+  }
 
   function grabGray() {
     const w = TRACK_W;
@@ -201,44 +265,87 @@
     return sum / n;
   }
 
-  function updateTracking() {
-    const ref = state.ref;
-    const cur = grabGray();
-    if (!ref || cur.w !== ref.w || cur.h !== ref.h) return;
-    const px = state.offset.x, py = state.offset.y;
-    let best = { c: Infinity, x: px, y: py };
-    // Coarse pass around the last known shift, then refine.
-    for (let dy = -14; dy <= 14; dy += 2) {
-      for (let dx = -14; dx <= 14; dx += 2) {
-        const c = matchCost(cur, ref, px + dx, py + dy, 3);
-        if (c < best.c) best = { c, x: px + dx, y: py + dy };
+  // Finds the scene shift (in TRACK px) near a predicted one. Returns null
+  // when the view has no texture to lock onto, so a blank wall can't drag
+  // the target around.
+  function matchAround(cur, ref, px, py, radius, step) {
+    let best = Infinity, bx = px, by = py, total = 0, n = 0;
+    for (let dy = -radius; dy <= radius; dy += step) {
+      for (let dx = -radius; dx <= radius; dx += step) {
+        const c = matchCost(cur, ref, px + dx, py + dy, 2);
+        if (c === Infinity) continue;
+        total += c; n++;
+        if (c < best) { best = c; bx = px + dx; by = py + dy; }
       }
     }
-    const cx = best.x, cy = best.y;
-    for (let dy = -2; dy <= 2; dy++) {
-      for (let dx = -2; dx <= 2; dx++) {
-        const c = matchCost(cur, ref, cx + dx, cy + dy, 2);
-        if (c < best.c) best = { c, x: cx + dx, y: cy + dy };
-      }
-    }
-    if (best.c < Infinity) state.offset = { x: best.x, y: best.y };
+    if (!n || best === Infinity) return null;
+    const avg = total / n;
+    if (avg < 1.5 || (avg - best) / avg < 0.12) return null;
+    return { x: bx, y: by };
   }
 
-  // Where the target box is on screen now, normalized 0-1.
-  function currentBox() {
+  function updateMatch(now) {
+    const ref = state.ref;
+    if (!ref) return;
+    const gyro = motion.available;
+    if (gyro && now - motion.lastMatch < MATCH_EVERY_MS) return;
+    motion.lastMatch = now;
+    const cur = grabGray();
+    if (cur.w !== ref.w || cur.h !== ref.h) return;
+    const W = els.viewfinder.clientWidth, H = els.viewfinder.clientHeight;
+    const sx = ref.w / W, sy = ref.h / H;
+    const px = Math.round((state.offset.x + motion.corr.x) * sx);
+    const py = Math.round((state.offset.y + motion.corr.y) * sy);
+    let m = gyro ? matchAround(cur, ref, px, py, 5, 1) : matchAround(cur, ref, px, py, 14, 2);
+    if (m && !gyro) m = matchAround(cur, ref, m.x, m.y, 2, 1) || m;
+    if (!m) return;
+    const mx = m.x / sx, my = m.y / sy;
+    // Spread the fix over the next frames instead of jumping.
+    motion.corr.x = mx - state.offset.x;
+    motion.corr.y = my - state.offset.y;
+    // Teach the gyro its scale once the phone has turned far enough to tell.
+    for (const ax of ['x', 'y']) {
+      const t = motion.turned[ax];
+      if (Math.abs(t) > 3) {
+        const ratio = (ax === 'x' ? mx : my) / t;
+        const k0 = Math.abs(motion.k[ax]) || 1;
+        if (Math.abs(ratio) > k0 * 3 || Math.abs(ratio) < k0 / 3) continue; // implausible
+        if (Math.sign(ratio) !== Math.sign(motion.k[ax])) {
+          motion.k[ax] = -motion.k[ax]; // this device reports the axis the other way round
+        } else {
+          motion.k[ax] = motion.k[ax] * 0.7 + ratio * 0.3;
+        }
+      }
+    }
+  }
+
+  function startTracking() {
+    state.ref = grabGray();
+    state.offset = { x: 0, y: 0 };
+    motion.turned = { x: 0, y: 0 };
+    motion.corr = { x: 0, y: 0 };
+    motion.lastT = 0;
+    motion.lastMatch = 0;
+    motion.k = priorScale();
+  }
+
+  // Where the target center is on screen now, in CSS px.
+  function targetPoint() {
     const { crop } = state.analysis;
+    const W = els.viewfinder.clientWidth, H = els.viewfinder.clientHeight;
     return {
-      x: crop.x + state.offset.x / state.ref.w,
-      y: crop.y + state.offset.y / state.ref.h,
-      w: crop.w,
-      h: crop.h,
+      x: (crop.x + crop.w / 2) * W + state.offset.x,
+      y: (crop.y + crop.h / 2) * H + state.offset.y,
     };
   }
 
-  function loop() {
+  function loop(now) {
     if (!state.loopOn) return;
     if ((state.phase === 'analyzing' || state.phase === 'guiding') && els.video.readyState >= 2) {
-      updateTracking();
+      updateMatch(now);
+      const fx = motion.corr.x * 0.25, fy = motion.corr.y * 0.25;
+      state.offset.x += fx; state.offset.y += fy;
+      motion.corr.x -= fx; motion.corr.y -= fy;
       if (state.phase === 'guiding') renderGuide();
     }
     requestAnimationFrame(loop);
@@ -251,34 +358,45 @@
   }
 
   // ---------- Guide overlay ----------
+  //
+  // A small aiming mark sits in the middle of the screen and a small target
+  // sits on the spot to aim at. Line the mark up with the target.
+
+  const MARK = 44; // px
 
   function renderGuide() {
     const W = els.viewfinder.clientWidth, H = els.viewfinder.clientHeight;
     els.guide.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    const b = currentBox();
-    const bw = b.w * W, bh = b.h * H;
-    const tx = b.x * W, ty = b.y * H;
-    const tcx = tx + bw / 2, tcy = ty + bh / 2;
+    const t = targetPoint();
     const cx = W / 2, cy = H / 2;
+    const dist = Math.hypot(t.x - cx, t.y - cy);
+    const alignTol = Math.max(16, W * 0.04);
 
-    setRect(els.gTarget, tx, ty, bw, bh);
-    els.gReticle.setAttribute('d', corners(cx - bw / 2, cy - bh / 2, bw, bh, Math.min(bw, bh) * 0.16));
-    els.gLine.setAttribute('x1', cx); els.gLine.setAttribute('y1', cy);
-    els.gLine.setAttribute('x2', tcx); els.gLine.setAttribute('y2', tcy);
+    setRect(els.gTarget, t.x - MARK / 2, t.y - MARK / 2, MARK, MARK);
+    els.gReticle.setAttribute('d', corners(cx - MARK / 2, cy - MARK / 2, MARK, MARK, 11));
 
-    // Arrowhead pointing at the target, pinned inside the screen edges.
-    const ang = Math.atan2(tcy - cy, tcx - cx);
-    const ax = clamp(tcx, 28, W - 28), ay = clamp(tcy, 28, H - 28);
-    const s = 11;
-    els.gArrow.setAttribute('d',
-      `M${ax + Math.cos(ang) * s},${ay + Math.sin(ang) * s}` +
-      `L${ax + Math.cos(ang + 2.5) * s},${ay + Math.sin(ang + 2.5) * s}` +
-      `L${ax + Math.cos(ang - 2.5) * s},${ay + Math.sin(ang - 2.5) * s}Z`);
+    // Dotted line from the mark's edge toward the target, plus an arrowhead
+    // pinned inside the screen when the target is off it.
+    const ang = Math.atan2(t.y - cy, t.x - cx);
+    const far = dist > MARK;
+    els.gLine.style.opacity = far ? '' : '0';
+    els.gArrow.style.opacity = far ? '' : '0';
+    if (far) {
+      const r0 = MARK * 0.75, r1 = Math.max(r0, dist - MARK * 0.75);
+      els.gLine.setAttribute('x1', cx + Math.cos(ang) * r0); els.gLine.setAttribute('y1', cy + Math.sin(ang) * r0);
+      els.gLine.setAttribute('x2', cx + Math.cos(ang) * r1); els.gLine.setAttribute('y2', cy + Math.sin(ang) * r1);
+      const onScreen = t.x > 0 && t.x < W && t.y > 0 && t.y < H;
+      const ax = onScreen ? cx + Math.cos(ang) * r1 : clamp(t.x, 24, W - 24);
+      const ay = onScreen ? cy + Math.sin(ang) * r1 : clamp(t.y, 24, H - 24);
+      const s = 8;
+      els.gArrow.setAttribute('d',
+        `M${ax + Math.cos(ang) * s},${ay + Math.sin(ang) * s}` +
+        `L${ax + Math.cos(ang + 2.5) * s},${ay + Math.sin(ang + 2.5) * s}` +
+        `L${ax + Math.cos(ang - 2.5) * s},${ay + Math.sin(ang - 2.5) * s}Z`);
+    }
 
-    const ex = b.x + b.w / 2 - 0.5, ey = b.y + b.h / 2 - 0.5;
-    const err = Math.hypot(ex, ey);
-    const aligned = err < ALIGN_TOL;
-    els.guide.classList.toggle('is-close', err < CLOSE_TOL && !aligned);
+    const aligned = dist < alignTol;
+    els.guide.classList.toggle('is-close', dist < alignTol * 3 && !aligned);
     els.guide.classList.toggle('is-aligned', aligned);
 
     if (!aligned) {
@@ -305,6 +423,7 @@
 
   async function analyze() {
     if (state.phase === 'analyzing' || els.video.readyState < 2) return;
+    askForMotion(); // before any await: iOS needs it inside the tap
     await resetGuide();
 
     const aspect = viewAspect();
@@ -314,8 +433,7 @@
     drawView(c.getContext('2d'), c.width, c.height, 1);
     const image = c.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-    state.ref = grabGray();
-    state.offset = { x: 0, y: 0 };
+    startTracking();
     state.phase = 'analyzing';
     const id = ++state.requestId;
     els.frameBtn.classList.add('is-busy');
@@ -358,7 +476,7 @@
     }
     state.phase = 'guiding';
     state.alignedSince = 0;
-    setHint(data.tip || 'Move the frame onto the box', light);
+    setHint(data.tip || 'Line up the center mark with the target', light);
     els.guide.classList.add('is-on');
   }
 
