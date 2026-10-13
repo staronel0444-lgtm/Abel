@@ -13,6 +13,10 @@ GOOGLE_PLACES_API_KEY=your-places-key-here
 # Optional model override (defaults to claude-opus-4-8).
 #ANTHROPIC_MODEL=claude-opus-4-8
 
+# Optional model for the Camera page's framing call (defaults to claude-opus-5-5).
+# MOCK_ANTHROPIC=1 also returns a canned framing box so /camera works offline.
+#CAMERA_MODEL=claude-opus-5-5
+
 # Note: the generated sites' contact forms are self-contained (they open the
 # visitor's email app addressed to the client), so no email service, API key,
 # or signing secret is needed for them anymore.
