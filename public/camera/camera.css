@@ -211,9 +211,18 @@ svg { display: block; }
 .frame-btn.is-busy svg { animation: spin 1.1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.forge-btn {
+  right: auto;
+  left: 22px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
 .zoom-badge {
   position: absolute;
-  left: 30px;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
   min-width: 46px;
   padding: 6px 10px;
   border-radius: 16px;

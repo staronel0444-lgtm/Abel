@@ -1542,3 +1542,38 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
 }
 #clientinfo-text:focus { outline: none; border-color: var(--accent); }
 #clientinfo-text::placeholder { color: var(--ink-3); }
+
+/* ---------- Camera switch (bottom-left, every tab) ---------- */
+
+.mode-switch {
+  position: fixed;
+  left: 16px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 10px 13px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.92rem;
+  text-decoration: none;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+.mode-switch:hover { border-color: var(--accent); transform: translateY(-1px); }
+.mode-switch:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.mode-switch svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+/* Room under the last content so the switch never sits on top of it. */
+body { padding-bottom: 76px; }
