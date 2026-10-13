@@ -71,7 +71,9 @@ svg { display: block; }
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.7));
 }
 .g-target {
-  stroke-dasharray: 9 7;
+  rx: 8px;
+  fill: rgba(255, 255, 255, 0.12);
+  stroke-dasharray: 6 5;
   animation: march 900ms linear infinite;
 }
 .g-line {
@@ -94,7 +96,7 @@ svg { display: block; }
 .guide.is-aligned .g-line,
 .guide.is-aligned .g-arrow { opacity: 0; }
 
-@keyframes march { to { stroke-dashoffset: -32; } }
+@keyframes march { to { stroke-dashoffset: -22; } }
 
 .flash {
   position: absolute;
