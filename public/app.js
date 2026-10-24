@@ -491,10 +491,10 @@ $('#sites-refresh').addEventListener('click', loadSites);
 
 const buildState = { html: null, placeId: null, notifyEmail: '', siteId: null };
 
-// `layout` is passed in when the caller already fixed one (a lead card shows
+// `direction` is passed in when the caller already fixed one (a lead card shows
 // its prompt before you click, so the promise has to match the page). A manual
 // build takes the next one in the rotation.
-async function generateSingle(prompt, placeId = null, layout = null) {
+async function generateSingle(prompt, placeId = null, direction = null) {
   const errEl = $('#build-error');
   errEl.hidden = true;
   $('#build-result').hidden = true;
@@ -507,10 +507,26 @@ async function generateSingle(prompt, placeId = null, layout = null) {
   const siteId = newSiteId();
   try {
     const context = extractKeywords(prompt);
-    const fullPrompt = layout ? prompt : `${prompt}\n\n${layoutInstruction(nextLayout())}`;
+    // The prompt text itself is the niche hint: a concept's `match` is a regex,
+    // so "a plumber in Worcester MA" selects the plumbing concepts. Passing an
+    // empty niche here used to hand manual builds a concept at random.
+    const dir = direction
+      || { concept: pickConcept(prompt, { placeId: prompt.slice(0, 80) }), layout: nextLayout() };
+    const fullPrompt = direction
+      ? prompt
+      : `${prompt}\n\n${conceptInstruction(dir.concept)}\n\n${layoutInstruction(dir.layout)}`;
+
     const res = await api('/api/generate', {
       method: 'POST',
       body: { mode: 'page', prompt: fullPrompt, context, notifyEmail, siteId },
+    });
+    // Recorded only when a site is really generated, so the variety window
+    // tracks what was built rather than what was merely looked at. The font is
+    // whatever the model actually chose, read back off its own concept note.
+    rememberPick({
+      concept: dir.concept.key,
+      layout: dir.layout.key,
+      font: parseConcept(res.html)?.['display-font'] || '',
     });
     buildState.html = res.html;
     buildState.placeId = placeId;
@@ -518,6 +534,7 @@ async function generateSingle(prompt, placeId = null, layout = null) {
     buildState.siteId = siteId;
     swapFrame($('#build-frame'), res.html);
     $('#build-result').hidden = false;
+    reportSlop(res.html, '#build-slop');
     toast('Site generated');
   } catch (err) {
     errEl.textContent = err.message;
@@ -973,6 +990,212 @@ function article(word) {
   return 'a';
 }
 
+// ---- Service area, without a second API call ---------------------------------
+// The spec wants the business's town plus three to six towns it plausibly
+// serves. Google's search response carries one address and nothing about what
+// is next door, and a geocoding lookup would be a second billable call per
+// lead. So the neighbours are a static table of Central Mass, which is the
+// market Forge is actually pointed at. An unknown town falls back to naming
+// only the town itself — the generator is forbidden from inventing the rest.
+const TOWN_NEIGHBORS = {
+  worcester: ['Shrewsbury', 'Auburn', 'Millbury', 'Holden', 'West Boylston', 'Leicester'],
+  shrewsbury: ['Worcester', 'Westborough', 'Grafton', 'Northborough', 'Boylston'],
+  auburn: ['Worcester', 'Millbury', 'Oxford', 'Leicester', 'Charlton'],
+  millbury: ['Worcester', 'Auburn', 'Grafton', 'Sutton', 'Oxford'],
+  holden: ['Worcester', 'West Boylston', 'Paxton', 'Rutland', 'Sterling'],
+  westborough: ['Shrewsbury', 'Northborough', 'Grafton', 'Hopkinton', 'Marlborough'],
+  northborough: ['Shrewsbury', 'Westborough', 'Marlborough', 'Berlin', 'Boylston'],
+  grafton: ['Shrewsbury', 'Millbury', 'Westborough', 'Upton', 'Sutton'],
+  oxford: ['Auburn', 'Charlton', 'Sutton', 'Webster', 'Millbury'],
+  leicester: ['Worcester', 'Auburn', 'Spencer', 'Paxton', 'Rochdale'],
+  spencer: ['Leicester', 'Charlton', 'Sturbridge', 'Paxton', 'East Brookfield'],
+  charlton: ['Oxford', 'Auburn', 'Spencer', 'Sturbridge', 'Southbridge'],
+  sutton: ['Millbury', 'Oxford', 'Grafton', 'Northbridge', 'Douglas'],
+  webster: ['Oxford', 'Dudley', 'Thompson', 'Douglas'],
+  clinton: ['Sterling', 'Lancaster', 'Berlin', 'Boylston'],
+  sterling: ['Holden', 'Clinton', 'Lancaster', 'West Boylston', 'Princeton'],
+  leominster: ['Fitchburg', 'Lunenburg', 'Sterling', 'Lancaster', 'Princeton'],
+  fitchburg: ['Leominster', 'Lunenburg', 'Westminster', 'Ashby'],
+  gardner: ['Westminster', 'Templeton', 'Hubbardston', 'Ashburnham'],
+  marlborough: ['Northborough', 'Westborough', 'Southborough', 'Hudson', 'Sudbury'],
+  framingham: ['Marlborough', 'Natick', 'Ashland', 'Southborough'],
+  'west boylston': ['Worcester', 'Holden', 'Boylston', 'Sterling'],
+  boylston: ['West Boylston', 'Shrewsbury', 'Northborough', 'Clinton'],
+  paxton: ['Worcester', 'Holden', 'Leicester', 'Rutland', 'Spencer'],
+  'northbridge': ['Sutton', 'Uxbridge', 'Grafton', 'Douglas'],
+  uxbridge: ['Northbridge', 'Douglas', 'Millville', 'Sutton'],
+  dudley: ['Webster', 'Southbridge', 'Oxford', 'Charlton'],
+  southbridge: ['Charlton', 'Dudley', 'Sturbridge', 'Brookfield'],
+};
+
+// Google's formattedAddress reads "107 Main St, Worcester, MA 01604, USA" —
+// the town is the field before the state.
+function townFromAddress(address) {
+  const parts = String(address || '').split(',').map((x) => x.trim()).filter(Boolean);
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (/^[A-Z]{2}\s+\d{5}/.test(parts[i]) || /^[A-Z]{2}$/.test(parts[i])) {
+      return parts[i - 1] || '';
+    }
+  }
+  return parts.length >= 2 ? parts[parts.length - 2] : '';
+}
+
+function serviceAreaFor(address) {
+  const town = townFromAddress(address);
+  const near = TOWN_NEIGHBORS[town.toLowerCase()] || [];
+  return { town, nearby: near.slice(0, 6) };
+}
+
+// ---- Concept library (spec Section 5) ---------------------------------------
+// Starting points, not templates. Each concept names a direction the model
+// would not reach for on its own; the business's real facts then bend it.
+// `match` is tested against the niche, so one entry covers a family of trades.
+const CONCEPTS = [
+  { key: 'high-voltage', name: 'High Voltage', match: /electric/i,
+    brief: 'Near-black ground, one electric accent (safety yellow or arc blue), sharp angled section dividers, heavy condensed type. Reads like a van at night.' },
+  { key: 'blueprint', name: 'Blueprint', match: /electric|contractor|carpent|remodel|builder/i,
+    brief: 'Navy ground with a fine white grid, technical-drawing line work, dimension marks, monospace labels against a strong slab serif. Services laid out like a panel schedule.' },
+  { key: 'panel-label', name: 'Panel Label', match: /electric/i,
+    brief: 'Off-white ground with labels styled like breaker-panel stickers and a numbered, circuit-style services list.' },
+
+  { key: 'emergency-line', name: 'Emergency Line', match: /plumb|drain|septic|water|restoration/i,
+    brief: 'The phone number IS the hero, set enormous. Water-blue accent, bold condensed type, a stamped 24/7 mark. Built for somebody standing in a puddle.' },
+  { key: 'old-school-trade', name: 'Old-School Trade', match: /plumb|lock|hardware|upholster|cobbler|tailor/i,
+    brief: 'Cream and deep green, slab serif, copper-pipe line illustrations, the feel of a hand-painted shop sign that has been there forty years.' },
+
+  { key: 'hot-cold-split', name: 'Hot / Cold Split', match: /hvac|heating|air condition|furnace|boiler/i,
+    brief: 'The hero splits into a warm half and a cool half and the visitor picks their problem. Nothing centred, no shared middle.' },
+  { key: 'thermostat', name: 'Thermostat', match: /hvac|heating|air condition/i,
+    brief: 'Huge numerals, a dial-like circular element as the main graphic, cool grey with a single orange accent.' },
+
+  { key: 'garage-floor', name: 'Garage Floor Industrial', match: /auto|car|tire|mechanic|collision|body shop|transmission|muffler/i,
+    brief: 'Concrete grey, safety yellow and black hazard striping, stencil or heavy condensed type, the phone number set on a license-plate graphic.' },
+  { key: 'before-after', name: 'Before / After', match: /auto|collision|body shop|detail|clean|pressure wash|restoration|landscap/i,
+    brief: 'A real before/after pair as the hero with a working drag divider. Only valid when real before and after photos were provided; otherwise pick another concept.' },
+  { key: 'racing-livery', name: 'Racing Livery', match: /auto|car|tire|detail|performance|mechanic/i,
+    brief: 'Bold diagonal colour bands, heavy italic type, a checker motif used once and sparingly.' },
+
+  { key: 'field-guide', name: 'Field Guide', match: /landscap|lawn|tree|garden|nursery|snow/i,
+    brief: 'Editorial serif, muted greens and soil browns, services laid out as a seasons timeline from spring cleanup through mowing, leaves and snow.' },
+  { key: 'full-bleed', name: 'Full Bleed', match: /landscap|lawn|pool|roof|paint|floor/i,
+    brief: 'Enormous real photographs with minimal text over them. Only valid with real, good photos provided; otherwise pick another concept.' },
+
+  { key: 'storm-ready', name: 'Storm Ready', match: /roof|gutter|siding|chimney|restoration/i,
+    brief: 'Dark slate, one strong accent, copy built around storm damage and insurance claims when the business handles them.' },
+  { key: 'shingle', name: 'Shingle Pattern', match: /roof|siding/i,
+    brief: 'Overlapping offset blocks shaped like courses of shingles, used as the section shapes themselves.' },
+
+  { key: 'crisp', name: 'Crisp', match: /clean|maid|janitor|pressure wash|window|carpet/i,
+    brief: 'Generous white space, one bright fresh accent, and a before/after wipe revealed on scroll.' },
+  { key: 'checklist', name: 'Checklist', match: /clean|maid|janitor|inspect|move|handyman/i,
+    brief: 'Services as a satisfying checklist that ticks itself off as the visitor scrolls.' },
+
+  { key: 'menu-board', name: 'Menu Board', match: /restaurant|pizza|cafe|coffee|deli|bakery|food|bar|grill|taco|diner/i,
+    brief: 'The page reads like their actual menu — chalkboard or printed-menu typesetting, prices where prices are known, the menu as the largest element.' },
+  { key: 'sunday-morning', name: 'Sunday Morning', match: /bakery|cafe|coffee|donut|ice cream|candy|brunch/i,
+    brief: 'Warm cream ground, a soft serif, slightly hand-made shapes, and the hours set big because that is what visitors came to find.' },
+  { key: 'neighborhood-spot', name: 'Neighborhood Spot', match: /restaurant|cafe|bar|deli|pizza|convenience|liquor|market/i,
+    brief: 'Street name and town in very large type, a photograph of the actual storefront, a come-by-and-see-us voice.' },
+
+  { key: 'classic-barber', name: 'Classic Barber', match: /barber|salon|hair|nail|spa|lash|brow/i,
+    brief: 'Red, white and navy stripe accents used sparingly, a serif with real personality, the price list presented as a framed sign.' },
+  { key: 'studio', name: 'Studio', match: /barber|salon|hair|nail|tattoo|photo|lash|brow|makeup/i,
+    brief: 'Monochrome with one bold colour, gallery-first layout, large real photographs of their work carrying the page.' },
+
+  { key: 'poster', name: 'Poster', match: /gym|fitness|martial|boxing|yoga|crossfit|dance|climb/i,
+    brief: 'Oversized type bleeding off the edges, hard contrast, the class schedule as a bold grid.' },
+
+  { key: 'calm-clinic', name: 'Calm Clinic', match: /dentist|dental|chiro|medical|clinic|doctor|vet|therap|optom|podiat/i,
+    brief: 'Soft warm neutrals rather than cold hospital blue, a friendly rounded serif, booking up front. Real staff photos only, or none.' },
+
+  { key: 'job-site', name: 'Job Site', match: /contractor|remodel|carpent|builder|kitchen|bath|deck|fence|concrete|mason|handyman/i,
+    brief: 'Kraft-paper and pencil tones, measurement marks, hand-written annotations over project photos.' },
+  { key: 'portfolio', name: 'Portfolio', match: /contractor|remodel|carpent|paint|floor|kitchen|bath|landscap|tile|cabinet/i,
+    brief: 'Project-first layout, each project labelled with its town and a single line about what was done.' },
+
+  // Cross-trade directions. Section 11 wants nothing repeating inside a window
+  // of ten, but the niche-specific lists above are only two or three deep for
+  // some trades — a plumber matched five concepts in total, so a run of ten
+  // plumbers had to recycle. These apply to any trade and give every niche a
+  // pool deep enough for the window to actually hold.
+  { key: 'work-order', name: 'Work Order', match: /./,
+    brief: 'The page is laid out like one of their own work orders or invoices: ruled rows, a job-number header, monospace labels against a plain workhorse face. Services are line items.' },
+  { key: 'night-shift', name: 'Night Shift', match: /./,
+    brief: 'A dark ground with one warm lit accent, as though the photo were taken at 11pm. For anyone who takes calls after hours — lead with the fact that somebody answers.' },
+  { key: 'hand-painted', name: 'Hand Painted', match: /./,
+    brief: 'Sign-painter lettering with slight irregularity, a two-colour palette like a window gilded forty years ago, and the town name given as much weight as the trade.' },
+  { key: 'stamped', name: 'Stamped', match: /./,
+    brief: 'Ink-stamp marks, a municipal form feel, one strong red used only for the stamps. Headings sit in boxed rules. Plain, official and unfussy.' },
+  { key: 'ledger', name: 'Ledger', match: /./,
+    brief: 'A ruled-ledger grid with hairline rules and tabular figures, prices and services aligned in columns. Numbers are the design.' },
+
+  // Fallbacks, so an unmatched niche still gets a direction rather than drifting
+  // to the statistical average.
+  { key: 'price-board', name: 'Price Board', match: /./,
+    brief: 'The services and prices typeset as a real board or menu, as the largest and most confident element on the page.' },
+  { key: 'one-room', name: 'One Room', match: /./,
+    brief: 'The whole business on a single screen: what they do, the town, the phone number set large, hours. Almost nothing below the fold.' },
+  { key: 'town-name', name: 'Town Name', match: /./,
+    brief: 'The town set in type large enough to read from across the room, the trade underneath it, a local and unfussy voice.' },
+];
+
+// ---- Variety tracking (spec Section 11) -------------------------------------
+// Two demos in one batch must not share a concept, a display font or a hero
+// layout, and nothing repeats inside a window of the last ten.
+const VARIETY_KEY = 'forge.recentPicks';
+const VARIETY_WINDOW = 10;
+
+function readRecent() {
+  try {
+    const v = JSON.parse(localStorage.getItem(VARIETY_KEY) || '[]');
+    return Array.isArray(v) ? v.slice(-VARIETY_WINDOW) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rememberPick(pick) {
+  try {
+    const next = readRecent().concat([pick]).slice(-VARIETY_WINDOW);
+    localStorage.setItem(VARIETY_KEY, JSON.stringify(next));
+  } catch {
+    // Storage blocked; variety still holds for this page's lifetime via the
+    // in-memory assignments below.
+  }
+}
+
+// Pick a concept that fits the niche and hasn't been used in the recent window.
+// Falls back to the least recently used candidate rather than refusing, so a
+// long run in one niche still rotates instead of stalling.
+function pickConcept(niche, lead, taken = []) {
+  const candidates = CONCEPTS.filter((c) => c.match.test(niche || ''));
+  const pool = candidates.length ? candidates : CONCEPTS;
+  // `taken` holds the concepts already handed to other leads in this batch, so
+  // two demos shown to two shops on the same street can't come out as twins.
+  const recent = readRecent().map((p) => p.concept).concat(taken);
+
+  const unused = pool.filter((c) => !recent.includes(c.key));
+  if (unused.length) {
+    // Deterministic per business, so the same lead keeps the same concept.
+    return unused[hashString(lead.placeId) % unused.length];
+  }
+  // Everything in the pool is recent: take whichever was used longest ago.
+  let best = pool[0];
+  let bestAge = -1;
+  for (const c of pool) {
+    const age = recent.length - 1 - recent.lastIndexOf(c.key);
+    if (age > bestAge) { bestAge = age; best = c; }
+  }
+  return best;
+}
+
+function hashString(str) {
+  let h = 0;
+  const s = String(str || '');
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
 // ---- Layout archetypes ----------------------------------------------------
 // The art-style picker only ever changed the paint: colours, fonts, texture.
 // The bones underneath never moved, so a Brutalist bakery and a Luxury plumber
@@ -1067,39 +1290,159 @@ function nextLayout() {
   return layout;
 }
 
-// A lead's archetype has to be stable: the card shows the prompt, and clicking
-// Generate rebuilds it. If it were re-rolled each call the visitor would be
-// promised one page and handed another.
-const leadLayouts = new Map();
-function layoutForLead(lead) {
-  if (!leadLayouts.has(lead.placeId)) leadLayouts.set(lead.placeId, nextLayout());
-  return leadLayouts.get(lead.placeId);
-}
-
 function layoutInstruction(layout) {
   return `Page structure — "${layout.name}": ${layout.brief}
 
 Follow this structure over any default arrangement of sections. Sections not called for here should be left out rather than added back in — a shorter page that commits to a shape beats a longer one that hedges.`;
 }
 
-// Auto-generated prompt in the exact format Sections 1/2 consume — built
-// from the structured lead fields instead of pasted text.
-function buildLeadPrompt(lead, niche) {
-  const bits = [];
-  bits.push(`Create a professional single-page website for ${lead.name}, ${article(niche)} ${niche} business located at ${lead.address || 'a local service area'}.`);
-  if (lead.phone) bits.push(`Their phone number is ${lead.phone} — feature it prominently and make it tappable.`);
-  if (lead.rating && lead.reviewCount) {
-    bits.push(`They have a ${lead.rating}-star rating across ${lead.reviewCount} Google reviews — use it as social proof.`);
+// ---- Extra facts Places cannot supply ---------------------------------------
+// Brand colours, the owner's first name and anything distinctive are the three
+// inputs that move a site furthest from the average, and none of them are in a
+// Places response. They are typed in once per business and kept locally, keyed
+// by place ID, so a demo regenerated later keeps them.
+const EXTRAS_KEY = 'forge.leadExtras';
+
+function readExtras() {
+  try {
+    const v = JSON.parse(localStorage.getItem(EXTRAS_KEY) || '{}');
+    return v && typeof v === 'object' ? v : {};
+  } catch {
+    return {};
   }
-  bits.push(`Tone: trustworthy local ${niche}. The goal of the page is to make the phone ring.`);
-  return bits.join(' ');
 }
 
-// What actually gets sent. The structure used to be hardcoded into the prompt
-// above, which is exactly why every site came out the same; it now comes from
-// this lead's own archetype and differs from the one before it.
+function leadExtras(placeId) {
+  const all = readExtras();
+  const e = all[placeId] || {};
+  return {
+    colors: e.colors || '',
+    owner: e.owner || '',
+    distinctive: e.distinctive || '',
+    services: e.services || '',
+  };
+}
+
+function saveLeadExtras(placeId, extras) {
+  try {
+    const all = readExtras();
+    all[placeId] = extras;
+    localStorage.setItem(EXTRAS_KEY, JSON.stringify(all));
+  } catch {
+    // Storage blocked — the extras just won't survive a reload.
+  }
+}
+
+function hasExtras(placeId) {
+  const e = leadExtras(placeId);
+  return Boolean(e.colors || e.owner || e.distinctive || e.services);
+}
+
+// ---- Concept + layout, bound to one lead ------------------------------------
+// Memoised together against the place ID: the card shows the direction before
+// you click, so the page you get has to be the page you were promised.
+const leadDirections = new Map();
+function directionForLead(lead, niche) {
+  if (!leadDirections.has(lead.placeId)) {
+    const taken = Array.from(leadDirections.values()).map((d) => d.concept.key);
+    leadDirections.set(lead.placeId, {
+      concept: pickConcept(niche, lead, taken),
+      layout: nextLayout(),   // the cursor rotates, so layouts never repeat inside 12
+    });
+  }
+  return leadDirections.get(lead.placeId);
+}
+
+// The model picks the display font, not Forge, so the only way to stop the same
+// one appearing ten times is to read back what it chose and rule it out next
+// time. Parsed from the FORGE-CONCEPT comment the rules require.
+function parseConcept(html) {
+  const m = String(html || '').match(/<!--\s*FORGE-CONCEPT([\s\S]*?)-->/i);
+  if (!m) return null;
+  const out = {};
+  for (const line of m[1].split('\n')) {
+    const kv = line.match(/^\s*([a-z-]+)\s*:\s*(.+?)\s*$/i);
+    if (kv) out[kv[1].toLowerCase()] = kv[2];
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function recentFonts() {
+  return Array.from(new Set(readRecent().map((p) => p.font).filter(Boolean)));
+}
+
+// ---- The facts block (spec Section 3) ---------------------------------------
+// Everything true that Forge knows about this business, labelled, with nothing
+// implied and nothing padded. Missing lines are simply absent, which is what
+// lets the no-invention rule leave the matching section out.
+function buildLeadPrompt(lead, niche) {
+  const area = serviceAreaFor(lead.address);
+  const extra = leadExtras(lead.placeId);
+  const L = [];
+
+  L.push(`Build the website for ${lead.name}, ${article(niche)} ${niche}${area.town ? ` in ${area.town}` : ''}.`);
+  L.push('');
+  L.push('BUSINESS FACTS — use only these, invent nothing:');
+  L.push(`- Name, exactly as it appears on their sign: ${lead.name}`);
+  L.push(`- Trade: ${niche}${lead.category && !new RegExp(niche, 'i').test(lead.category) ? ` (Google lists them as ${lead.category})` : ''}`);
+  if (extra.services) L.push(`- Services, in their words: ${extra.services}`);
+  if (lead.address) L.push(`- Address: ${lead.address}`);
+  if (area.town) {
+    L.push(area.nearby.length
+      ? `- Town: ${area.town}. Also serves: ${area.nearby.join(', ')}. Name these towns on the page.`
+      : `- Town: ${area.town}. No surrounding towns confirmed — name only ${area.town}, do not guess at others.`);
+  }
+  if (lead.phone) L.push(`- Phone: ${lead.phone}`);
+  if (Array.isArray(lead.hours) && lead.hours.length) {
+    L.push(`- Hours, word for word from their Google listing:\n    ${lead.hours.join('\n    ')}`);
+  } else {
+    L.push('- Hours: not known. Leave hours out entirely rather than guessing at them.');
+  }
+  if (lead.rating && lead.reviewCount) {
+    L.push(`- Rating: ${lead.rating} stars from ${lead.reviewCount} Google reviews. Both numbers are real, use them.`);
+  }
+  if (Array.isArray(lead.reviews) && lead.reviews.length) {
+    L.push('- Real Google reviews. Quote these word for word with the first name and star rating shown. Do not edit, polish or add to them:');
+    for (const r of lead.reviews) {
+      L.push(`    "${r.text}" — ${r.author}${r.rating ? `, ${r.rating} stars` : ''}`);
+    }
+    L.push(`- What the reviews keep praising is the strongest thing you have. Read them and lead the page with it.`);
+  } else {
+    L.push('- Reviews: none available. Do NOT write testimonials. Leave a <!-- PLACEHOLDER: add real reviews --> comment and show nothing.');
+  }
+  if (extra.colors) L.push(`- Their real brand colours, from their sign, truck or storefront: ${extra.colors}. Build the palette from these.`);
+  else L.push('- Brand colours: unknown. Choose a palette from the trade and the concept, and avoid purple, violet and indigo entirely.');
+  if (extra.owner) L.push(`- Owner's first name: ${extra.owner}. You may address the visitor in his voice, e.g. "Call ${extra.owner} directly".`);
+  if (extra.distinctive) L.push(`- Distinctive, and worth building the concept around: ${extra.distinctive}`);
+  L.push('- Photos: none supplied. Use royalty-free stock sparingly, or design without photographs. Never imply a stock photo shows their actual work, premises or staff.');
+
+  return L.join('\n');
+}
+
+// What actually gets sent: the facts, then the design direction. Split from the
+// facts so the lead card can show the readable half.
 function fullLeadPrompt(lead, niche) {
-  return `${buildLeadPrompt(lead, niche)}\n\n${layoutInstruction(layoutForLead(lead))}`;
+  const d = directionForLead(lead, niche);
+  return [
+    buildLeadPrompt(lead, niche),
+    '',
+    conceptInstruction(d.concept),
+    '',
+    layoutInstruction(d.layout),
+  ].join('\n');
+}
+
+function conceptInstruction(concept) {
+  return `DESIGN CONCEPT — start from "${concept.name}": ${concept.brief}
+
+This is a direction, not a template. Bend it with this business's own facts until it could not be used for anyone else, and write it up in the FORGE-CONCEPT comment. If the concept fights the facts you were given — it calls for photographs you do not have, or before-and-after pairs that were not supplied — pick a different direction and say so in the comment rather than faking the content it needs.${avoidFontsLine()}`;
+}
+
+// Section 11: nothing repeats inside a window of the last ten.
+function avoidFontsLine() {
+  const fonts = recentFonts();
+  if (!fonts.length) return '';
+  return `\n\nAlready used on recent sites, so pick a different display font: ${fonts.join(', ')}.`;
 }
 
 // `compact` renders a scannable summary card for the results grid — tapping it
@@ -1107,7 +1450,8 @@ function fullLeadPrompt(lead, niche) {
 // the whole prompt on every card made the grid enormous and hard to skim.
 function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {}) {
   const prompt = buildLeadPrompt(lead, niche);
-  const layout = layoutForLead(lead);
+  const dir = directionForLead(lead, niche);
+  const layout = dir.layout;
   const rating = lead.rating
     ? `<div class="rating">★ ${escapeHtml(lead.rating)} · ${escapeHtml(lead.reviewCount)} reviews</div>`
     : '<div class="rating muted">No reviews yet</div>';
@@ -1137,14 +1481,16 @@ function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {
       ${rating}
     </div>
     ${compact
-      ? `<div class="lead-open-hint"><span class="ll-tag">${escapeHtml(layout.name)}</span><span class="chev">›</span></div>`
+      ? `<div class="lead-open-hint"><span class="ll-tag">${escapeHtml(dir.concept.name)}</span><span class="ll-tag ll-dim">${escapeHtml(layout.name)}</span><span class="chev">›</span></div>`
       : `<div class="lead-prompt">
-      <h4>Auto-generated prompt</h4>
-      <p>${escapeHtml(prompt)}</p>
+      <h4>What the site will be built from</h4>
+      <pre class="lead-facts">${escapeHtml(prompt)}</pre>
+      <p class="lead-layout"><span class="ll-tag">Concept</span> <strong>${escapeHtml(dir.concept.name)}</strong> — ${escapeHtml(dir.concept.brief)}</p>
       <p class="lead-layout"><span class="ll-tag">Layout</span> <strong>${escapeHtml(layout.name)}</strong> — ${escapeHtml(layout.blurb)}</p>
     </div>
     <div class="lead-generate">
       <button class="btn btn-primary" data-act="generate">Generate site</button>
+      <button class="btn ${hasExtras(lead.placeId) ? 'has-extras' : ''}" data-act="extras">${hasExtras(lead.placeId) ? '✓ Their details' : '+ Their details'}</button>
     </div>`}
     ${decide}`;
 }
@@ -1160,8 +1506,13 @@ function wireLeadCard(cardEl, lead, niche, onDecided) {
       $('#build-prompt').value = prompt;
       $('#build-prompt').dispatchEvent(new Event('input'));
       switchTab('build');
-      generateSingle(prompt, lead.placeId, layoutForLead(lead));
+      generateSingle(prompt, lead.placeId, directionForLead(lead, niche));
     });
+  }
+
+  const extrasBtn = cardEl.querySelector('[data-act="extras"]');
+  if (extrasBtn) {
+    extrasBtn.addEventListener('click', () => openLeadExtras(lead, niche, cardEl));
   }
 
   const yesBtn = cardEl.querySelector('[data-act="yes"]');
@@ -1307,6 +1658,126 @@ $('#lead-form').addEventListener('submit', async (e) => {
     $('#lead-search-btn').disabled = false;
   }
 });
+
+// ---- "Their details" modal --------------------------------------------------
+// Collects the three Section 3 inputs a Places response can never carry. Saved
+// per place ID, so the card, the prompt and a regeneration all agree.
+let extrasTarget = null;
+
+function openLeadExtras(lead, niche, cardEl) {
+  extrasTarget = { lead, niche, cardEl };
+  const e = leadExtras(lead.placeId);
+  $('#extras-modal-sub').textContent =
+    `Anything you know about ${lead.name} that Google doesn't. Every field is optional, and anything left blank is left off the site rather than guessed at.`;
+  $('#extras-colors').value = e.colors;
+  $('#extras-owner').value = e.owner;
+  $('#extras-services').value = e.services;
+  $('#extras-distinctive').value = e.distinctive;
+  $('#extras-modal').hidden = false;
+  $('#extras-colors').focus();
+}
+
+function closeLeadExtras() {
+  $('#extras-modal').hidden = true;
+  extrasTarget = null;
+}
+
+$('#extras-cancel').addEventListener('click', closeLeadExtras);
+$('#extras-modal').addEventListener('click', (e) => {
+  if (e.target === $('#extras-modal')) closeLeadExtras();
+});
+
+$('#extras-save').addEventListener('click', () => {
+  if (!extrasTarget) return closeLeadExtras();
+  const { lead, niche, cardEl } = extrasTarget;
+  saveLeadExtras(lead.placeId, {
+    colors: $('#extras-colors').value.trim(),
+    owner: $('#extras-owner').value.trim(),
+    services: $('#extras-services').value.trim(),
+    distinctive: $('#extras-distinctive').value.trim(),
+  });
+  closeLeadExtras();
+
+  // Their details change the facts block, so the card has to be rebuilt or it
+  // would still be advertising the old prompt.
+  if (cardEl) {
+    const compact = cardEl.classList.contains('is-compact');
+    cardEl.innerHTML = leadCardHtml(lead, niche, 'undecided', { compact });
+    wireSelectCheckbox(cardEl, lead, niche);
+    wireLeadCard(cardEl, lead, niche, () => {});
+  }
+  toast('Saved — the site will be built from these');
+});
+
+// ---- Banned-list scan (spec Section 15) -------------------------------------
+// Free: a string search over HTML Forge already has. It never regenerates on
+// its own, because that would spend a credit without being asked — it reports,
+// and refining is your call.
+const BANNED_FONTS = [
+  'Inter', 'Roboto', 'Open Sans', 'Lato', 'Poppins', 'Montserrat', 'Raleway',
+  'Nunito', 'Space Grotesk', 'Plus Jakarta Sans', 'Manrope', 'DM Sans',
+  'Outfit', 'Sora', 'Playfair Display',
+];
+const BANNED_PHRASES = [
+  'elevate', 'empower', 'unlock', 'seamless', 'cutting-edge', 'state-of-the-art',
+  'innovative solutions', 'one-stop shop', 'trusted partner', 'pride ourselves',
+  'top-notch', 'second to none', 'excellence', 'look no further',
+  'quality you can trust', 'satisfaction is our priority', 'transforming',
+  'tailored solutions', 'peace of mind', "we've got you covered",
+  'Get Started', 'Learn More',
+];
+
+function scanForSlop(html) {
+  const doc = String(html || '');
+  const found = { fonts: [], phrases: [], colors: [], invented: [] };
+
+  // Only count a banned font where it is actually being applied as a typeface,
+  // not where the word happens to appear in copy.
+  const fontContexts = (doc.match(/font-family\s*:[^;}]+/gi) || []).join(' ')
+    + ' ' + (doc.match(/fonts\.googleapis\.com[^"')\s]*/gi) || []).join(' ');
+  for (const f of BANNED_FONTS) {
+    if (new RegExp(f.replace(/\s+/g, '[\\s+]'), 'i').test(fontContexts)) found.fonts.push(f);
+  }
+
+  const text = doc.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/gi, '');
+  for (const ph of BANNED_PHRASES) {
+    if (new RegExp(`\\b${ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)) found.phrases.push(ph);
+  }
+
+  if (/linear-gradient\([^)]*(#?(8b5cf6|a855f7|6366f1|7c3aed|818cf8|c084fc)|purple|violet|indigo)/i.test(doc)) {
+    found.colors.push('purple or indigo gradient');
+  }
+  if (/-webkit-background-clip\s*:\s*text/i.test(doc) && /linear-gradient/i.test(doc)) {
+    found.colors.push('gradient text');
+  }
+  if (/backdrop-filter\s*:\s*blur/i.test(doc)) found.colors.push('glassmorphism blur');
+
+  // Numbers the spec treats as invented unless they came from the input.
+  const stats = text.match(/\b\d{2,5}\s*\+\s*(?:happy|satisfied|customers|clients|projects|jobs|years)/gi) || [];
+  if (stats.length) found.invented.push(...stats.slice(0, 3).map((x) => x.trim()));
+
+  const total = found.fonts.length + found.phrases.length + found.colors.length + found.invented.length;
+  return { ...found, total };
+}
+
+function reportSlop(html, where) {
+  const r = scanForSlop(html);
+  const box = $(where);
+  if (!box) return r;
+  if (!r.total) {
+    box.hidden = true;
+    return r;
+  }
+  const bits = [];
+  if (r.fonts.length) bits.push(`banned heading font: ${r.fonts.join(', ')}`);
+  if (r.phrases.length) bits.push(`banned wording: ${r.phrases.slice(0, 5).join(', ')}`);
+  if (r.colors.length) bits.push(r.colors.join(', '));
+  if (r.invented.length) bits.push(`possibly invented stats: ${r.invented.join(', ')}`);
+  box.innerHTML = `<strong>${r.total} thing${r.total === 1 ? '' : 's'} to fix:</strong> ${escapeHtml(bits.join(' · '))}
+    <button type="button" class="btn btn-sm" data-act="fix-slop">Fix it with a refine</button>`;
+  box.hidden = false;
+  return r;
+}
 
 // ---- Bulk selection + batch demo generation ----
 
@@ -1465,6 +1936,11 @@ async function runBatchGenerate(entries) {
         const genRes = await api('/api/generate', {
           method: 'POST',
           body: { mode: 'page', prompt, context, notifyEmail: '', siteId },
+        });
+        rememberPick({
+          concept: directionForLead(lead, niche).concept.key,
+          layout: directionForLead(lead, niche).layout.key,
+          font: parseConcept(genRes.html)?.['display-font'] || '',
         });
         const prevRes = await api('/api/previews', {
           method: 'POST',
@@ -2482,6 +2958,7 @@ async function runBuildRefine(instruction, btn, busyLabel) {
     const newHtml = buildState.notifyEmail ? res.html : preserveForms(buildState.html, res.html);
     buildState.html = newHtml;
     swapFrame($('#build-frame'), newHtml);
+    reportSlop(newHtml, '#build-slop');
     $('#build-link-output').hidden = true; // any earlier link now points at the old version
     toast('Change applied — save a new link to share this version');
     return true;
@@ -2493,6 +2970,28 @@ async function runBuildRefine(instruction, btn, busyLabel) {
     btn.textContent = label;
   }
 }
+
+// Delegated so it keeps working after the warning box is rewritten.
+$('#build-slop').addEventListener('click', (e) => {
+  if (!e.target.closest('[data-act="fix-slop"]')) return;
+  const r = scanForSlop(buildState.html);
+  if (!r.total) { $('#build-slop').hidden = true; return; }
+  const asks = [];
+  if (r.fonts.length) {
+    asks.push(`Replace the heading font — ${r.fonts.join(' and ')} is banned. Swap the Google Fonts link and the font-family for a display face that suits this page's existing concept, and leave the body font alone unless it is also on that list.`);
+  }
+  if (r.phrases.length) {
+    asks.push(`Rewrite only the sentences containing these words, keeping the same meaning in the owner's plain voice: ${r.phrases.join(', ')}. Do not add any new claims.`);
+  }
+  if (r.colors.length) {
+    asks.push(`Remove: ${r.colors.join(', ')}. Use flat, confident colour from the page's existing palette instead.`);
+  }
+  if (r.invented.length) {
+    asks.push(`Delete these numbers and whatever surrounds them, because they were never verified: ${r.invented.join(', ')}. Do not replace them with different numbers.`);
+  }
+  asks.push('Change nothing else. Keep the layout, the structure, every other word, all images, the contact form, the phone links and the head metadata exactly as they are.');
+  runBuildRefine(asks.join(' '), e.target, 'Fixing…');
+});
 
 $('#build-refine-btn').addEventListener('click', () => {
   const instruction = $('#build-refine-input').value.trim();

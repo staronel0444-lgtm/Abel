@@ -67,6 +67,7 @@
       </div>
 
       <div class="result" id="build-result" hidden>
+        <div class="slop-warn" id="build-slop" hidden></div>
         <div class="refine-bar">
           <input type="text" id="build-refine-input" maxlength="2000"
             placeholder="Describe a change — e.g. “make the red deeper and add a financing section”">
@@ -613,6 +614,43 @@
       <div class="batch-list" id="batch-list"></div>
       <div class="modal-actions">
         <button type="button" class="btn" id="batch-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Their details: the three inputs Google can't give us -->
+  <div class="modal-backdrop" id="extras-modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="extras-modal-title">
+      <h2 id="extras-modal-title">Their details</h2>
+      <p class="muted" id="extras-modal-sub">Anything you know about this business that Google doesn't. Every field is optional, and anything you leave blank is simply left off the site.</p>
+
+      <label class="field">
+        <span>Their real colours</span>
+        <input type="text" id="extras-colors" placeholder="black truck with red lettering" maxlength="120">
+        <small>From their sign, truck or storefront. This does more against the generic look than anything else.</small>
+      </label>
+
+      <label class="field">
+        <span>Owner's first name</span>
+        <input type="text" id="extras-owner" placeholder="Ray" maxlength="40">
+        <small>Lets the site say "Call Ray directly" instead of "contact us".</small>
+      </label>
+
+      <label class="field">
+        <span>Services, in their words</span>
+        <input type="text" id="extras-services" placeholder="collision repair, paint matching, insurance claims" maxlength="200">
+        <small>Straight off their sign, listing or Facebook page.</small>
+      </label>
+
+      <label class="field">
+        <span>Anything distinctive</span>
+        <textarea id="extras-distinctive" rows="3" placeholder="Family run since 1987. Ray deals with the insurance company for you." maxlength="400"></textarea>
+        <small>A founding year, a specialty, a slogan they already use. This becomes the concept the whole site is built around.</small>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" id="extras-cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" id="extras-save">Save details</button>
       </div>
     </div>
   </div>

@@ -1140,6 +1140,67 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
 }
 
 /* ---- The basket (leads picked across several searches) ---- */
+/* Opened from inside the lead detail modal, so it has to stack above it —
+   otherwise the backdrop below swallows the clicks and Save is unreachable. */
+#extras-modal { z-index: 60; }
+
+.lead-facts {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--ink-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.lead-generate { display: flex; gap: 8px; flex-wrap: wrap; }
+.lead-generate .btn.has-extras { color: var(--good); border-color: var(--good); }
+.ll-dim { color: var(--ink-3) !important; }
+
+/* ---- Banned-list scan result ---- */
+.slop-warn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.slop-warn strong { color: var(--ink); }
+.slop-warn .btn { margin-left: auto; flex-shrink: 0; }
+
+/* ---- "Their details" fields ---- */
+.field { display: flex; flex-direction: column; gap: 5px; margin-top: 14px; }
+.field > span { font-size: 0.88rem; font-weight: 600; color: var(--ink); }
+.field input, .field textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+.field input::placeholder, .field textarea::placeholder { color: var(--ink-3); }
+.field small { font-size: 0.78rem; color: var(--ink-3); line-height: 1.45; }
+
 .lead-layout {
   margin-top: 10px;
   padding-top: 10px;
