@@ -17,19 +17,8 @@ import { verifyToken, parseCookies } from '../lib/auth.js';
 
 const PUBLIC_PREFIXES = ['/preview', '/api/pv', '/api/login', '/api/logout'];
 
-// The Camera page's manifest and icons, so "Add to Home Screen" can fetch
-// them even on browsers that don't send the login cookie for those requests.
-const PUBLIC_FILES = [
-  '/camera/manifest.webmanifest',
-  '/camera/icon.svg',
-  '/camera/icon-180.png',
-  '/camera/icon-192.png',
-  '/camera/icon-512.png',
-];
-
 function isPublic(pathname) {
-  return PUBLIC_FILES.includes(pathname) ||
-    PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'));
 }
 
 const LOGIN_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
