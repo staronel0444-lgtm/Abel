@@ -2604,7 +2604,7 @@ async function loadClients() {
 // ------------------------------------------------- Section 5: Revenue
 
 const WINDOW_LABELS = {
-  '24h': 'prior 24 hours',
+  '24h': 'yesterday',
   week: 'prior week',
   month: 'prior 30 days',
   '6months': 'prior 6 months',
@@ -2615,7 +2615,10 @@ let revenueWindow = 'month';
 
 async function loadRevenue() {
   try {
-    const res = await api(`/api/revenue?window=${encodeURIComponent(revenueWindow)}`);
+    // The server works in whole days on your clock, so it needs to know what
+    // day it is here and how far this timezone is from UTC.
+    const tz = -new Date().getTimezoneOffset();
+    const res = await api(`/api/revenue?window=${encodeURIComponent(revenueWindow)}&today=${localToday()}&tz=${tz}`);
     countUp($('#revenue-value'), res.total, money);
     countUp($('#revenue-upfront'), res.upfront, money);
     countUp($('#revenue-monthly'), res.monthly, money);
