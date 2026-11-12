@@ -31,6 +31,16 @@ function money(n) {
   return Number.isInteger(v) ? moneyFmt.format(v) : moneyFmtCents.format(v);
 }
 
+// Browser storage can be switched off (private windows, strict settings), and
+// then every read and write throws. Nothing in Forge depends on it — it only
+// remembers preferences — so a failure is the same as "nothing saved".
+function storeGet(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function storeSet(key, value) {
+  try { localStorage.setItem(key, value); return true; } catch { return false; }
+}
+
 function localToday() {
   return new Date().toLocaleDateString('sv'); // YYYY-MM-DD
 }
@@ -73,10 +83,10 @@ function feeFor(amount, methodKey) {
 }
 
 function lastUsedMethod() {
-  return localStorage.getItem(MONEY_METHOD_KEY) || 'stripe';
+  return storeGet(MONEY_METHOD_KEY) || 'stripe';
 }
 function rememberMethod(key) {
-  localStorage.setItem(MONEY_METHOD_KEY, key);
+  storeSet(MONEY_METHOD_KEY, key);
 }
 
 // Fills any <select> with the method list, each showing its rate.
@@ -2388,8 +2398,8 @@ $('#client-form').addEventListener('submit', async (e) => {
       const isFirstEver = clientState.clients.length === 0;
       await api('/api/clients', { method: 'POST', body: { ...payload, placeId: placeId || undefined } });
       // First client is a genuine milestone — mark it, but only ever once.
-      if (isFirstEver && !localStorage.getItem(FIRST_CLIENT_KEY)) {
-        try { localStorage.setItem(FIRST_CLIENT_KEY, '1'); } catch { /* ignore */ }
+      if (isFirstEver && !storeGet(FIRST_CLIENT_KEY)) {
+        storeSet(FIRST_CLIENT_KEY, '1');
         celebrate();
         setTimeout(() => toast('🎉 First client. That is the hard one done.'), 900);
       }
@@ -3491,7 +3501,7 @@ $('#invoice-form').addEventListener('submit', (e) => {
     monthly: Number($('#inv-monthly').value || 0),
     notes: $('#inv-notes').value.trim(),
   };
-  localStorage.setItem(INVOICE_FROM_KEY, JSON.stringify({ name: data.fromName, contact: data.fromContact }));
+  storeSet(INVOICE_FROM_KEY, JSON.stringify({ name: data.fromName, contact: data.fromContact }));
   invoiceDocHtml = buildInvoiceDoc(data);
   $('#inv-frame').srcdoc = invoiceDocHtml;
   $('#invoice-output').hidden = false;
@@ -3633,11 +3643,11 @@ function applyTheme(theme) {
 }
 
 // Restore the saved choice on load (default dark).
-applyTheme(localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark');
+applyTheme(storeGet(THEME_KEY) === 'light' ? 'light' : 'dark');
 
 $('#theme-toggle').addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
-  localStorage.setItem(THEME_KEY, next);
+  storeSet(THEME_KEY, next);
   applyTheme(next);
 });
 
