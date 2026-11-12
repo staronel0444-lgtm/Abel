@@ -8,6 +8,7 @@
 
 import { handle, json, readJson, HttpError } from '../../../lib/http.js';
 import { randomId } from '../../../lib/id.js';
+import { registerSite, siteIdFromHtml } from '../../../lib/analytics.js';
 
 // Keep comfortably under D1's ~2MB per-value limit.
 const MAX_CONTENT_BYTES = 1_800_000;
@@ -84,6 +85,15 @@ export const onRequestPost = handle(async ({ request, env }) => {
     )
     .bind(id, placeId, kind, title, content)
     .run();
+
+  // A saved site is one that is about to be sent to somebody, so make sure its
+  // visits can be counted — this also covers pages built before ids were
+  // registered at generation time.
+  try {
+    await registerSite(env.DB, siteIdFromHtml(kind === 'multi' ? body.pages['index.html'] : body.html), title);
+  } catch {
+    // Counting is a convenience; the link is what matters.
+  }
 
   return json({ id, url: kind === 'multi' ? `/preview/${id}/` : `/preview/${id}` }, 201);
 });

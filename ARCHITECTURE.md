@@ -59,7 +59,7 @@ Route handlers are wrapped in `handle()` (`lib/http.js`), which turns thrown
 | GET/POST | `/api/previews` | `api/previews/index.js` | Save a generated site → `/preview/<id>`. |
 | GET/DELETE | `/api/previews/:id` | `api/previews/[id].js` | Load into the builder, or delete. |
 | GET | `/api/traffic` | `api/traffic.js` | Visit counts per site. |
-| GET | `/api/pv` | `api/pv.js` | **Public.** Visit beacon from generated sites. |
+| GET | `/api/pv` | `api/pv.js` | **Public.** Visit beacon. Can only add one to a site Forge registered, once per 10 s; never creates rows. |
 | GET | `/preview/<id>[/<page>.html]` | `preview/[[path]].js` | **Public.** A saved site. |
 
 ## Database (D1 / SQLite)
@@ -73,7 +73,7 @@ Route handlers are wrapped in `handle()` (`lib/http.js`), which turns thrown
 | `client_payments` | One row per paid month per client. |
 | `income` | Money-tab ledger (manual entries + rows logged by client payments). |
 | `previews` | Saved sites. `kind='single'` → HTML; `kind='multi'` → JSON of pages. |
-| `site_views` | Per-site visit counter. |
+| `site_views` | Per-site visit counter. Rows are created by Forge when a site is built or saved, never by the public beacon. |
 | `places_usage` | Places searches per day (free-tier counter). |
 | `login_attempts` | Wrong-password counters for the login throttle. |
 

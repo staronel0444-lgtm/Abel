@@ -11,7 +11,7 @@
 
 import { handle, json, readJson, requireString, HttpError } from '../../lib/http.js';
 import { generate } from '../../lib/anthropic.js';
-import { wireForms, wireAnalytics } from '../../lib/wire.js';
+import { wireForms, wireAnalytics, registerWiredSite } from '../../lib/wire.js';
 
 const MAX_PAGES = 8;
 
@@ -41,6 +41,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
     const result = await generate(env, { mode, html, instruction });
     let wired = wireForms(result.text, body.notifyEmail);
     wired = wireAnalytics(wired, body.siteId, new URL(request.url).origin);
+    await registerWiredSite(env.DB, wired, body.siteId);
     return json({ html: wired, usage: result.usage, model: result.model });
   }
 
@@ -66,5 +67,6 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const result = await generate(env, { mode, prompt, context, brand, page, pages });
   let wired = wireForms(result.text, body.notifyEmail);
   wired = wireAnalytics(wired, body.siteId, new URL(request.url).origin);
+  await registerWiredSite(env.DB, wired, body.siteId);
   return json({ html: wired, usage: result.usage, model: result.model });
 });

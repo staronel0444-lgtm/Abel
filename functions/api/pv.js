@@ -1,9 +1,17 @@
-// GET /api/pv?s=<siteId>&t=<title> — the visitor-counter pixel.
+// GET /api/pv?s=<siteId> — the visitor-counter pixel.
 //
-// Every generated site's beacon hits this on load. We upsert a per-site row
-// in D1 and always return a 1x1 transparent GIF. Any error is swallowed so a
-// counting hiccup can never break a client's live site. Permissive CORS +
-// no-store since it's called cross-origin from sites on other domains.
+// Every generated site's beacon hits this on load. It always answers with a
+// 1x1 transparent GIF, and any error is swallowed, so a counting hiccup can
+// never break a client's live site. Permissive CORS + no-store since it's
+// called cross-origin from sites on other domains.
+//
+// It is public, so it is deliberately narrow (see lib/analytics.js): it can
+// add one to the count of a site Forge registered, at most once every few
+// seconds, and it can do nothing else. It never creates a row and never takes
+// text from the request. Your own visits while signed in are not counted.
+
+import { countView, SITE_ID_RE } from '../../lib/analytics.js';
+import { verifyToken, parseCookies, passwordProblem } from '../../lib/auth.js';
 
 const GIF = new Uint8Array([
   0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00,
@@ -23,30 +31,18 @@ function pixel() {
   });
 }
 
-const ENSURE_TABLE = `CREATE TABLE IF NOT EXISTS site_views (
-  site_id    TEXT PRIMARY KEY,
-  label      TEXT    NOT NULL DEFAULT '',
-  views      INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT    NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT    NOT NULL DEFAULT (datetime('now'))
-)`;
+async function isOperator(request, env) {
+  const password = env.FORGE_PASSWORD;
+  if (passwordProblem(password)) return false;
+  const cookies = parseCookies(request.headers.get('Cookie'));
+  return Boolean(cookies.forge_auth) && verifyToken(password, cookies.forge_auth);
+}
 
 export const onRequestGet = async ({ request, env }) => {
   try {
-    const url = new URL(request.url);
-    const s = (url.searchParams.get('s') || '').slice(0, 64);
-    const t = (url.searchParams.get('t') || '').slice(0, 120);
-    if (s && env.DB) {
-      // Self-provision the table so counting works with no manual DB step.
-      await env.DB.prepare(ENSURE_TABLE).run();
-      await env.DB.prepare(
-        `INSERT INTO site_views (site_id, label, views, created_at, updated_at)
-         VALUES (?1, ?2, 1, datetime('now'), datetime('now'))
-         ON CONFLICT(site_id) DO UPDATE SET
-           views = views + 1,
-           updated_at = datetime('now'),
-           label = CASE WHEN excluded.label <> '' THEN excluded.label ELSE site_views.label END`
-      ).bind(s, t).run();
+    const s = new URL(request.url).searchParams.get('s') || '';
+    if (env.DB && SITE_ID_RE.test(s) && !(await isOperator(request, env))) {
+      await countView(env.DB, s);
     }
   } catch (err) {
     // Analytics must never break a client's site — count is best-effort.

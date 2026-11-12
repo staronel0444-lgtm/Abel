@@ -2592,18 +2592,27 @@ async function loadTraffic() {
   const list = $('#traffic-list');
   try {
     const { sites, total } = await api('/api/traffic');
+    // A site is listed from the moment it is built, so "sent but never opened"
+    // is visible too — that is the list to follow up on.
+    const visited = sites.filter((s) => Number(s.views) > 0);
+    const unopened = sites.filter((s) => !(Number(s.views) > 0));
     $('#traffic-empty').hidden = sites.length > 0;
     const totalEl = $('#traffic-total');
     if (totalEl) {
-      totalEl.textContent = `${Number(total || 0).toLocaleString()} total visit${total === 1 ? '' : 's'} across ${sites.length} site${sites.length === 1 ? '' : 's'}`;
+      totalEl.textContent = `${Number(total || 0).toLocaleString()} total visit${total === 1 ? '' : 's'} across ${visited.length} site${visited.length === 1 ? '' : 's'}`
+        + (unopened.length ? ` · ${unopened.length} not opened yet` : '');
       totalEl.hidden = sites.length === 0;
     }
-    list.innerHTML = sites.map((s) => `
-      <div class="traffic-row">
+    const row = (s) => `
+      <div class="traffic-row${Number(s.views) > 0 ? '' : ' is-unopened'}">
         <span class="t-name">${escapeHtml(s.label || '(untitled site)')}</span>
         <span class="t-views">${Number(s.views || 0).toLocaleString()}<small>visits</small></span>
-        <span class="t-date">${s.updatedAt ? 'last: ' + escapeHtml(formatDate(s.updatedAt)) : ''}</span>
-      </div>`).join('');
+        <span class="t-date">${Number(s.views) > 0
+          ? 'last: ' + escapeHtml(formatDate(s.updatedAt))
+          : 'built ' + escapeHtml(formatDate(s.createdAt))}</span>
+      </div>`;
+    list.innerHTML = visited.map(row).join('')
+      + (unopened.length ? `<h3 class="traffic-sub">Not opened yet</h3>` + unopened.map(row).join('') : '');
   } catch (err) {
     list.innerHTML = `<p class="inline-error">${escapeHtml(err.message)}</p>`;
   }

@@ -66,9 +66,11 @@ CREATE TABLE IF NOT EXISTS previews (
 );
 
 -- Visitor counter. Each generated site carries a tiny beacon that pings
--- /api/pv with its site_id on load; that endpoint upserts a row here. label
--- is the site's <title> so the Traffic tab is readable. One row per site,
--- counted across preview links AND the client's own hosted copy.
+-- /api/pv with its site_id on load. Forge inserts the row itself when it wires
+-- the beacon in (views = 0); the public endpoint can only add one to a row
+-- that already exists. label is the site's <title> so the Traffic tab is
+-- readable. One row per site, counted across preview links AND the client's
+-- own hosted copy.
 CREATE TABLE IF NOT EXISTS site_views (
   site_id    TEXT PRIMARY KEY,
   label      TEXT    NOT NULL DEFAULT '',

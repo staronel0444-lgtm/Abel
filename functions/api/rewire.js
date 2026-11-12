@@ -10,7 +10,7 @@
 // Response: { html }
 
 import { handle, json, readJson, requireString } from '../../lib/http.js';
-import { wireForms, wireAnalytics } from '../../lib/wire.js';
+import { wireForms, wireAnalytics, registerWiredSite } from '../../lib/wire.js';
 
 export const onRequestPost = handle(async ({ request, env }) => {
   const body = await readJson(request);
@@ -18,5 +18,6 @@ export const onRequestPost = handle(async ({ request, env }) => {
 
   let wired = wireForms(html, body.notifyEmail);
   wired = wireAnalytics(wired, body.siteId, new URL(request.url).origin);
+  await registerWiredSite(env.DB, wired, body.siteId);
   return json({ html: wired });
 });

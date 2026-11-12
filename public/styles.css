@@ -943,6 +943,8 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
 .traffic-row .t-views { font-size: 1.35rem; font-weight: 700; color: var(--accent); white-space: nowrap; }
 .traffic-row .t-views small { font-size: 0.72rem; color: var(--ink-3); font-weight: 500; margin-left: 5px; }
 .traffic-row .t-date { color: var(--ink-3); font-size: 0.82rem; white-space: nowrap; }
+.traffic-row.is-unopened .t-views { color: var(--ink-3); }
+.traffic-sub { margin: 14px 0 2px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
 
 /* ---- Go Live header button ---- */
 .golive-btn { white-space: nowrap; }
