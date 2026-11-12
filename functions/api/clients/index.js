@@ -123,6 +123,8 @@ export const onRequestPost = handle(async ({ request, env }) => {
       note: `${companyName} — upfront`,
       method: paymentMethod,
       fee: upfrontFee,
+      clientId: id,
+      kind: 'upfront',
     });
   }
 

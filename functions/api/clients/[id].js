@@ -1,11 +1,15 @@
 // PUT    /api/clients/:id — edit any client field (fees change, contacts change).
+//   The Money log follows: the client's upfront row is updated, added or
+//   removed to match, and a renamed client is renamed there too.
 // DELETE /api/clients/:id — remove the record entirely (deal fell through).
-//   Deleting also removes the 'client' dismissal, so the business can show
-//   up in Lead Finder searches again.
+//   Deleting also removes every payment and every Money entry that came from
+//   this client, and the 'client' dismissal, so the business can show up in
+//   Lead Finder searches again.
 
 import { handle, json, readJson, HttpError } from '../../../lib/http.js';
 import { ensureClientColumns } from '../../../lib/migrate.js';
 import { shapeClient, parseMoney, parseCloseDate, parseEmail, parsePhone } from './index.js';
+import { ensureIncomeTable, syncUpfrontIncome } from '../../../lib/income.js';
 
 const STATUSES = new Set(['active', 'ended']);
 
@@ -24,7 +28,7 @@ async function getClient(env, id) {
 export const onRequestPut = handle(async ({ request, env, params }) => {
   const id = parseId(params);
   await ensureClientColumns(env.DB);
-  await getClient(env, id);
+  const before = await getClient(env, id);
   const body = await readJson(request);
 
   const updates = {};
@@ -38,7 +42,15 @@ export const onRequestPut = handle(async ({ request, env, params }) => {
   }
   if (body.email !== undefined) updates.email = parseEmail(String(body.email));
   if (body.phone !== undefined) updates.phone = parsePhone(String(body.phone));
-  if (body.amountPaid !== undefined) updates.amount_paid = parseMoney(body.amountPaid, 'amountPaid');
+  if (body.amountPaid !== undefined) {
+    updates.amount_paid = parseMoney(body.amountPaid, 'amountPaid');
+    // The processing fee was a share of the old amount; keep the same share.
+    const oldAmount = Number(before.amount_paid) || 0;
+    const oldFee = Number(before.fee) || 0;
+    updates.fee = oldAmount > 0
+      ? Math.min(updates.amount_paid, Math.round((oldFee * updates.amount_paid / oldAmount) * 100) / 100)
+      : 0;
+  }
   if (body.monthlyFee !== undefined) updates.monthly_fee = parseMoney(body.monthlyFee, 'monthlyFee');
   if (body.closeDate !== undefined) updates.close_date = parseCloseDate(body.closeDate);
   if (body.status !== undefined) {
@@ -56,6 +68,16 @@ export const onRequestPut = handle(async ({ request, env, params }) => {
     .run();
 
   const row = await getClient(env, id);
+
+  // Whatever changed, the Money log must still say what the client record says.
+  await syncUpfrontIncome(env.DB, row);
+  if (row.company_name !== before.company_name) {
+    await env.DB
+      .prepare(`UPDATE income SET note = replace(note, ?1, ?2) WHERE client_id = ?3 AND kind = 'monthly'`)
+      .bind(before.company_name, row.company_name, id)
+      .run();
+  }
+
   const payments = await env.DB
     .prepare('SELECT month FROM client_payments WHERE client_id = ?1 ORDER BY month ASC')
     .bind(id)
@@ -67,8 +89,10 @@ export const onRequestDelete = handle(async ({ env, params }) => {
   const id = parseId(params);
   const row = await getClient(env, id);
 
+  await ensureIncomeTable(env.DB);
   const stmts = [
     env.DB.prepare('DELETE FROM client_payments WHERE client_id = ?1').bind(id),
+    env.DB.prepare('DELETE FROM income WHERE client_id = ?1').bind(id),
     env.DB.prepare('DELETE FROM clients WHERE id = ?1').bind(id),
   ];
   if (row.place_id) {

@@ -19,7 +19,8 @@ export const onRequestGet = handle(async ({ env }) => {
   await ensureIncomeTable(env.DB);
   const { results } = await env.DB
     .prepare(
-      `SELECT id, date, amount, note, method, fee, created_at AS createdAt
+      `SELECT id, date, amount, note, method, fee, created_at AS createdAt,
+              client_id AS clientId, kind
        FROM income ORDER BY date ASC, id ASC`
     )
     .all();

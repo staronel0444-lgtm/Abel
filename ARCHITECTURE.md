@@ -62,11 +62,11 @@ page from a `data:` address, which gives it an origin of its own.
 | GET/POST | `/api/prospects` | `api/prospects/index.js` | Manual sales pipeline. |
 | PUT/DELETE | `/api/prospects/:id` | `api/prospects/[id].js` | |
 | GET/POST | `/api/clients` | `api/clients/index.js` | Clients; creating one logs the upfront as income. |
-| PUT/DELETE | `/api/clients/:id` | `api/clients/[id].js` | |
+| PUT/DELETE | `/api/clients/:id` | `api/clients/[id].js` | Edits keep the client's upfront Money row in step; delete removes their payments and Money rows too. |
 | POST/DELETE | `/api/clients/:id/payments` | `api/clients/[id]/payments.js` | Mark / unmark a maintenance month. |
-| GET | `/api/revenue` | `api/revenue.js` | Totals for a window, with trend. |
+| GET | `/api/revenue` | `api/revenue.js` | Totals for a window of whole local days (`today`, `tz`), with trend against the same number of days before. |
 | GET/POST | `/api/income` | `api/income/index.js` | Money-tab ledger. |
-| DELETE | `/api/income/:id` | `api/income/[id].js` | |
+| DELETE | `/api/income/:id` | `api/income/[id].js` | Hand-typed entries only; a client's row is changed from Clients. |
 | GET/POST | `/api/previews` | `api/previews/index.js` | Save a generated site → `/preview/<id>`. |
 | GET/DELETE | `/api/previews/:id` | `api/previews/[id].js` | Load into the builder, or delete. |
 | GET | `/api/traffic` | `api/traffic.js` | Visit counts per site. |
@@ -82,7 +82,7 @@ page from a `data:` address, which gives it an origin of its own.
 | `prospects` | Manual pipeline: new → contacted → follow_up → won / no. |
 | `clients` | Paying clients: upfront, monthly fee, status. |
 | `client_payments` | One row per paid month per client. |
-| `income` | Money-tab ledger (manual entries + rows logged by client payments). |
+| `income` | Money-tab ledger. Rows logged by a client payment carry `client_id`, `kind` and `month`, and are updated or removed with it. |
 | `previews` | Saved sites. `kind='single'` → HTML; `kind='multi'` → JSON of pages. |
 | `site_views` | Per-site visit counter. Rows are created by Forge when a site is built or saved, never by the public beacon. |
 | `places_usage` | Places searches per day (free-tier counter). |

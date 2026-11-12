@@ -900,6 +900,7 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
 .day-entry .de-amt { font-weight: 700; color: var(--m-save); }
 .day-entry .de-note { flex: 1; color: var(--ink-2); font-size: .9rem; }
 .day-entry .de-method { display: block; color: var(--ink-3); font-size: .78rem; margin-top: 2px; }
+.de-linked { font-size: 0.72rem; color: var(--ink-3); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
 
 /* Live "what actually lands" line in the add-money modal. */
 .mf-net {

@@ -87,12 +87,18 @@ CREATE TABLE IF NOT EXISTS site_views (
 -- (25% taxes / 10% Forge / 35% save / 30% self) client-side.
 CREATE TABLE IF NOT EXISTS income (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  date       TEXT    NOT NULL,               -- YYYY-MM-DD
+  date       TEXT    NOT NULL,
   amount     REAL    NOT NULL DEFAULT 0,
   note       TEXT    NOT NULL DEFAULT '',
   method     TEXT    NOT NULL DEFAULT 'other',
   fee        REAL    NOT NULL DEFAULT 0,
-  created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT    NOT NULL DEFAULT (datetime('now')),
+  -- Set on rows logged by a client payment, so the row is updated or removed
+  -- with whatever created it. kind: 'manual' | 'upfront' | 'monthly'; month is
+  -- YYYY-MM for a monthly row.
+  client_id  INTEGER,
+  kind       TEXT    NOT NULL DEFAULT 'manual',
+  month      TEXT
 );
 
 -- Manual sales pipeline: any lead however you found it (driving around, a

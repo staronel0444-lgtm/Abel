@@ -2576,7 +2576,7 @@ function renderClients() {
     card.querySelector('[data-act="status"]').addEventListener('click', () => setClientStatus(c, ended ? 'active' : 'ended'));
     card.querySelector('[data-act="delete"]').addEventListener('click', async () => {
       if (!confirm(
-        `Delete ${c.companyName} completely?\n\nThis also erases every payment they ever made, so your Revenue total will drop. If they were a real client who's just finished, use "Mark as ended" instead.`
+        `Delete ${c.companyName} completely?\n\nThis also erases every payment they ever made, from Revenue and from the Money tab, so both totals will drop. If they were a real client who's just finished, use "Mark as ended" instead.`
       )) return;
       try {
         await api(`/api/clients/${c.id}`, { method: 'DELETE' });
@@ -2814,7 +2814,9 @@ function renderMoneyDayEntries(date) {
       <div class="day-entry">
         <span class="de-amt money">${money(e.amount)}</span>
         <span class="de-note">${escapeHtml(e.note || '')}<small class="de-method">${escapeHtml(detail)}</small></span>
-        <button class="btn btn-sm btn-danger" data-del="${e.id}">Delete</button>
+        ${e.clientId
+          ? '<span class="de-linked" title="Logged by a client payment. Change it in the Clients tab.">from Clients</span>'
+          : `<button class="btn btn-sm btn-danger" data-del="${e.id}">Delete</button>`}
       </div>`;
     }).join('');
   box.querySelectorAll('[data-del]').forEach((btn) => {

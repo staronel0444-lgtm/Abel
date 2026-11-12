@@ -1,7 +1,8 @@
 // POST   /api/clients/:id/payments — { month?, method?, fee?, date? } mark a
 //        month's maintenance fee collected (defaults to the current month).
 //        The amount is snapshotted from the client's current monthly_fee.
-// DELETE /api/clients/:id/payments — { month } unmark (fixes mistakes).
+// DELETE /api/clients/:id/payments — { month } unmark (fixes mistakes). Also
+//        takes that month's entry back out of the Money log.
 //
 // client_payments is the source of truth for both the due list and the Revenue
 // Dashboard's monthly sums; clients.last_paid_month is kept in sync as a
@@ -14,7 +15,7 @@
 
 import { handle, json, readJson, HttpError } from '../../../../lib/http.js';
 import { ensureClientColumns } from '../../../../lib/migrate.js';
-import { logIncome, cleanMethod, cleanFee } from '../../../../lib/income.js';
+import { logIncome, removeMonthlyIncome, cleanMethod, cleanFee } from '../../../../lib/income.js';
 import { isRealDate } from '../index.js';
 
 function parseId(params) {
@@ -103,6 +104,9 @@ export const onRequestPost = handle(async ({ request, env, params }) => {
       note: `${client.company_name} — ${monthLabel(month)} maintenance`,
       method,
       fee,
+      clientId: id,
+      kind: 'monthly',
+      month,
     });
   }
 
@@ -120,6 +124,9 @@ export const onRequestDelete = handle(async ({ request, env, params }) => {
     .prepare('DELETE FROM client_payments WHERE client_id = ?1 AND month = ?2')
     .bind(id, month)
     .run();
+  // The money goes back out of the Money log with it, so marking the month
+  // paid again later does not count it twice.
+  await removeMonthlyIncome(env.DB, id, month);
   await syncLastPaidMonth(env, id);
 
   return json({ ok: true, month, paidMonths: await paidMonths(env, id) });
