@@ -21,3 +21,9 @@ GOOGLE_PLACES_API_KEY=your-places-key-here
 # least 8 characters. On localhost it may be left unset for an open dev server.
 # Public paths (/preview/* and /api/pv) stay open either way so client links work.
 #FORGE_PASSWORD=choose-a-long-password
+
+# Optional spending caps. Past these the server refuses with a clear message.
+# AI calls per UTC day (default 40) and Google searches per month (default 950;
+# Google's first 1,000 a month are free).
+#DAILY_GENERATION_LIMIT=40
+#PLACES_MONTHLY_LIMIT=950

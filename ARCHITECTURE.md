@@ -53,9 +53,9 @@ page from a `data:` address, which gives it an origin of its own.
 |---|---|---|---|
 | POST | `/api/login` | `api/login.js` | Password → session cookie. |
 | GET/POST | `/api/logout` | `api/logout.js` | Clears the cookie. |
-| POST | `/api/generate` | `api/generate.js` | The only AI route. Modes: `page`, `brand`, `refine`. |
+| POST | `/api/generate` | `api/generate.js` | The only AI route. Modes: `page`, `brand`, `refine`. Refuses with 429 past the daily cap. |
 | POST | `/api/rewire` | `api/rewire.js` | Re-wire a page's form + beacon. No AI. |
-| POST | `/api/leads/search` | `api/leads/search.js` | One Google Places Text Search. |
+| POST | `/api/leads/search` | `api/leads/search.js` | One Google Places Text Search. Refuses with 429 past the monthly cap. |
 | POST | `/api/leads/decision` | `api/leads/decision.js` | Dismiss / un-dismiss a lead. |
 | GET | `/api/leads/usage` | `api/leads/usage.js` | Places searches today / this month. |
 | GET | `/api/history` | `api/history.js` | Every business ever returned by a search. |
@@ -87,6 +87,7 @@ page from a `data:` address, which gives it an origin of its own.
 | `site_views` | Per-site visit counter. Rows are created by Forge when a site is built or saved, never by the public beacon. |
 | `places_usage` | Places searches per day (free-tier counter). |
 | `login_attempts` | Wrong-password counters for the login throttle. |
+| `ai_usage` | AI calls per UTC day, for the daily cap. |
 
 Tables and added columns are created on demand (`CREATE TABLE IF NOT EXISTS`,
 `lib/migrate.js`), so a deploy never needs a manual migration.
@@ -137,6 +138,8 @@ browser: facts + concept + layout  ──POST /api/generate──▶  lib/anthro
 | `GOOGLE_PLACES_API_KEY` | for Lead Finder | |
 | `FORGE_PASSWORD` | yes | At least 8 characters. Unset = locked (open on localhost only). |
 | `ANTHROPIC_MODEL` | no | Overrides the default model. |
+| `DAILY_GENERATION_LIMIT` | no | AI calls allowed per UTC day. Default 40. |
+| `PLACES_MONTHLY_LIMIT` | no | Google searches allowed per month. Default 950 (1,000 are free). |
 | `MOCK_ANTHROPIC`, `MOCK_PLACES` | dev only | Canned responses, no spend. |
 
 ## Local development

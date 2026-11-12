@@ -12,6 +12,7 @@
 import { handle, json, readJson, requireString, HttpError } from '../../lib/http.js';
 import { generate } from '../../lib/anthropic.js';
 import { wireForms, wireAnalytics, registerWiredSite } from '../../lib/wire.js';
+import { dailyGenerationLimit, reserveGeneration } from '../../lib/usage.js';
 
 const MAX_PAGES = 8;
 
@@ -29,16 +30,39 @@ function validatePages(pages) {
   });
 }
 
+// Every call to the model is taken out of the day's allowance first. If the
+// database cannot be reached the call goes ahead: the cap is a safety net, and
+// a net that stops all work when it tears is worse than none.
+function spendGuard(env) {
+  const limit = dailyGenerationLimit(env);
+  return async () => {
+    if (!env.DB) return;
+    let allowed = true;
+    try {
+      allowed = await reserveGeneration(env.DB, limit);
+    } catch (err) {
+      console.error('generation cap check failed:', err && err.message);
+    }
+    if (!allowed) {
+      throw new HttpError(
+        429,
+        `Daily limit reached: ${limit} AI generations today. The cap protects your credits and resets at midnight UTC. To allow more, raise DAILY_GENERATION_LIMIT in Cloudflare.`
+      );
+    }
+  };
+}
+
 export const onRequestPost = handle(async ({ request, env }) => {
   const body = await readJson(request);
   const mode = body.mode === 'brand' ? 'brand' : body.mode === 'refine' ? 'refine' : 'page';
+  const guard = { beforeCall: spendGuard(env) };
 
   // Refine: edit an existing page from a plain-language instruction.
   if (mode === 'refine') {
     const html = requireString(body, 'html', { max: 300000 });
     if (!/<html/i.test(html)) throw new HttpError(400, 'html must be a complete HTML document');
     const instruction = requireString(body, 'instruction', { max: 2000 });
-    const result = await generate(env, { mode, html, instruction });
+    const result = await generate(env, { mode, html, instruction }, guard);
     let wired = wireForms(result.text, body.notifyEmail);
     wired = wireAnalytics(wired, body.siteId, new URL(request.url).origin);
     await registerWiredSite(env.DB, wired, body.siteId);
@@ -50,7 +74,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
 
   if (mode === 'brand') {
     const pages = validatePages(body.pages);
-    const result = await generate(env, { mode, prompt, pages });
+    const result = await generate(env, { mode, prompt, pages }, guard);
     return json({ brand: result.text, usage: result.usage, model: result.model });
   }
 
@@ -64,7 +88,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
   }
   const brand = typeof body.brand === 'string' ? body.brand.slice(0, 4000) : '';
 
-  const result = await generate(env, { mode, prompt, context, brand, page, pages });
+  const result = await generate(env, { mode, prompt, context, brand, page, pages }, guard);
   let wired = wireForms(result.text, body.notifyEmail);
   wired = wireAnalytics(wired, body.siteId, new URL(request.url).origin);
   await registerWiredSite(env.DB, wired, body.siteId);

@@ -5,9 +5,9 @@
 // ('no' leads and existing clients) out of the active results, and returns
 // shaped lead objects (businesses with no listed website).
 
-import { handle, json, readJson, requireString } from '../../../lib/http.js';
+import { handle, json, readJson, requireString, HttpError } from '../../../lib/http.js';
 import { searchPlaces } from '../../../lib/places.js';
-import { cleanDay, recordSearch, readUsage } from '../../../lib/usage.js';
+import { trustedDay, recordSearch, readUsage, placesMonthlyLimit, placesUsedThisMonth } from '../../../lib/usage.js';
 
 // Optional lead-quality filters: only reads a number out of a request field
 // if it's a finite value within a sane range, otherwise treats it as unset.
@@ -26,11 +26,28 @@ export const onRequestPost = handle(async ({ request, env }) => {
   const minRating = optionalNumber(body, 'minRating', { min: 0, max: 5 });
   const minReviews = optionalNumber(body, 'minReviews', { min: 0, max: 1000000 });
 
+  // Refuse before calling Google once the month's free searches are nearly
+  // gone, because the next ones are billed. As with the AI cap, a database
+  // error lets the search through rather than stopping all work.
+  const limit = placesMonthlyLimit(env);
+  let usedThisMonth = 0;
+  try {
+    usedThisMonth = await placesUsedThisMonth(env.DB);
+  } catch (err) {
+    console.error('places cap check failed:', err && err.message);
+  }
+  if (usedThisMonth >= limit) {
+    throw new HttpError(
+      429,
+      `Monthly limit reached: ${usedThisMonth} Google searches this month. Google's free allowance is 1,000, and more would be billed. It resets on the 1st. To allow more, raise PLACES_MONTHLY_LIMIT in Cloudflare.`
+    );
+  }
+
   const places = await searchPlaces(env, { zip, niche });
 
   // The Google call succeeded, so it counted against the free tier whether or
   // not it found anything. Counting must never break the search itself.
-  const day = cleanDay(body.day);
+  const day = trustedDay(body.day);
   let usage = null;
   try {
     await recordSearch(env.DB, day);

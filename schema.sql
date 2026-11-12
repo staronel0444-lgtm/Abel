@@ -121,6 +121,13 @@ CREATE TABLE IF NOT EXISTS places_usage (
   searches INTEGER NOT NULL DEFAULT 0
 );
 
+-- AI calls per UTC day. /api/generate takes one from the day's allowance
+-- before every call to the model (lib/usage.js) and refuses past the cap.
+CREATE TABLE IF NOT EXISTS ai_usage (
+  day   TEXT    PRIMARY KEY,
+  calls INTEGER NOT NULL DEFAULT 0
+);
+
 -- Wrong-password counters for the login throttle (lib/throttle.js). One row
 -- per address ('ip:<address>') plus one shared row ('*').
 CREATE TABLE IF NOT EXISTS login_attempts (
