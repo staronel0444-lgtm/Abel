@@ -39,11 +39,35 @@ export function parseMoney(value, field) {
   return Math.round(n * 100) / 100;
 }
 
+// A real calendar date, not just the right shape: "2026-99-99" has the shape.
+export function isRealDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
 export function parseCloseDate(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new HttpError(400, 'closeDate must be a YYYY-MM-DD date');
-  }
+  if (!isRealDate(value)) throw new HttpError(400, 'Close date must be a real date (YYYY-MM-DD).');
   return value;
+}
+
+// Contact details are optional, but what is there has to be usable: these end
+// up on invoices and in reminder emails.
+export function parseEmail(value) {
+  const email = typeof value === 'string' ? value.trim().slice(0, 300) : '';
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    throw new HttpError(400, 'That email address does not look right.');
+  }
+  return email;
+}
+
+export function parsePhone(value) {
+  const phone = typeof value === 'string' ? value.trim().slice(0, 40) : '';
+  if (phone && (phone.match(/\d/g) || []).length < 7) {
+    throw new HttpError(400, 'That phone number does not look right.');
+  }
+  return phone;
 }
 
 export const onRequestGet = handle(async ({ env }) => {
@@ -85,7 +109,7 @@ export const onRequestPost = handle(async ({ request, env }) => {
                             amount_paid, monthly_fee, close_date, payment_method, fee)
        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
     )
-    .bind(placeId, companyName, opt('ownerName'), opt('phone'), opt('email'), opt('address'),
+    .bind(placeId, companyName, opt('ownerName'), parsePhone(body.phone), parseEmail(body.email), opt('address'),
       amountPaid, monthlyFee, closeDate, paymentMethod, upfrontFee)
     .run();
 

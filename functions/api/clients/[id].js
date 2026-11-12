@@ -5,7 +5,7 @@
 
 import { handle, json, readJson, HttpError } from '../../../lib/http.js';
 import { ensureClientColumns } from '../../../lib/migrate.js';
-import { shapeClient, parseMoney, parseCloseDate } from './index.js';
+import { shapeClient, parseMoney, parseCloseDate, parseEmail, parsePhone } from './index.js';
 
 const STATUSES = new Set(['active', 'ended']);
 
@@ -28,7 +28,7 @@ export const onRequestPut = handle(async ({ request, env, params }) => {
   const body = await readJson(request);
 
   const updates = {};
-  const strFields = { companyName: 'company_name', ownerName: 'owner_name', phone: 'phone', email: 'email', address: 'address' };
+  const strFields = { companyName: 'company_name', ownerName: 'owner_name', address: 'address' };
   for (const [field, column] of Object.entries(strFields)) {
     if (body[field] !== undefined) {
       const v = String(body[field]).trim().slice(0, 300);
@@ -36,6 +36,8 @@ export const onRequestPut = handle(async ({ request, env, params }) => {
       updates[column] = v;
     }
   }
+  if (body.email !== undefined) updates.email = parseEmail(String(body.email));
+  if (body.phone !== undefined) updates.phone = parsePhone(String(body.phone));
   if (body.amountPaid !== undefined) updates.amount_paid = parseMoney(body.amountPaid, 'amountPaid');
   if (body.monthlyFee !== undefined) updates.monthly_fee = parseMoney(body.monthlyFee, 'monthlyFee');
   if (body.closeDate !== undefined) updates.close_date = parseCloseDate(body.closeDate);
