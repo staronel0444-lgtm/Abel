@@ -63,7 +63,9 @@
       <div class="loading" id="build-loading" hidden>
         <div class="spinner"></div>
         <div class="gen-progress"></div>
-        <p class="gen-stage" id="build-status">Generating your site — this usually takes a minute or two…</p>
+        <p class="gen-stage" id="build-status">Generating your site…</p>
+        <p class="gen-elapsed" id="build-elapsed"></p>
+        <button class="btn btn-sm" type="button" id="build-cancel">Stop waiting</button>
       </div>
 
       <div class="result" id="build-result" hidden>
@@ -133,6 +135,8 @@
         <div class="spinner"></div>
         <p id="multi-status">Working…</p>
         <div class="page-progress" id="multi-progress"></div>
+        <p class="gen-elapsed" id="multi-elapsed"></p>
+        <button class="btn btn-sm" type="button" id="multi-cancel">Stop waiting</button>
       </div>
 
       <div class="result" id="multi-result" hidden>

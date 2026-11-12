@@ -209,6 +209,7 @@ textarea.autogrow::placeholder { color: var(--ink-3); }
 }
 
 .loading { text-align: center; margin: 48px 0; color: var(--ink-2); }
+.gen-elapsed { margin: 6px 0 12px; font-size: 0.85rem; color: var(--ink-3); font-variant-numeric: tabular-nums; min-height: 1.2em; }
 .spinner {
   width: 34px;
   height: 34px;

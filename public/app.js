@@ -135,21 +135,89 @@ const FORGE_TOKEN = (() => {
   return value;
 })();
 
-async function api(path, { method = 'GET', body } = {}) {
+// How long to wait for the server. A generation is one long, silent request —
+// the real ones take two to three minutes — so it gets a much longer limit
+// than everything else, but still a limit: without one a stalled connection
+// left the spinner turning for ever with no way out.
+const API_TIMEOUT_MS = 30 * 1000;
+const GENERATE_TIMEOUT_MS = 12 * 60 * 1000;
+
+function statusMessage(status) {
+  if (status === 401) return 'You are signed out. Reload the page and sign in again.';
+  if (status === 413) return 'That was too large to send.';
+  if (status === 429) return 'Too many requests at once. Wait a moment and try again.';
+  if (status >= 500) return `Forge's server had a problem (${status}). Wait a moment and try again.`;
+  return `That did not work (${status}). Try again.`;
+}
+
+// Generations in flight, so the page can warn before it is closed on one.
+let generationsRunning = 0;
+window.addEventListener('beforeunload', (e) => {
+  if (generationsRunning > 0) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// `signal` lets the caller stop waiting (a Stop button). An error from a
+// deliberate stop carries `cancelled: true` so callers can tell it apart.
+async function api(path, { method = 'GET', body, signal, timeout } = {}) {
+  const isGeneration = path.startsWith('/api/generate');
+  const limit = timeout || (isGeneration ? GENERATE_TIMEOUT_MS : API_TIMEOUT_MS);
   const headers = {};
   if (body) headers['Content-Type'] = 'application/json';
   if (FORGE_TOKEN) headers['X-Forge-Token'] = FORGE_TOKEN;
-  const res = await fetch(path, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  let data = null;
-  try { data = await res.json(); } catch { /* non-JSON error page */ }
-  if (!res.ok) {
-    throw new Error(data?.error || `Request failed (${res.status})`);
+
+  const ctl = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, limit);
+  const stop = () => ctl.abort();
+  if (signal) {
+    if (signal.aborted) ctl.abort();
+    else signal.addEventListener('abort', stop, { once: true });
   }
-  return data;
+  if (isGeneration) generationsRunning++;
+
+  try {
+    let res;
+    let data = null;
+    try {
+      res = await fetch(path, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: ctl.signal,
+      });
+      try { data = await res.json(); } catch { /* non-JSON error page */ }
+    } catch (err) {
+      if (signal && signal.aborted) {
+        throw Object.assign(new Error('Stopped.'), { cancelled: true });
+      }
+      if (timedOut) {
+        throw new Error(isGeneration
+          ? 'This has taken over 12 minutes, which is far longer than a site should, so Forge stopped waiting. Try again.'
+          : 'The server took too long to answer. Check your connection and try again.');
+      }
+      throw new Error('Could not reach Forge. Check your internet connection and try again.');
+    }
+    if (!res.ok) throw new Error(data?.error || statusMessage(res.status));
+    return data;
+  } finally {
+    clearTimeout(timer);
+    if (signal) signal.removeEventListener('abort', stop);
+    if (isGeneration) generationsRunning--;
+  }
+}
+
+// A running clock beside the spinner. The staged messages are decoration; this
+// is the honest part — how long it has actually been.
+function startElapsed(el) {
+  if (!el) return () => {};
+  const began = Date.now();
+  const show = () => {
+    const secs = Math.floor((Date.now() - began) / 1000);
+    el.textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} so far · a site usually takes 2 to 3 minutes`;
+  };
+  show();
+  const timer = setInterval(show, 1000);
+  return () => { clearInterval(timer); el.textContent = ''; };
 }
 
 let toastTimer = null;
@@ -575,6 +643,9 @@ async function generateSingle(prompt, placeId = null, direction = null) {
   $('#build-loading').hidden = false;
   $('#build-generate').disabled = true;
   const stopStages = startGenStages($('#build-status'));
+  const stopElapsed = startElapsed($('#build-elapsed'));
+  const waiting = new AbortController();
+  $('#build-cancel').onclick = () => waiting.abort();
 
   const notifyEmail = ($('#build-notify-email')?.value || '').trim();
   const siteId = newSiteId();
@@ -592,6 +663,7 @@ async function generateSingle(prompt, placeId = null, direction = null) {
     const res = await api('/api/generate', {
       method: 'POST',
       body: { mode: 'page', prompt: fullPrompt, context, notifyEmail, siteId },
+      signal: waiting.signal,
     });
     // Recorded only when a site is really generated, so the variety window
     // tracks what was built rather than what was merely looked at. The font is
@@ -610,10 +682,13 @@ async function generateSingle(prompt, placeId = null, direction = null) {
     reportSlop(res.html, '#build-slop');
     toast('Site generated');
   } catch (err) {
-    errEl.textContent = err.message;
+    errEl.textContent = err.cancelled
+      ? 'Stopped waiting. If the AI had already started on the page, that credit was still used.'
+      : err.message;
     errEl.hidden = false;
   } finally {
     stopStages();
+    stopElapsed();
     $('#build-loading').hidden = true;
     $('#build-generate').disabled = false;
   }
@@ -826,6 +901,9 @@ async function generateMulti(prompt) {
   multiState.notifyEmail = notifyEmail;
   const siteId = newSiteId();
   multiState.siteId = siteId;
+  const stopElapsed = startElapsed($('#multi-elapsed'));
+  const waiting = new AbortController();
+  $('#multi-cancel').onclick = () => waiting.abort();
 
   try {
     // Pass 1 — one shared brand/style summary for the whole site.
@@ -833,6 +911,7 @@ async function generateMulti(prompt) {
     const brandRes = await api('/api/generate', {
       method: 'POST',
       body: { mode: 'brand', prompt, pages: defs },
+      signal: waiting.signal,
     });
 
     // Pass 2 — every page gets the same brand brief, so styling/tone/nav
@@ -843,6 +922,7 @@ async function generateMulti(prompt) {
       api('/api/generate', {
         method: 'POST',
         body: { mode: 'page', prompt, context, brand: brandRes.brand, page, pages: defs, notifyEmail, siteId },
+        signal: waiting.signal,
       }).then((res) => {
         statuses[page.filename] = 'done';
         setProgress(defs, statuses);
@@ -870,9 +950,12 @@ async function generateMulti(prompt) {
     renderMultiResult();
     toast('Site generated — all pages share one brand');
   } catch (err) {
-    errEl.textContent = err.message;
+    errEl.textContent = err.cancelled
+      ? 'Stopped waiting. Pages the AI had already started on still used their credits.'
+      : err.message;
     errEl.hidden = false;
   } finally {
+    stopElapsed();
     $('#multi-loading').hidden = true;
     $('#multi-generate').disabled = false;
   }
@@ -1986,13 +2069,25 @@ async function runBatchGenerate(entries) {
   batchCancelled = false;
   batchRunning = true;
   $('#batch-modal-title').textContent = 'Generating demos…';
-  $('#batch-modal-sub').textContent = `0 of ${n} done`;
+  $('#batch-modal-sub').textContent = `0 of ${n} done · about ${Math.max(3, Math.round(n * 2.5))} minutes · keep this tab open`;
   $('#batch-list').innerHTML = entries.map(batchRowHtml).join('');
   const rows = Array.from($('#batch-list').querySelectorAll('.batch-row'));
   const cancelBtn = $('#batch-modal-cancel');
   cancelBtn.textContent = 'Cancel';
-  cancelBtn.onclick = () => { batchCancelled = true; };
+  cancelBtn.disabled = false;
+  cancelBtn.onclick = () => {
+    batchCancelled = true;
+    // The site in progress is already paid for, so it is allowed to finish.
+    cancelBtn.textContent = 'Stopping after this site…';
+    cancelBtn.disabled = true;
+  };
   $('#batch-modal').hidden = false;
+
+  // A batch is minutes of waiting, and a phone that locks its screen suspends
+  // the page and drops the request it was waiting on. Where the browser allows
+  // it, hold the screen on until the batch ends.
+  let wakeLock = null;
+  try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* not supported or refused */ }
 
   let done = 0;
   try {
@@ -2046,7 +2141,9 @@ async function runBatchGenerate(entries) {
     // backdrop stays blocked and Cancel still reads "Cancel", leaving a modal
     // that can only be escaped by reloading the page.
     batchRunning = false;
+    try { await wakeLock?.release(); } catch { /* already released */ }
     cancelBtn.textContent = 'Close';
+    cancelBtn.disabled = false;
     cancelBtn.onclick = () => { $('#batch-modal').hidden = true; };
     $('#batch-modal-title').textContent = batchCancelled ? 'Stopped early' : 'All done';
   }
