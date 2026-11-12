@@ -13,15 +13,11 @@ GOOGLE_PLACES_API_KEY=your-places-key-here
 # Optional model override (defaults to claude-opus-4-8).
 #ANTHROPIC_MODEL=claude-opus-4-8
 
-# Optional model for the Camera page's framing call (defaults to claude-opus-5-5).
-# MOCK_ANTHROPIC=1 also returns a canned framing box so /camera works offline.
-#CAMERA_MODEL=claude-opus-5-5
-
 # Note: the generated sites' contact forms are self-contained (they open the
 # visitor's email app addressed to the client), so no email service, API key,
 # or signing secret is needed for them anymore.
 
-# Optional app password lock. Set FORGE_PASSWORD to require a login page before
-# anyone can open the Forge app. Leaving it unset means no lock (open app).
+# The app password. In production Forge stays locked until this is set to at
+# least 8 characters. On localhost it may be left unset for an open dev server.
 # Public paths (/preview/* and /api/pv) stay open either way so client links work.
-#FORGE_PASSWORD=choose-a-password
+#FORGE_PASSWORD=choose-a-long-password

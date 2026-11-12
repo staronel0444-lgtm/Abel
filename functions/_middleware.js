@@ -1,19 +1,22 @@
 // Password gate for the whole Forge app.
 //
-// Runs on every request. If FORGE_PASSWORD is NOT set, the gate is disabled and
-// everything works as before (so Forge keeps running until you choose to lock
-// it). Once you set FORGE_PASSWORD, anyone without a valid login cookie gets a
-// login page — EXCEPT the public paths below, so the sites and preview links
-// you share with clients keep working:
+// Runs on every request. Everything needs a valid login cookie EXCEPT the
+// public paths below, so the sites and preview links you share keep working:
 //   /preview/*   the view-only sites you send prospects/clients
 //   /api/pv      the visitor-counter beacon fired by clients' live sites
 //   /api/login   the login endpoint itself
 //   /api/logout  clears the cookie
 //
-// The login page is fully self-contained (inline HTML/CSS/JS), so it doesn't
-// depend on any gated asset to render.
+// The gate fails CLOSED. If FORGE_PASSWORD is missing or too short, the app
+// shows a setup page instead of opening up: an unlocked Forge lets anyone on
+// the internet spend your AI credits and read your client list, and every
+// preview link you send gives away the address. The one exception is a dev
+// server on localhost, so `npm run dev` still works with no setup.
+//
+// The login and setup pages are fully self-contained (inline HTML/CSS/JS), so
+// they don't depend on any gated asset to render.
 
-import { verifyToken, parseCookies } from '../lib/auth.js';
+import { verifyToken, parseCookies, passwordProblem, isLocalDev, MIN_PASSWORD_LENGTH } from '../lib/auth.js';
 
 const PUBLIC_PREFIXES = ['/preview', '/api/pv', '/api/login', '/api/logout'];
 
@@ -62,13 +65,61 @@ const LOGIN_HTML = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
   </script>
 </body></html>`;
 
+// Shown instead of the app when there is no usable password. Says exactly what
+// to do, because the person reading it is the owner and nobody else can fix it.
+function setupHtml(problem) {
+  const why = problem === 'short'
+    ? `The password that is set is shorter than ${MIN_PASSWORD_LENGTH} characters, which is too easy to guess.`
+    : 'No password has been set yet, so Forge is keeping itself locked.';
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Forge — locked</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:#0c0f14;color:#e9edf4;font-family:Georgia,'Times New Roman',serif;line-height:1.55}
+  .card{width:min(100%,560px);background:#141922;border:1px solid #262e3d;border-radius:14px;padding:30px 28px}
+  h1{font-size:1.5rem;margin:0 0 6px}
+  p{color:#b7c0d0;margin:0 0 16px}
+  ol{margin:0 0 16px;padding-left:22px;color:#e9edf4}
+  li{margin-bottom:8px}
+  code{background:#0c0f14;border:1px solid #262e3d;border-radius:6px;padding:1px 6px;font-size:0.95em}
+  .note{font-size:0.9rem;color:#8d98ab;margin:0}
+</style></head><body>
+  <div class="card">
+    <h1>Forge is locked</h1>
+    <p>${why} Your preview links and live client sites are not affected.</p>
+    <ol>
+      <li>Open the Cloudflare dashboard and go to <strong>Workers &amp; Pages</strong>, then this project.</li>
+      <li>Open <strong>Settings</strong>, then <strong>Variables and Secrets</strong>.</li>
+      <li>Add a secret named <code>FORGE_PASSWORD</code> for Production. Use at least ${MIN_PASSWORD_LENGTH} characters that are not a single word.</li>
+      <li>Open <strong>Deployments</strong> and choose <strong>Retry deployment</strong> on the newest one, so the password takes effect.</li>
+      <li>Reload this page and sign in.</li>
+    </ol>
+    <p class="note">Only the owner of this Cloudflare account can do this.</p>
+  </div>
+</body></html>`;
+}
+
+const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+const HTML_HEADERS = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' };
+
 export const onRequest = async (context) => {
   const { request, env, next } = context;
-  const password = env.FORGE_PASSWORD;
-  if (!password) return next(); // gate disabled until a password is set
-
   const url = new URL(request.url);
   if (isPublic(url.pathname)) return next();
+
+  const password = env.FORGE_PASSWORD;
+  const problem = passwordProblem(password);
+  if (problem) {
+    if (isLocalDev(url)) return next();
+    if (url.pathname.startsWith('/api/')) {
+      return new Response(
+        JSON.stringify({ error: 'Forge is locked until FORGE_PASSWORD is set in Cloudflare. Open the app in a browser for the steps.' }),
+        { status: 503, headers: JSON_HEADERS }
+      );
+    }
+    return new Response(setupHtml(problem), { status: 503, headers: HTML_HEADERS });
+  }
 
   const cookies = parseCookies(request.headers.get('Cookie'));
   if (await verifyToken(password, cookies.forge_auth)) return next();
@@ -76,11 +127,8 @@ export const onRequest = async (context) => {
   // Not logged in.
   if (url.pathname.startsWith('/api/')) {
     return new Response(JSON.stringify({ error: 'Not authorized — sign in to Forge first.' }), {
-      status: 401, headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      status: 401, headers: JSON_HEADERS,
     });
   }
-  return new Response(LOGIN_HTML, {
-    status: 401,
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
-  });
+  return new Response(LOGIN_HTML, { status: 401, headers: HTML_HEADERS });
 };

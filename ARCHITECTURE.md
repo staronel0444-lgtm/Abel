@@ -22,9 +22,10 @@ schema.sql         D1 schema (every statement is IF NOT EXISTS)
 1. `functions/_middleware.js` runs before everything.
 2. Public paths pass straight through: `/preview/*`, `/api/pv`, `/api/login`,
    `/api/logout`.
-3. Everything else needs a valid `forge_auth` cookie — **but only if
-   `FORGE_PASSWORD` is set.** If it is not set, the gate is off and every
-   route, including the ones that spend money, is open to anyone.
+3. Everything else needs a valid `forge_auth` cookie. The gate fails closed:
+   with no `FORGE_PASSWORD`, or one shorter than 8 characters, every other
+   route answers 503 with a setup page. A dev server on localhost is the only
+   place the app runs open.
 4. The cookie is `v1.<issuedMs>.<HMAC-SHA256>` keyed by the password
    (`lib/auth.js`). Changing the password invalidates every session.
 
@@ -118,7 +119,7 @@ browser: facts + concept + layout  ──POST /api/generate──▶  lib/anthro
 |---|---|---|
 | `ANTHROPIC_API_KEY` | yes | |
 | `GOOGLE_PLACES_API_KEY` | for Lead Finder | |
-| `FORGE_PASSWORD` | no (!) | Unset = no login at all. |
+| `FORGE_PASSWORD` | yes | At least 8 characters. Unset = locked (open on localhost only). |
 | `ANTHROPIC_MODEL` | no | Overrides the default model. |
 | `MOCK_ANTHROPIC`, `MOCK_PLACES` | dev only | Canned responses, no spend. |
 
