@@ -119,7 +119,7 @@ production.**
 |---|---|---|
 | `ANTHROPIC_API_KEY` | yes | server-side only, via `wrangler pages secret` |
 | `GOOGLE_PLACES_API_KEY` | yes | server-side only |
-| `ANTHROPIC_MODEL` | no | defaults to `claude-opus-4-8` |
+| `ANTHROPIC_MODEL` | no | defaults to `claude-opus-5-5` (falls back to `claude-opus-4-8` if the account does not have it) |
 | `FORGE_PASSWORD` | **yes** | the app password, at least 8 characters; without it the app stays locked in production |
 | `DAILY_GENERATION_LIMIT` | no | AI calls allowed per day before the server refuses (default 40) |
 | `PLACES_MONTHLY_LIMIT` | no | Google searches allowed per month before the server refuses (default 950) |

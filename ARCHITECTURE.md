@@ -105,6 +105,11 @@ browser: facts + concept + layout  ──POST /api/generate──▶  lib/anthro
 - One AI call per page. Multi-page = one `brand` call + one call per page.
 - The model is told to write a `<!-- FORGE-CONCEPT … -->` comment before
   `<html>`; the app reads the chosen font back from it to rotate fonts.
+- The default model is `claude-opus-5-5` with adaptive thinking and an
+  explicit effort level (`high` for a new page, `medium` for an edit or a
+  brand brief). If the account does not have that model the call falls back
+  to `claude-opus-4-8`; if the API rejects the optional settings the request
+  is re-sent without them. Neither retry is billed.
 - `stop_reason: max_tokens` is retried once at a larger budget, then fails
   loudly — a cut-off page is never returned.
 - `lib/forminject.js` wires every `<form>` to FormSubmit when an owner email is
