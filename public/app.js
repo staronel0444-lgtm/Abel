@@ -355,7 +355,15 @@ function preserveForms(oldHtml, newHtml) {
   const m = FORMS_BLOCK_RE.exec(oldHtml || '');
   if (!m) return newHtml;
   const cleaned = String(newHtml).replace(new RegExp(FORMS_BLOCK_RE.source, 'g'), '');
-  return cleaned.includes('</body>') ? cleaned.replace('</body>', `${m[0]}</body>`) : cleaned + m[0];
+  return insertBeforeBodyEnd(cleaned, m[0]);
+}
+
+// Before the page's last </body>. Built by slicing rather than String.replace,
+// whose replacement text treats "$&" and "$'" as instructions.
+function insertBeforeBodyEnd(html, block) {
+  const doc = String(html || '');
+  const at = doc.toLowerCase().lastIndexOf('</body>');
+  return at === -1 ? doc + block : doc.slice(0, at) + block + doc.slice(at);
 }
 
 // A stable per-site id, used for the visitor counter beacon. Kept across
@@ -741,7 +749,7 @@ function setProgress(defs, statuses) {
 // shared-preview HTML stays untouched (real preview URLs navigate normally).
 function withNavShim(html) {
   const shim = `<script>document.addEventListener('click',function(e){var a=e.target.closest('a');if(!a)return;var h=a.getAttribute('href')||'';if(/^[a-z0-9-]+\\.html$/i.test(h)){e.preventDefault();parent.postMessage({forgePage:h},'*');}});<\/script>`;
-  return html.includes('</body>') ? html.replace('</body>', shim + '</body>') : html + shim;
+  return insertBeforeBodyEnd(html, shim);
 }
 
 window.addEventListener('message', (e) => {
