@@ -27,7 +27,11 @@ schema.sql         D1 schema (every statement is IF NOT EXISTS)
    route answers 503 with a setup page. A dev server on localhost is the only
    place the app runs open.
 4. The cookie is `v1.<issuedMs>.<HMAC-SHA256>` keyed by the password
-   (`lib/auth.js`). Changing the password invalidates every session.
+   (`lib/auth.js`). Changing the password invalidates every session, and the
+   server refuses a token older than 30 days.
+5. Wrong passwords are counted in D1 (`lib/throttle.js`): five from one
+   address, or a hundred from anywhere, inside 15 minutes locks that key for
+   15 minutes. A locked address is refused before its password is compared.
 
 Route handlers are wrapped in `handle()` (`lib/http.js`), which turns thrown
 `HttpError`s into JSON `{ error }` responses and hides stack traces.
@@ -71,6 +75,7 @@ Route handlers are wrapped in `handle()` (`lib/http.js`), which turns thrown
 | `previews` | Saved sites. `kind='single'` → HTML; `kind='multi'` → JSON of pages. |
 | `site_views` | Per-site visit counter. |
 | `places_usage` | Places searches per day (free-tier counter). |
+| `login_attempts` | Wrong-password counters for the login throttle. |
 
 Tables and added columns are created on demand (`CREATE TABLE IF NOT EXISTS`,
 `lib/migrate.js`), so a deploy never needs a manual migration.

@@ -119,6 +119,15 @@ CREATE TABLE IF NOT EXISTS places_usage (
   searches INTEGER NOT NULL DEFAULT 0
 );
 
+-- Wrong-password counters for the login throttle (lib/throttle.js). One row
+-- per address ('ip:<address>') plus one shared row ('*').
+CREATE TABLE IF NOT EXISTS login_attempts (
+  key          TEXT PRIMARY KEY,
+  fails        INTEGER NOT NULL DEFAULT 0,
+  window_start INTEGER NOT NULL DEFAULT 0,
+  locked_until INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE INDEX IF NOT EXISTS idx_view_history_first_viewed ON view_history (first_viewed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON client_payments (paid_at);
 CREATE INDEX IF NOT EXISTS idx_site_views_views ON site_views (views DESC);
