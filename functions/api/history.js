@@ -1,5 +1,7 @@
 // GET /api/history — every business ever seen in Lead Finder, newest first,
 // with its current status: 'client' | 'no' | 'undecided'. Never auto-clears.
+// Returns the newest 500; each row carries a full snapshot, so the whole table
+// would grow into a response too large to be useful.
 
 import { handle, json } from '../../lib/http.js';
 
@@ -10,7 +12,8 @@ export const onRequestGet = handle(async ({ env }) => {
               v.data_json, d.reason
        FROM view_history v
        LEFT JOIN dismissed_leads d ON d.place_id = v.place_id
-       ORDER BY v.first_viewed_at DESC, v.business_name ASC`
+       ORDER BY v.first_viewed_at DESC, v.business_name ASC
+       LIMIT 500`
     )
     .all();
 
