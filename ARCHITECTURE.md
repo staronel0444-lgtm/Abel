@@ -29,12 +29,23 @@ schema.sql         D1 schema (every statement is IF NOT EXISTS)
 4. The cookie is `v1.<issuedMs>.<HMAC-SHA256>` keyed by the password
    (`lib/auth.js`). Changing the password invalidates every session, and the
    server refuses a token older than 30 days.
-5. Wrong passwords are counted in D1 (`lib/throttle.js`): five from one
+5. `/api/*` also needs the **request token** in an `X-Forge-Token` header.
+   Generated sites are served from this same address, so the cookie alone
+   would let a script inside one call the API as you. The token is derived
+   from the session and written only into the app's own page, and only when
+   that page is opened as a page (`Sec-Fetch-Dest: document`) — a `fetch()`
+   or a frame never receives it. The app page is sent with `no-store`,
+   `X-Frame-Options: DENY` and `Cross-Origin-Opener-Policy: same-origin`.
+6. Wrong passwords are counted in D1 (`lib/throttle.js`): five from one
    address, or a hundred from anywhere, inside 15 minutes locks that key for
    15 minutes. A locked address is refused before its password is compared.
 
 Route handlers are wrapped in `handle()` (`lib/http.js`), which turns thrown
 `HttpError`s into JSON `{ error }` responses and hides stack traces.
+
+Generated pages never run as part of the app. My Sites thumbnails are frames
+with scripts switched off (`sandbox=""`), and the builder preview loads the
+page from a `data:` address, which gives it an origin of its own.
 
 ## API
 

@@ -114,10 +114,24 @@ function formatMonth(ym) {
   return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 }
 
+// The server writes a request token into this page and nowhere else. Every API
+// call sends it back, which is how the server tells the app apart from a
+// script inside a generated site (see functions/_middleware.js). It is read
+// once and taken out of the document.
+const FORGE_TOKEN = (() => {
+  const meta = document.querySelector('meta[name="forge-token"]');
+  const value = meta ? meta.content : '';
+  if (meta) meta.remove();
+  return value;
+})();
+
 async function api(path, { method = 'GET', body } = {}) {
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (FORGE_TOKEN) headers['X-Forge-Token'] = FORGE_TOKEN;
   const res = await fetch(path, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   let data = null;
@@ -177,13 +191,51 @@ function countUp(el, to, format = (n) => String(Math.round(n))) {
   el._countRaf = requestAnimationFrame(tick);
 }
 
+// ---- Showing a generated page without letting it touch the app --------------
+// A generated page is written by a model that has read text from the public
+// internet, so its scripts are treated as a stranger's. Loaded with `srcdoc`
+// the page would count as part of this app and could call anything the app
+// can. Loaded from a data: address it gets an origin of its own: it still
+// runs, its map and fonts still load, but it cannot reach this page.
+const ANALYTICS_BLOCK_RE = /<!--forge-analytics-start-->[\s\S]*?<!--forge-analytics-end-->/g;
+// Chrome refuses addresses much past 2MB. A page that large (several uploaded
+// photos) falls back to a stricter frame instead of failing to show.
+const MAX_DATA_URL = 1900000;
+const FRAME_SANDBOX = 'allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals';
+
+function toDataUrl(html) {
+  const bytes = new TextEncoder().encode(html);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  }
+  return 'data:text/html;charset=utf-8;base64,' + btoa(bin);
+}
+
+function showInFrame(frame, html) {
+  if (!frame) return;
+  // Your own previews must not count as visits, so the beacon stays out of
+  // them. The saved and downloaded copies keep it.
+  const page = String(html || '').replace(ANALYTICS_BLOCK_RE, '');
+  const url = toDataUrl(page);
+  if (url.length <= MAX_DATA_URL) {
+    frame.setAttribute('sandbox', FRAME_SANDBOX + ' allow-same-origin');
+    frame.removeAttribute('srcdoc');
+    frame.src = url;
+  } else {
+    frame.setAttribute('sandbox', FRAME_SANDBOX);
+    frame.removeAttribute('src');
+    frame.srcdoc = page;
+  }
+}
+
 // Fade a preview frame out and back in around a content swap, so a regenerated
 // site doesn't flash white.
 function swapFrame(frame, html) {
   if (!frame) return;
-  if (REDUCED_MOTION) { frame.srcdoc = html; return; }
+  if (REDUCED_MOTION) { showInFrame(frame, html); return; }
   frame.classList.add('is-swapping');
-  frame.srcdoc = html;
+  showInFrame(frame, html);
   const done = () => frame.classList.remove('is-swapping');
   frame.addEventListener('load', done, { once: true });
   setTimeout(done, 1200); // never leave it dimmed if load doesn't fire
@@ -416,8 +468,11 @@ async function createPreview(payload, outputEl) {
   return res;
 }
 
-// My Sites gallery — backed by the same saved previews, shown as live
-// thumbnails with open-in-builder / copy / delete.
+// My Sites gallery — backed by the same saved previews, shown as thumbnails
+// with open-in-builder / copy / delete. The thumbnails are pictures of the
+// page, not running copies of it: `sandbox=""` switches their scripts off, so
+// opening this tab neither runs anything a generated page contains nor counts
+// as a visit to every site at once.
 async function loadSites() {
   const grid = $('#sites-grid');
   showSkeleton(grid, { rows: 3, grid: true });
@@ -426,7 +481,7 @@ async function loadSites() {
     $('#sites-empty').hidden = previews.length > 0;
     grid.innerHTML = previews.map((p) => `
       <div class="site-card" data-id="${escapeHtml(p.id)}" data-kind="${escapeHtml(p.kind)}" data-url="${escapeHtml(p.url)}">
-        <div class="site-thumb"><iframe src="${escapeHtml(p.url)}" scrolling="no" tabindex="-1" title="preview"></iframe></div>
+        <div class="site-thumb"><iframe src="${escapeHtml(p.url)}" sandbox="" loading="lazy" scrolling="no" tabindex="-1" title="preview"></iframe></div>
         <div class="site-card-body">
           <div class="site-card-title">${escapeHtml(p.title || '(untitled site)')}</div>
           <div class="site-card-meta">${p.kind === 'multi' ? 'multi-page' : 'single page'} · ${escapeHtml(formatDate(p.createdAt))}</div>
@@ -467,7 +522,7 @@ async function loadSites() {
             buildState.html = data.html;
             buildState.placeId = null;
             buildState.siteId = extractSiteId(data.html) || null;
-            $('#build-frame').srcdoc = data.html;
+            showInFrame($('#build-frame'), data.html);
             $('#build-frame').classList.remove('is-mobile');
             $('#build-device').querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.device === 'desktop'));
             $('#build-result').hidden = false;
@@ -595,7 +650,7 @@ $('#build-set-email')?.addEventListener('click', async () => {
     });
     buildState.html = res.html;
     buildState.notifyEmail = email;
-    $('#build-frame').srcdoc = res.html;
+    showInFrame($('#build-frame'), res.html);
     $('#build-link-output').hidden = true;
     toast('Contact email set — free, no credits used');
   } catch (err) {
@@ -3738,7 +3793,7 @@ function openPhotosForBuild() {
     getHtml: () => buildState.html,
     setHtml: (html) => {
       buildState.html = html;
-      $('#build-frame').srcdoc = html;
+      showInFrame($('#build-frame'), html);
       $('#build-link-output').hidden = true;
     },
     label: null,

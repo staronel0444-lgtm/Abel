@@ -13,10 +13,19 @@
 // preview link you send gives away the address. The one exception is a dev
 // server on localhost, so `npm run dev` still works with no setup.
 //
+// The cookie alone is not enough for /api/*. Generated sites are served from
+// this same address, so a script inside one would otherwise be able to call
+// the API as you just by being open in your browser. Every API call must also
+// carry the request token, and the token is only ever written into the app's
+// own page, and only when that page is opened as a page (not fetched by a
+// script, not loaded in a frame). See requestTokenFor() in lib/auth.js.
+//
 // The login and setup pages are fully self-contained (inline HTML/CSS/JS), so
 // they don't depend on any gated asset to render.
 
-import { verifyToken, parseCookies, passwordProblem, isLocalDev, MIN_PASSWORD_LENGTH } from '../lib/auth.js';
+import {
+  verifyToken, parseCookies, passwordProblem, isLocalDev, requestTokenFor, timingSafeEqual, MIN_PASSWORD_LENGTH,
+} from '../lib/auth.js';
 
 const PUBLIC_PREFIXES = ['/preview', '/api/pv', '/api/login', '/api/logout'];
 
@@ -101,18 +110,65 @@ function setupHtml(problem) {
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
-const HTML_HEADERS = { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' };
+const HTML_HEADERS = {
+  'Content-Type': 'text/html; charset=utf-8',
+  'Cache-Control': 'no-store',
+  'X-Frame-Options': 'DENY',
+};
+
+const APP_PAGES = new Set(['/', '/index.html']);
+
+// True when the browser is opening the address as a page in its own tab.
+// Browsers set these headers themselves and scripts cannot change them, so a
+// fetch() or an <iframe> from a generated page can never pass for one. Older
+// browsers that send neither header are let through rather than locked out.
+function openedAsPage(request) {
+  const dest = request.headers.get('Sec-Fetch-Dest');
+  const mode = request.headers.get('Sec-Fetch-Mode');
+  return (!dest || dest === 'document') && (!mode || mode === 'navigate');
+}
+
+// The app's own page: never cached, never framed, cut off from any window
+// that opened it, and carrying the request token when it is safe to give out.
+async function appPage(request, next, token) {
+  // Force a full response; a 304 would have no body to put the token in.
+  const headers = new Headers(request.headers);
+  headers.delete('If-None-Match');
+  headers.delete('If-Modified-Since');
+  const res = await next(new Request(request, { headers }));
+
+  let out = res;
+  if (token && res.status === 200 && openedAsPage(request)) {
+    out = new HTMLRewriter()
+      .on('head', {
+        element(el) {
+          el.append(`<meta name="forge-token" content="${token}">`, { html: true });
+        },
+      })
+      .transform(res);
+  }
+  out = new Response(out.body, out);
+  out.headers.set('Cache-Control', 'no-store');
+  out.headers.set('X-Frame-Options', 'DENY');
+  out.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
+  out.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+  out.headers.delete('ETag');
+  return out;
+}
 
 export const onRequest = async (context) => {
   const { request, env, next } = context;
   const url = new URL(request.url);
   if (isPublic(url.pathname)) return next();
 
+  const isApi = url.pathname.startsWith('/api/');
+  const isAppPage = APP_PAGES.has(url.pathname) && request.method === 'GET';
+
   const password = env.FORGE_PASSWORD;
   const problem = passwordProblem(password);
   if (problem) {
-    if (isLocalDev(url)) return next();
-    if (url.pathname.startsWith('/api/')) {
+    if (isLocalDev(url)) return isAppPage ? appPage(request, next, '') : next();
+    if (isApi) {
       return new Response(
         JSON.stringify({ error: 'Forge is locked until FORGE_PASSWORD is set in Cloudflare. Open the app in a browser for the steps.' }),
         { status: 503, headers: JSON_HEADERS }
@@ -121,14 +177,25 @@ export const onRequest = async (context) => {
     return new Response(setupHtml(problem), { status: 503, headers: HTML_HEADERS });
   }
 
-  const cookies = parseCookies(request.headers.get('Cookie'));
-  if (await verifyToken(password, cookies.forge_auth)) return next();
-
-  // Not logged in.
-  if (url.pathname.startsWith('/api/')) {
-    return new Response(JSON.stringify({ error: 'Not authorized — sign in to Forge first.' }), {
-      status: 401, headers: JSON_HEADERS,
-    });
+  const session = parseCookies(request.headers.get('Cookie')).forge_auth;
+  if (!(await verifyToken(password, session))) {
+    if (isApi) {
+      return new Response(JSON.stringify({ error: 'You are signed out. Reload the page and sign in again.' }), {
+        status: 401, headers: JSON_HEADERS,
+      });
+    }
+    return new Response(LOGIN_HTML, { status: 401, headers: HTML_HEADERS });
   }
-  return new Response(LOGIN_HTML, { status: 401, headers: HTML_HEADERS });
+
+  const token = await requestTokenFor(password, session);
+  if (isApi) {
+    if (!timingSafeEqual(request.headers.get('X-Forge-Token') || '', token)) {
+      return new Response(
+        JSON.stringify({ error: 'That request did not come from the Forge app. Reload the page and try again.' }),
+        { status: 403, headers: JSON_HEADERS }
+      );
+    }
+    return next();
+  }
+  return isAppPage ? appPage(request, next, token) : next();
 };
