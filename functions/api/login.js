@@ -1,9 +1,9 @@
 // POST /api/login {password}  -> sets the login cookie if the password matches
 // the FORGE_PASSWORD secret. POST /api/logout -> clears the cookie.
 
-import { makeToken, timingSafeEqual, passwordProblem, isLocalDev } from '../../lib/auth.js';
+import { makeToken, timingSafeEqual, passwordProblem, isLocalDev, SESSION_MS } from '../../lib/auth.js';
 
-const THIRTY_DAYS = 60 * 60 * 24 * 30;
+const SESSION_SECONDS = Math.floor(SESSION_MS / 1000);
 
 function cookieHeader(value, maxAge, request) {
   const secure = new URL(request.url).protocol === 'https:' ? ' Secure;' : '';
@@ -36,6 +36,6 @@ export const onRequestPost = async ({ request, env }) => {
   const token = await makeToken(password);
   return new Response(JSON.stringify({ ok: true }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json', 'Set-Cookie': cookieHeader(token, THIRTY_DAYS, request) },
+    headers: { 'Content-Type': 'application/json', 'Set-Cookie': cookieHeader(token, SESSION_SECONDS, request) },
   });
 };
