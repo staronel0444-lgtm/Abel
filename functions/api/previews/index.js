@@ -38,19 +38,20 @@ export const onRequestGet = handle(async ({ env }) => {
   return json({ previews });
 });
 
-export const onRequestPost = handle(async ({ request, env }) => {
-  const body = await readJson(request);
-  const kind = body.kind === 'multi' ? 'multi' : 'single';
-  const placeId = typeof body.placeId === 'string' && body.placeId.trim() ? body.placeId.trim() : null;
-
+// Validate a site sent for saving and turn it into what is stored. Shared by
+// POST (a new link) and PUT /api/previews/:id (the same link, new content).
+export function readSite(body) {
+  const kind = body?.kind === 'multi' ? 'multi' : 'single';
   let content;
   let title;
+  let home;
 
   if (kind === 'single') {
     if (typeof body.html !== 'string' || !/<html/i.test(body.html)) {
       throw new HttpError(400, 'html must be a complete HTML document');
     }
     content = body.html;
+    home = body.html;
     title = extractTitle(body.html);
   } else {
     const pages = body.pages;
@@ -70,12 +71,33 @@ export const onRequestPost = handle(async ({ request, env }) => {
       }
     }
     content = JSON.stringify(pages);
-    title = extractTitle(pages['index.html']);
+    home = pages['index.html'];
+    title = extractTitle(home);
   }
 
-  if (content.length > MAX_CONTENT_BYTES) {
-    throw new HttpError(413, 'Generated site is too large to store as a preview.');
+  // The limit is on bytes, and a page with accents or symbols has more bytes
+  // than characters.
+  if (new TextEncoder().encode(content).length > MAX_CONTENT_BYTES) {
+    throw new HttpError(413, 'This site is too large to save as a link. Use fewer or smaller photos.');
   }
+  return { kind, content, title, home };
+}
+
+// A saved site is one that is about to be sent to somebody, so make sure its
+// visits can be counted — this also covers pages built before ids were
+// registered at generation time.
+export async function registerSavedSite(env, site) {
+  try {
+    await registerSite(env.DB, siteIdFromHtml(site.home), site.title);
+  } catch {
+    // Counting is a convenience; the link is what matters.
+  }
+}
+
+export const onRequestPost = handle(async ({ request, env }) => {
+  const body = await readJson(request);
+  const placeId = typeof body.placeId === 'string' && body.placeId.trim() ? body.placeId.trim() : null;
+  const site = readSite(body);
 
   const id = randomId(12);
   await env.DB
@@ -83,17 +105,9 @@ export const onRequestPost = handle(async ({ request, env }) => {
       `INSERT INTO previews (preview_id, place_id, kind, title, html_content)
        VALUES (?1, ?2, ?3, ?4, ?5)`
     )
-    .bind(id, placeId, kind, title, content)
+    .bind(id, placeId, site.kind, site.title, site.content)
     .run();
+  await registerSavedSite(env, site);
 
-  // A saved site is one that is about to be sent to somebody, so make sure its
-  // visits can be counted — this also covers pages built before ids were
-  // registered at generation time.
-  try {
-    await registerSite(env.DB, siteIdFromHtml(kind === 'multi' ? body.pages['index.html'] : body.html), title);
-  } catch {
-    // Counting is a convenience; the link is what matters.
-  }
-
-  return json({ id, url: kind === 'multi' ? `/preview/${id}/` : `/preview/${id}` }, 201);
+  return json({ id, url: site.kind === 'multi' ? `/preview/${id}/` : `/preview/${id}` }, 201);
 });

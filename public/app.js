@@ -542,8 +542,13 @@ function extractKeywords(prompt) {
 
 // ---------------------------------------------------------------- previews
 
-async function createPreview(payload, outputEl) {
-  const res = await api('/api/previews', { method: 'POST', body: payload });
+// Save a site as a link. With `previewId` the content behind that existing link
+// is replaced, so an address already sent to an owner shows the change;
+// without it a new link is made.
+async function createPreview(payload, outputEl, previewId = null) {
+  const res = previewId
+    ? await api(`/api/previews/${previewId}`, { method: 'PUT', body: payload })
+    : await api('/api/previews', { method: 'POST', body: payload });
   const fullUrl = location.origin + res.url;
   outputEl.hidden = false;
   outputEl.innerHTML = `
@@ -552,6 +557,34 @@ async function createPreview(payload, outputEl) {
   outputEl.querySelector('[data-copy]').addEventListener('click', (e) => copyText(e.target.dataset.copy));
   loadSites();
   return res;
+}
+
+// The save button says which of the two it will do.
+function syncLinkButton(btn, previewId) {
+  if (btn) btn.textContent = previewId ? 'Update the link' : 'Get preview link';
+}
+
+// Whatever Forge still knows about a business found in Lead Finder.
+function knownLead(placeId) {
+  if (!placeId) return null;
+  const hit = leadState.leads.find((l) => l.placeId === placeId);
+  if (hit) return { lead: hit, niche: leadState.niche };
+  return leadState.selected.get(placeId) || null;
+}
+
+// File a demo under Prospects with its link, so "who did I send what" is
+// answered by the app instead of by memory. Adding the same business twice
+// just refreshes its link. Never allowed to get in the way of the link itself.
+async function fileProspect(lead, niche, previewUrl) {
+  if (!lead || !lead.name) return;
+  try {
+    await api('/api/prospects', {
+      method: 'POST',
+      body: { businessName: lead.name, niche: niche || '', phone: lead.phone || '', placeId: lead.placeId || null, previewUrl },
+    });
+  } catch {
+    // The pipeline is a convenience.
+  }
 }
 
 // My Sites gallery — backed by the same saved previews, shown as thumbnails
@@ -603,10 +636,14 @@ async function loadSites() {
           const data = await api(`/api/previews/${id}`);
           if (data.kind === 'multi') {
             openMultiInBuilder(data.pages);
-            toast('Opened in Multi-page — refine any page, flip to Mobile, then save a new link');
+            multiState.previewId = id;
+            syncLinkButton($('#multi-preview-link'), id);
+            toast('Opened in Multi-page — edit any page, then Update the link to change what the owner sees');
           } else {
             buildState.html = data.html;
             buildState.facts = '';
+            buildState.previewId = id;
+            syncLinkButton($('#build-preview-link'), id);
             buildState.placeId = null;
             buildState.siteId = extractSiteId(data.html) || null;
             showInFrame($('#build-frame'), data.html);
@@ -616,7 +653,7 @@ async function loadSites() {
             $('#build-result').hidden = false;
             $('#build-link-output').hidden = true;
             switchTab('build');
-            toast('Opened in Build — refine it or flip to Mobile, then save a new link');
+            toast('Opened in Build — edit it, then Update the link to change what the owner sees');
           }
         } catch (err) {
           toast(err.message, true);
@@ -634,7 +671,8 @@ $('#sites-refresh').addEventListener('click', loadSites);
 
 // `facts` is the prompt the page was built from, kept so the pre-send check can
 // set the page against it. A site opened from My Sites has none.
-const buildState = { html: null, placeId: null, notifyEmail: '', siteId: null, facts: '' };
+// `previewId` is the saved link this page belongs to, if it has one.
+const buildState = { html: null, placeId: null, notifyEmail: '', siteId: null, facts: '', previewId: null };
 
 // `direction` is passed in when the caller already fixed one (a lead card shows
 // its prompt before you click, so the promise has to match the page). A manual
@@ -682,6 +720,8 @@ async function generateSingle(prompt, placeId = null, direction = null) {
     buildState.notifyEmail = notifyEmail;
     buildState.siteId = siteId;
     buildState.facts = fullPrompt;
+    buildState.previewId = null;
+    syncLinkButton($('#build-preview-link'), null);
     swapFrame($('#build-frame'), res.html);
     $('#build-result').hidden = false;
     reportSlop(res.html, '#build-slop', fullPrompt);
@@ -714,9 +754,11 @@ $('#build-preview-link').addEventListener('click', async (e) => {
   if (!buildState.html) return;
   e.target.disabled = true;
   try {
-    await createPreview(
+    const updating = Boolean(buildState.previewId);
+    const res = await createPreview(
       { kind: 'single', html: buildState.html, placeId: buildState.placeId },
-      $('#build-link-output')
+      $('#build-link-output'),
+      buildState.previewId
     );
     toast('Preview link ready — send it to the prospect');
   } catch (err) {
@@ -814,7 +856,7 @@ $('#pb-make-multi')?.addEventListener('click', () => {
 
 // ------------------------------------------------- Section 2: multi-page
 
-const multiState = { pages: {}, defs: [], current: null, placeId: null, notifyEmail: '', siteId: null };
+const multiState = { pages: {}, defs: [], current: null, placeId: null, notifyEmail: '', siteId: null, previewId: null };
 
 function selectedPageDefs() {
   const defs = [{ filename: 'index.html', title: 'Home' }];
@@ -889,6 +931,7 @@ function openMultiInBuilder(pages) {
   renderMultiResult();
   switchTab('multi');
 }
+  multiState.previewId = null;
 
 // Generate the given pages of a multi-page job. Returns what finished and what
 // did not; a failure on one page never discards the others.
@@ -987,6 +1030,8 @@ async function generateMulti(prompt) {
   const waiting = new AbortController();
   $('#multi-cancel').onclick = () => waiting.abort();
 
+  multiState.previewId = null;
+  syncLinkButton($('#multi-preview-link'), null);
   try {
     // One design direction for the whole site, chosen the same way a single
     // page's is. Only the concept: the structure briefs describe one-page
@@ -1038,11 +1083,17 @@ $('#multi-preview-link').addEventListener('click', async (e) => {
   if (!Object.keys(multiState.pages).length) return;
   e.target.disabled = true;
   try {
-    await createPreview(
+    const updating = Boolean(multiState.previewId);
+    const res = await createPreview(
       { kind: 'multi', pages: multiState.pages, placeId: multiState.placeId },
-      $('#multi-link-output')
+      $('#multi-link-output'),
+      multiState.previewId
     );
-    toast('Preview link ready — pages link to each other on the live URL');
+    multiState.previewId = res.id;
+    syncLinkButton(e.target, res.id);
+    toast(updating
+      ? 'Link updated — same address, new version (allow a minute)'
+      : 'Preview link ready — pages link to each other on the live URL');
   } catch (err) {
     toast(err.message, true);
   } finally {
