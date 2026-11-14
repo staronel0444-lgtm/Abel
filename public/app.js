@@ -3122,20 +3122,16 @@ const ART_STYLES = [
     brief: 'Modern neo-brutalism. Saturated flat primaries and candy brights on cream or white. Every card, button and image gets a heavy 3px black outline and a hard offset drop shadow (e.g. 6px 6px 0 #000) with no blur. Chunky geometric sans-serif, very heavy weights. Slight playful rotations on some elements. Buttons visibly "press" on hover by shifting toward their shadow. Bold, graphic and confident.' },
   { key: 'typographic', name: 'Bold Typographic', group: 'Bold', blurb: 'Giant letters are the design', swatch: ['#111111', '#f5f5f0', '#ff4b1f'],
     brief: 'Type as the entire design. The headline should be enormous — filling most of the viewport — in a heavy display face with very tight tracking and negative leading where lines stack. Minimal imagery; words carry everything. High contrast, mostly two tones plus one hot accent. Text set at dramatic size jumps. Sections separated by scale changes rather than boxes.' },
-  { key: 'maximalist', name: 'Maximalist', group: 'Bold', blurb: 'Packed, layered, loud', swatch: ['#7b2ff7', '#f7b32b', '#12c2e9'],
+  { key: 'maximalist', name: 'Maximalist', group: 'Bold', blurb: 'Packed, layered, loud', swatch: ['#e63946', '#f7b32b', '#12c2e9'],
     brief: 'More is more. Clashing saturated colours, layered patterned backgrounds, overlapping elements, multiple contrasting typefaces used together. Decorative borders, stickers, badges and shapes filling negative space. Dense and energetic — but keep text legible over its background at all times. Every section should feel like a different poster while remaining one site.' },
 
   // ---- Retro ----
   { key: 'vintage70s', name: 'Vintage 70s', group: 'Retro', blurb: 'Burnt orange, brown, old signage', swatch: ['#e07a3f', '#7a4419', '#f2e3c9'],
     brief: '1970s Americana. Burnt orange, mustard, avocado and deep brown on warm cream. Rounded chunky retro display type for headings (think old motel and gas-station signage), warm serif or slab for body. Thick rounded pill shapes, arched section tops, concentric stripe motifs. Subtle grain or paper texture. Warm, sun-faded and nostalgic.' },
-  { key: 'y2k', name: 'Y2K', group: 'Retro', blurb: 'Chrome, shine, early-2000s web', swatch: ['#c0c0c0', '#00d4ff', '#ff00c8'],
-    brief: 'Turn-of-the-millennium optimism. Metallic chrome and silver gradients, glossy bubble buttons with highlight sheen, electric cyan and magenta accents on white or gradient backgrounds. Rounded plastic shapes, bevelled edges, star and sparkle motifs. Techno-optimistic sans-serif, some italic. Slightly gaudy and fun — lean into the gloss.' },
   { key: 'artdeco', name: 'Art Deco', group: 'Retro', blurb: 'Gold, geometric, 1920s luxury', swatch: ['#0e1b2a', '#c9a227', '#f4f1e8'],
     brief: '1920s Deco glamour. Deep navy or black grounds with metallic gold and cream. Strong symmetry, stepped geometric ornament, sunburst and chevron motifs, thin gold rules framing sections. High-contrast elegant display serif with wide letter-spacing for headings, refined serif body. Vertical emphasis, arched and fan-shaped forms. Opulent and formal.' },
   { key: 'memphis', name: 'Memphis', group: 'Retro', blurb: '80s squiggles and clashing shapes', swatch: ['#ff5c8a', '#2ec4f1', '#ffd23f'],
     brief: '1980s Memphis Group postmodernism. Bright clashing pastels and primaries on white. Scattered geometric confetti — squiggles, zigzags, dots, triangles, wavy lines — as decorative background elements. Playful asymmetry, elements rotated slightly off-axis. Bold rounded sans-serif. Terrazzo speckle patterns. Deliberately fun and slightly chaotic.' },
-  { key: 'retrofuture', name: 'Retro-Futurism', group: 'Retro', blurb: 'Synthwave, neon grids, 80s sci-fi', swatch: ['#1a0b2e', '#ff2a6d', '#05d9e8'],
-    brief: '1980s synthwave. Deep purple-to-magenta gradient skies, a glowing perspective grid receding to a horizon, neon pink and cyan. Chrome or neon-outlined display type with glow and subtle scanlines. Sunset-stripe motifs. Dark ground throughout with luminous accents. Cinematic and nostalgic-futuristic.' },
 
   // ---- Fancy ----
   { key: 'luxury', name: 'Luxury', group: 'Fancy', blurb: 'Black and gold, elegant, spacious', swatch: ['#0a0a0a', '#c9a961', '#f6f3ee'],
@@ -3147,13 +3143,7 @@ const ART_STYLES = [
 
   // ---- Techy ----
   { key: 'darktech', name: 'Dark Tech', group: 'Techy', blurb: 'Dark background, neon accent', swatch: ['#0d1117', '#3fb950', '#c9d1d9'],
-    brief: 'Modern developer-product dark mode. Near-black blue-grey ground, elevated surfaces a shade lighter, one vivid accent (electric green, blue or violet). Crisp geometric sans, monospace for small labels and numbers. Subtle 1px borders, faint inner glows, 8px radii. Sharp, technical and precise. Restrained accent use — glow only where it matters.' },
-  { key: 'cyberpunk', name: 'Cyberpunk', group: 'Techy', blurb: 'Neon on black, glitch', swatch: ['#0a0012', '#ff003c', '#00fff5'],
-    brief: 'Neon-noir cyberpunk. Near-black ground with hot magenta and cyan neon. Glitch and chromatic-aberration effects on headings (offset red/cyan text shadows), scanline overlays, angular clipped corners instead of rounded. Monospace or techno display type, often uppercase. Neon-outlined boxes that glow on hover. Gritty, high-contrast and electric.' },
-  { key: 'glass', name: 'Glassmorphism', group: 'Techy', blurb: 'Frosted glass, blur, translucent', swatch: ['#6a8cff', '#b8c6ff', '#ffffff'],
-    brief: 'Frosted-glass layering. A colourful soft gradient or blurred photographic background, with content panels using backdrop-filter blur, semi-transparent white fills, thin light borders and soft shadows. Rounded 16–20px corners. Light airy sans-serif. Floating depth — panels appear to hover above the background. Bright and modern.' },
-  { key: 'neumorphic', name: 'Neumorphism', group: 'Techy', blurb: 'Soft shadows, pressed-in buttons', swatch: ['#e0e5ec', '#a3b1c6', '#4d5b70']  ,
-    brief: 'Soft UI. A single flat light-grey background used everywhere, with elements defined purely by paired shadows — a light shadow top-left and a dark shadow bottom-right — so they appear extruded from or pressed into the surface. Generous 16–20px radii, no borders, very low contrast, muted blue-grey text. Buttons invert their shadows on press. Tactile and soft.' },
+    brief: 'Modern developer-product dark mode. Near-black blue-grey ground, elevated surfaces a shade lighter, one vivid accent (electric green or signal orange). Crisp geometric sans, monospace for small labels and numbers. Subtle 1px borders, 8px radii, flat colour with no glows or gradients. Sharp, technical and precise, with the accent used sparingly.' },
   { key: 'blueprint', name: 'Blueprint', group: 'Techy', blurb: 'Grid lines, technical drawing', swatch: ['#0b3d5c', '#7fd4ff', '#e8f4fa'],
     brief: 'Architectural drafting. Deep blueprint-blue ground with a fine white grid overlay. Thin white or pale-cyan line work, technical annotations, dimension lines and measurement ticks as decoration. Monospace or technical sans type, uppercase small labels. Sections framed like drawing sheets with title blocks and revision marks. Precise and engineered.' },
 
@@ -3172,8 +3162,6 @@ const ART_STYLES = [
   // ---- Heavy ----
   { key: 'industrial', name: 'Industrial', group: 'Heavy', blurb: 'Concrete, metal, thick type', swatch: ['#2b2b2b', '#f0b429', '#8a8a8a'],
     brief: 'Workshop and heavy trade. Concrete grey and charcoal grounds with a subtle concrete or brushed-metal texture, safety-yellow or hazard-orange accents. Heavy condensed uppercase sans-serif, stencil feeling for headings. Hard edges, thick rules, diagonal hazard-stripe dividers, rivet and plate motifs. Utilitarian, rugged and built to last.' },
-  { key: 'photographic', name: 'Photographic', group: 'Heavy', blurb: 'Huge full-screen photos', swatch: ['#1c1c1c', '#ffffff', '#c8a882'],
-    brief: 'Photography-first. Full-bleed edge-to-edge imagery filling the viewport, with text overlaid directly on photographs using scrims or gradient overlays for legibility. Minimal chrome — no cards, no boxes. Large light-weight type over images, generous letter-spacing. Sections alternate between full-bleed image and quiet text. Cinematic and immersive.' },
   { key: 'monochrome', name: 'Monochrome', group: 'Heavy', blurb: 'One colour, top to bottom', swatch: ['#1b2a3a', '#5c7a99', '#dce6f0'],
     brief: 'Single-hue discipline. Choose one colour that suits the trade and build the entire palette from tints and shades of only that hue — background, surfaces, text, buttons, borders. Images treated with a matching duotone or tint. Contrast comes from lightness alone, never from a second colour. One typeface at multiple weights. Cohesive and striking.' },
 ];
@@ -3330,6 +3318,9 @@ ${info}
 """
 
 How to apply it:
+// Six styles that used to be here asked for exactly what the design rules ban
+// (frosted-glass blur, neon glow, purple gradients, chrome gradient type, stock
+// photography) and so made the model choose between the two. They are gone.
 - Use ONLY facts stated above. Do not invent, embellish, guess or infer anything that is not written there. If they did not mention it, do not add it.
 - Where the page currently shows placeholder, generic or guessed content that the text above corrects — services offered, opening hours, years in business, owner or staff names, service area, specialities, certifications, guarantees, pricing — replace it with what they actually said.
 - Work genuinely new information into the sections where it naturally belongs. Only add a brand-new section if something important has nowhere sensible to go.
