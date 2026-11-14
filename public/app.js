@@ -760,7 +760,13 @@ $('#build-preview-link').addEventListener('click', async (e) => {
       $('#build-link-output'),
       buildState.previewId
     );
-    toast('Preview link ready — send it to the prospect');
+    buildState.previewId = res.id;
+    syncLinkButton(e.target, res.id);
+    const known = knownLead(buildState.placeId);
+    if (known) await fileProspect(known.lead, known.niche, res.url);
+    toast(updating
+      ? 'Link updated — same address, new version (allow a minute)'
+      : (known ? 'Preview link ready, and saved under Prospects' : 'Preview link ready — send it to the prospect'));
   } catch (err) {
     toast(err.message, true);
   } finally {
@@ -925,13 +931,13 @@ function openMultiInBuilder(pages) {
   multiState.pages = pages;
   multiState.defs = ordered.map((f) => ({ filename: f, title: titleForFile(f) }));
   multiState.placeId = null;
+  multiState.previewId = null;
   multiState.siteId = extractSiteId(pages['index.html'] || '') || null;
   $('#multi-error').hidden = true;
   $('#multi-link-output').hidden = true;
   renderMultiResult();
   switchTab('multi');
 }
-  multiState.previewId = null;
 
 // Generate the given pages of a multi-page job. Returns what finished and what
 // did not; a failure on one page never discards the others.
@@ -1024,14 +1030,14 @@ async function generateMulti(prompt) {
   multiState.notifyEmail = notifyEmail;
   multiState.pages = {};
   multiState.defs = [];
+  multiState.previewId = null;
+  syncLinkButton($('#multi-preview-link'), null);
   const siteId = newSiteId();
   multiState.siteId = siteId;
   const stopElapsed = startElapsed($('#multi-elapsed'));
   const waiting = new AbortController();
   $('#multi-cancel').onclick = () => waiting.abort();
 
-  multiState.previewId = null;
-  syncLinkButton($('#multi-preview-link'), null);
   try {
     // One design direction for the whole site, chosen the same way a single
     // page's is. Only the concept: the structure briefs describe one-page
@@ -2462,6 +2468,7 @@ async function runBatchGenerate(entries) {
           body: { kind: 'single', html: genRes.html, placeId: lead.placeId },
         });
         const fullUrl = location.origin + prevRes.url;
+        await fileProspect(lead, niche, prevRes.url);
         row.classList.add('is-done');
         // Every demo is checked against the facts it was built from before you
         // are handed a link to send.
@@ -2503,7 +2510,7 @@ async function runBatchGenerate(entries) {
     cancelBtn.textContent = 'Close';
     cancelBtn.disabled = false;
     cancelBtn.onclick = () => { $('#batch-modal').hidden = true; };
-    $('#batch-modal-title').textContent = batchCancelled ? 'Stopped early' : 'All done';
+    $('#batch-modal-title').textContent = batchCancelled ? 'Stopped early' : 'All done — each one is saved under Prospects';
   }
   loadSites();
 }
@@ -2661,7 +2668,7 @@ async function updateProspectStatus(prospect, status, followUpDate) {
 function convertProspectToClient(prospect) {
   openClientModal({
     mode: 'lead',
-    lead: { name: prospect.businessName, phone: prospect.phone, address: '', placeId: null },
+    lead: { name: prospect.businessName, phone: prospect.phone, address: '', placeId: prospect.placeId || null },
     onSaved: async () => {
       try { await api(`/api/prospects/${prospect.id}`, { method: 'PUT', body: { status: 'won' } }); } catch { /* client still saved */ }
       toast(`${prospect.businessName} added as a client 🎉`);
@@ -2717,6 +2724,9 @@ function renderProspects() {
         ${p.followUpDate ? `<div>Follow up: <strong>${escapeHtml(formatDate(p.followUpDate))}</strong></div>` : ''}
       </div>
       ${p.notes ? `<p class="prospect-notes">${escapeHtml(p.notes)}</p>` : ''}
+      ${p.previewUrl ? `<p class="prospect-demo">Demo: <a href="${escapeHtml(p.previewUrl)}" target="_blank" rel="noopener">${escapeHtml(location.host + p.previewUrl)}</a>
+        <button class="btn btn-sm" data-act="copy-demo">Copy link</button>
+        <button class="btn btn-sm" data-act="copy-pitch">Copy pitch text</button></p>` : ''}
       <div class="prospect-actions">
         <select class="status-select" aria-label="Status">
           <option value="new" ${p.status === 'new' ? 'selected' : ''}>New</option>
@@ -2735,6 +2745,11 @@ function renderProspects() {
       updateProspectStatus(p, e.target.value, dateInput.value);
     });
     dateInput.addEventListener('change', () => updateProspectStatus(p, 'follow_up', dateInput.value));
+    if (p.previewUrl) {
+      const full = location.origin + p.previewUrl;
+      card.querySelector('[data-act="copy-demo"]').addEventListener('click', () => copyText(full));
+      card.querySelector('[data-act="copy-pitch"]').addEventListener('click', () => copyText(pitchTextFor({ name: p.businessName }, full)));
+    }
     card.querySelector('[data-act="won"]').addEventListener('click', () => convertProspectToClient(p));
     card.querySelector('[data-act="no"]').addEventListener('click', () => updateProspectStatus(p, 'no'));
     card.querySelector('[data-act="edit"]').addEventListener('click', () => openProspectModal(p));

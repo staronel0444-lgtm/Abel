@@ -2,6 +2,7 @@
 // DELETE /api/prospects/:id — remove a prospect permanently.
 
 import { handle, json, readJson, HttpError } from '../../../lib/http.js';
+import { ensureProspects, cleanPreviewUrl } from './index.js';
 
 const STATUSES = new Set(['new', 'contacted', 'follow_up', 'won', 'no']);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -41,7 +42,13 @@ export const onRequestPut = handle(async ({ params, request, env }) => {
     values.push(body.followUpDate || null);
   }
 
+  if (typeof body.previewUrl === 'string') {
+    fields.push(`preview_url = ?${i++}`);
+    values.push(cleanPreviewUrl(body.previewUrl));
+  }
+
   if (!fields.length) throw new HttpError(400, 'Nothing to update');
+  await ensureProspects(env.DB);
   fields.push(`updated_at = datetime('now')`);
   values.push(id);
 

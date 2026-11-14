@@ -115,7 +115,11 @@ CREATE TABLE IF NOT EXISTS prospects (
   status          TEXT    NOT NULL DEFAULT 'new' CHECK (status IN ('new','contacted','follow_up','won','no')),
   follow_up_date  TEXT,                       -- YYYY-MM-DD, optional
   created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
-  updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+  updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+  -- Set when a demo is generated for a Lead Finder business, so the demo files
+  -- itself here once per business and carries its link.
+  place_id        TEXT,
+  preview_url     TEXT    NOT NULL DEFAULT ''
 );
 
 -- One row per calendar day, counting successful Google Places searches. Places

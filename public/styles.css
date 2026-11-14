@@ -1616,3 +1616,7 @@ html[data-theme="light"] { --m-tax: #d9564e; --m-forge: #d97b2f; --m-save: #229c
 }
 #clientinfo-text:focus { outline: none; border-color: var(--accent); }
 #clientinfo-text::placeholder { color: var(--ink-3); }
+
+/* A prospect's demo link */
+.prospect-demo { margin: 8px 0 0; font-size: 0.86rem; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.prospect-demo a { color: var(--accent); word-break: break-all; }
