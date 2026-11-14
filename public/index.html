@@ -480,6 +480,11 @@
             <label>Upfront amount ($) <input type="number" id="inv-upfront" min="0" step="0.01" value="0"></label>
             <label>Monthly maintenance ($) <input type="number" id="inv-monthly" min="0" step="0.01" value="0"></label>
           </div>
+          <div class="form-row">
+            <label>Deposit to start ($) <input type="number" id="inv-deposit" min="0" step="0.01" value="0"></label>
+            <label>How to pay you <input type="text" id="inv-pay" maxlength="200" placeholder="Cash App $yourtag · PayPal you@example.com · cash or check"></label>
+          </div>
+          <p class="muted form-hint">Your prices and how to pay are remembered on this device and filled in next time, here and when you add a client.</p>
           <label>Notes (optional) <textarea id="inv-notes" rows="2" maxlength="600"></textarea></label>
           <button type="submit" class="btn btn-primary">Generate document</button>
         </form>

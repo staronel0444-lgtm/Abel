@@ -2801,6 +2801,12 @@ function openClientModal({ mode, lead = null, client = null, onSaved = null }) {
   $('#cf-close-date').value = localToday();
   $('#cf-method').value = lastUsedMethod();
 
+  if (mode !== 'edit') {
+    const plan = readPlan();
+    if (plan.upfront) $('#cf-amount').value = plan.upfront;
+    if (plan.monthly) $('#cf-monthly').value = plan.monthly;
+  }
+
   if (mode === 'lead') {
     $('#client-modal-title').textContent = 'New client 🎉';
     $('#client-modal-sub').textContent = 'Fill in what the Places listing doesn\'t know. Close date defaults to today — edit it to log an older deal.';
@@ -3857,6 +3863,24 @@ wireDevice('#multi-device', '#multi-frame');
 // ------------------------------------------------- Proposal / Invoice
 
 const INVOICE_FROM_KEY = 'forge-invoice-from';
+// Your standard deal: setup price, monthly fee, deposit and how to be paid.
+// Nothing in the app held a price before — every field started at $0 — so a
+// proposal had to be priced from memory each time and said nothing about how
+// to pay it. Saved whenever a document is generated.
+const PLAN_KEY = 'forge-plan';
+function readPlan() {
+  try {
+    const v = JSON.parse(storeGet(PLAN_KEY) || '{}');
+    return {
+      upfront: Number(v.upfront) || 0,
+      monthly: Number(v.monthly) || 0,
+      deposit: Number(v.deposit) || 0,
+      pay: typeof v.pay === 'string' ? v.pay : '',
+    };
+  } catch {
+    return { upfront: 0, monthly: 0, deposit: 0, pay: '' };
+  }
+}
 let invoiceDocHtml = '';
 
 async function initInvoice() {
@@ -3866,6 +3890,11 @@ async function initInvoice() {
     if (saved.name && !$('#inv-from-name').value) $('#inv-from-name').value = saved.name;
     if (saved.contact && !$('#inv-from-contact').value) $('#inv-from-contact').value = saved.contact;
   } catch { /* ignore */ }
+  const plan = readPlan();
+  if (!Number($('#inv-upfront').value) && plan.upfront) $('#inv-upfront').value = plan.upfront;
+  if (!Number($('#inv-monthly').value) && plan.monthly) $('#inv-monthly').value = plan.monthly;
+  if (!Number($('#inv-deposit').value) && plan.deposit) $('#inv-deposit').value = plan.deposit;
+  if (!$('#inv-pay').value && plan.pay) $('#inv-pay').value = plan.pay;
 
   if (!clientState.clients.length) {
     try { await loadClients(); } catch { /* ignore */ }
@@ -3894,7 +3923,20 @@ function buildInvoiceDoc(d) {
   if (d.monthly > 0) rows.push(['Recurring', 'Website maintenance &amp; hosting', `${money(d.monthly)} / month`]);
   if (!rows.length) rows.push(['One-time', escapeHtml(d.desc), money(0)]);
   const rowHtml = rows.map((r) => `<tr><td class="k">${r[0]}</td><td>${r[1]}</td><td class="amt">${r[2]}</td></tr>`).join('');
-  const dueLine = d.upfront > 0 ? `<div class="due">Due today: <strong>${money(d.upfront)}</strong></div>` : '';
+  // With a deposit the upfront price is paid in two parts; say both, so nobody
+  // is surprised by the second.
+  const deposit = Math.min(Number(d.deposit) || 0, d.upfront);
+  let dueLine = '';
+  if (d.upfront > 0 && deposit > 0 && deposit < d.upfront) {
+    dueLine = `<div class="due">Deposit to start: <strong>${money(deposit)}</strong></div>
+  <div class="due due-sub">Balance when the site goes live: ${money(d.upfront - deposit)}</div>`;
+  } else if (d.upfront > 0) {
+    dueLine = `<div class="due">${d.type === 'invoice' ? 'Due now' : 'Due to start'}: <strong>${money(d.upfront)}</strong></div>`;
+  }
+  const monthlyLine = d.monthly > 0
+    ? `<div class="due due-sub">Then ${money(d.monthly)} a month.</div>`
+    : '';
+  const payBlock = d.pay ? `<div class="notes"><h4>How to pay</h4><p>${escapeHtml(d.pay)}</p></div>` : '';
   const notes = d.notes ? `<div class="notes"><h4>Notes</h4><p>${escapeHtml(d.notes).replace(/\n/g, '<br>')}</p></div>` : '';
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>${heading} — ${escapeHtml(d.toName)}</title>
@@ -3915,6 +3957,7 @@ function buildInvoiceDoc(d) {
   td.k{color:#999;font-size:0.82rem;width:96px}
   td.amt,th.amt{text-align:right;white-space:nowrap;font-weight:bold}
   .due{text-align:right;font-size:1.1rem;margin-top:8px}
+  .due-sub{font-size:0.92rem;color:#555;margin-top:4px}
   .notes{margin-top:26px;font-size:0.9rem;color:#444}
   .notes h4{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:#999;margin:0 0 6px}
   .foot{margin-top:44px;padding-top:16px;border-top:1px solid #e6e6e6;font-size:0.85rem;color:#999;text-align:center}
@@ -3930,6 +3973,8 @@ function buildInvoiceDoc(d) {
   </div>
   <table><thead><tr><th>Type</th><th>Description</th><th class="amt">Amount</th></tr></thead><tbody>${rowHtml}</tbody></table>
   ${dueLine}
+  ${monthlyLine}
+  ${payBlock}
   ${notes}
   <div class="foot">Thank you for your business.</div>
 </div></body></html>`;
@@ -3948,8 +3993,11 @@ $('#invoice-form').addEventListener('submit', (e) => {
     desc: $('#inv-desc').value.trim() || 'Website design & setup',
     upfront: Number($('#inv-upfront').value || 0),
     monthly: Number($('#inv-monthly').value || 0),
+    deposit: Number($('#inv-deposit').value || 0),
+    pay: $('#inv-pay').value.trim(),
     notes: $('#inv-notes').value.trim(),
   };
+  storeSet(PLAN_KEY, JSON.stringify({ upfront: data.upfront, monthly: data.monthly, deposit: data.deposit, pay: data.pay }));
   storeSet(INVOICE_FROM_KEY, JSON.stringify({ name: data.fromName, contact: data.fromContact }));
   invoiceDocHtml = buildInvoiceDoc(data);
   $('#inv-frame').srcdoc = invoiceDocHtml;
@@ -3978,6 +4026,7 @@ const EMAIL_TEMPLATES = {
       '',
       `Just a friendly reminder that this month's website maintenance fee (${money(c.monthlyFee || 0)}) is due. This covers hosting, upkeep, and any small updates to ${c.companyName}'s site.`,
       '',
+      ...(readPlan().pay ? [`You can pay by: ${readPlan().pay}`, ''] : []),
       "Let me know if you'd like anything changed while I'm in there!",
       '',
       'Thanks,',
