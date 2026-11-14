@@ -171,4 +171,13 @@ cp .dev.vars.example .dev.vars
 npm run dev                         # http://localhost:8788
 ```
 
-There is no test suite.
+## Tests
+
+```
+npm test            # pure functions: tokens, form wiring, domains, limits, validation
+npm run test:api    # end to end against a running local dev server in mock mode
+```
+
+`tests/api.test.mjs` re-runs the security and money checks from AUDIT.md
+(sign-in wall, request token, login lockout, visit counter, income following
+its client, client domains). It refuses to run against anything but localhost.
