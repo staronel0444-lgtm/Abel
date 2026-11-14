@@ -69,7 +69,9 @@ export const onRequestPost = handle(async ({ request, env }) => {
     return json({ html: wired, usage: result.usage, model: result.model });
   }
 
-  const prompt = requireString(body, 'prompt', { max: 6000 });
+  // A pasted business description can run to several thousand characters, and
+  // the concept and structure briefs are added on top of it.
+  const prompt = requireString(body, 'prompt', { max: 12000 });
   const context = typeof body.context === 'string' ? body.context.slice(0, 2000) : '';
 
   if (mode === 'brand') {

@@ -753,7 +753,12 @@ $('#build-set-email')?.addEventListener('click', async () => {
   }
 });
 
-// ---- Prompt helper: paste raw business info -> a strong prompt (no AI, free).
+// ---- Prompt helper: paste raw business info -> a facts block (no AI, free).
+// The pasted text goes through untouched as the facts, with the same reading
+// rules a Lead Finder site gets. It used to be wrapped in an order for "a
+// professional, modern" page with a hero, a services section, a why-choose-us
+// section and a testimonials section — the exact template the design rules
+// exist to get away from, and an invitation to invent the testimonials.
 function makePromptFromInfo(raw, { multiPage = false } = {}) {
   const text = String(raw || '').replace(/\r/g, '').trim();
   if (!text) return '';
@@ -762,28 +767,22 @@ function makePromptFromInfo(raw, { multiPage = false } = {}) {
   let name = (lines[0] || 'this business').replace(/\s+/g, ' ').slice(0, 120);
   // Strip a trailing rating/review count if it landed on the name line.
   name = name.replace(/\s+[0-5](\.\d)?\s*(★|stars?)?\s*\(?[\d,]+\)?\s*(reviews?)?\s*$/i, '').trim() || name;
-
-  const phone = (text.match(/(\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/) || [])[1];
-  const email = (text.match(/[\w.+-]+@[\w-]+\.[\w.]+/) || [])[0];
   const loc = (text.match(/\b([A-Z][A-Za-z .'\-]+,\s*[A-Z]{2})\b/) || [])[1];
-  const rating = (text.match(/\b([0-5](?:\.\d)?)\s*(?:★|stars?\b)/i) || [])[1]
-    || (text.match(/\b([1-5]\.\d)\b/) || [])[1];
-  const reviews = (text.match(/([\d,]{1,7})\s*(?:reviews?|ratings?)/i) || [])[1]
-    || (text.match(/\(([\d,]{2,7})\)/) || [])[1];
 
-  const kind = multiPage ? 'multi-page website (with separate pages for things like About, Services, and Contact)' : 'single-page website';
-  const thing = multiPage ? 'site' : 'page';
-  const bits = [];
-  bits.push(`Create a professional, modern, mobile-friendly ${kind} for ${name}${loc ? `, located in ${loc}` : ''}.`);
-  if (phone) bits.push(`Feature the phone number ${phone} prominently in the header with a click-to-call button.`);
-  if (rating && reviews) bits.push(`Highlight their ${rating}-star rating from ${reviews} reviews as social proof in a testimonials section.`);
-  else if (rating) bits.push(`Highlight their ${rating}-star rating as social proof.`);
-  if (email) bits.push(`Show the email ${email} in the contact section.`);
-  bits.push(`Include a strong hero with a clear call to action, a services section, a why-choose-us section (local, trusted, reliable), a "find us" section with a map if there's an address, and a contact section with a quote-request form.`);
-  bits.push(`Use a clean, professional color scheme that fits the business (the colors can be fine-tuned later). The goal of the ${thing} is to make the phone ring.`);
-
-  const details = `\n\nUse these real business details for accurate, specific copy — do not invent facts:\n${text}`;
-  return (bits.join(' ') + details).slice(0, 5800);
+  const out = [
+    `Build the ${multiPage ? 'multi-page website' : 'one-page website'} for ${name}${loc ? `, in ${loc}` : ''}.`,
+    '',
+    'BUSINESS FACTS — everything known about them is below, exactly as it was pasted in. Use only these and invent nothing:',
+    lines.map((l) => `    ${l}`).join('\n').slice(0, 6000),
+    '',
+    'How to read them:',
+    '- A phone number in there is the number to call. If there is none, show no phone number and make the contact form the call to action.',
+    '- Show a star rating or a review count only if it appears above, and exactly as it appears.',
+    '- Quote a customer only if their words appear above, word for word. Otherwise write no testimonials.',
+    '- Not stated above means not known: hours, years in business, licences, insurance, certifications, prices, free estimates, service area, the owner\'s name. Leave each one out rather than guess.',
+    '- Photos: none. Design without photographs — no stock photography.',
+  ];
+  return out.join('\n');
 }
 
 $('#pb-make')?.addEventListener('click', () => {
