@@ -5,12 +5,14 @@ this report refers to.
 
 ## The answer first
 
-**Is Forge ready to pitch to real businesses tomorrow? No — but it is three
-things away, and all three are yours to do, not more building.**
+**Is Forge ready to pitch to real businesses tomorrow? Not yet — but it is
+three things away, and all three are yours to do, not more building.**
 
-1. **None of this is live.** All 31 commits are on this machine only. Your
-   repository's default branch deploys straight to production, and you told me
-   not to deploy without asking, so nothing has been pushed.
+1. **Set the password.** The work was pushed on 14 November with your
+   go-ahead, and your default branch deploys straight to production. I cannot
+   see your live site from here, so I have not confirmed the deploy finished.
+   If `FORGE_PASSWORD` is missing or shorter than 8 characters, Forge now
+   shows a "Forge is locked" page until you set it.
 2. **No real site has been generated with the new rules.** This sandbox has no
    AI key and cannot reach your live site. Everything that could be tested
    without the model was tested. What the model now produces has not been
@@ -19,7 +21,7 @@ things away, and all three are yours to do, not more building.**
    the same page six times, and five of them quote customers who do not exist
    (AUDIT.md section 3a). Delete them and regenerate after deploying.
 
-Once those are done — deploy, set a password, regenerate, read each one — yes,
+Once those are done — password set, demos regenerated, each one read — yes,
 pitch.
 
 **The blunt part.** Production has 0 clients, 0 payments, and 5 prospects that
@@ -131,9 +133,11 @@ Lighthouse for generated sites has no "after": there are no new sites yet.
 
 In this order.
 
-- [ ] **Today, 10 seconds:** open `abel-6o9.pages.dev` in a private window.
-      If the app appears with no login, it is open to everyone right now.
-- [ ] **Tell me to deploy**, or push the branch yourself.
+- [ ] **10 seconds:** open `abel-6o9.pages.dev` in a private window. You
+      should see a login box, or the "Forge is locked" page. If the app itself
+      appears, the deploy did not go through — tell me.
+- [x] **Deploy.** Pushed 14 November. Check Cloudflare → Workers & Pages → the
+      project → Deployments shows it succeeded.
 - [ ] **Set `FORGE_PASSWORD`** in Cloudflare → Workers & Pages → the project →
       Settings → Variables and Secrets. Four random words. Then retry the
       deployment so it takes effect.
