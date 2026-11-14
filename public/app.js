@@ -890,6 +890,82 @@ async function generateMulti(prompt) {
   errEl.hidden = true;
   $('#multi-result').hidden = true;
   $('#multi-link-output').hidden = true;
+// Generate the given pages of a multi-page job. Returns what finished and what
+// did not; a failure on one page never discards the others.
+async function generatePages(job, targetDefs, statuses, signal) {
+  const results = await Promise.allSettled(targetDefs.map((page) =>
+    api('/api/generate', {
+      method: 'POST',
+      body: {
+        mode: 'page', prompt: job.prompt, context: job.context, brand: job.brand,
+        page, pages: job.defs, notifyEmail: job.notifyEmail, siteId: job.siteId,
+      },
+      signal,
+    }).then((res) => {
+      statuses[page.filename] = 'done';
+      setProgress(job.defs, statuses);
+      return { page, html: res.html };
+    }).catch((err) => {
+      statuses[page.filename] = 'fail';
+      setProgress(job.defs, statuses);
+      throw Object.assign(err, { page });
+    })
+  ));
+  const pages = {};
+  const failed = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled') pages[r.value.page.filename] = r.value.html;
+    else failed.push(r.reason);
+  }
+  return { pages, failed };
+}
+
+// Show whatever pages exist, and if some are missing say which and offer to
+// make just those. Each page is its own paid call, so throwing away four good
+// pages because the fifth hit a rate limit wasted most of the job.
+function settleMultiJob(job, pages, failed, statuses) {
+  multiState.pages = { ...multiState.pages, ...pages };
+  multiState.defs = job.defs.filter((d) => multiState.pages[d.filename]);
+  const errEl = $('#multi-error');
+
+  if (multiState.pages['index.html']) renderMultiResult();
+  if (!failed.length) {
+    errEl.hidden = true;
+    toast('Site generated — all pages share one brand');
+    return;
+  }
+
+  const missing = failed.map((f) => f.page);
+  const cancelled = failed.every((f) => f.cancelled);
+  const why = cancelled
+    ? 'Stopped waiting. Pages the AI had already started on still used their credits.'
+    : failed[0].message;
+  const have = multiState.defs.length;
+  errEl.innerHTML = `${escapeHtml(`${missing.length} of ${job.defs.length} pages did not finish (${missing.map((p) => p.title).join(', ')}). ${why}`)}
+    ${have ? escapeHtml(` The ${have} that did ${have === 1 ? 'is' : 'are'} kept.`) : ''}
+    <button type="button" class="btn btn-sm" id="multi-retry">Make the missing ${missing.length === 1 ? 'page' : 'pages'} (${missing.length} credit${missing.length === 1 ? '' : 's'})</button>`;
+  errEl.hidden = false;
+  $('#multi-retry').addEventListener('click', async () => {
+    errEl.hidden = true;
+    $('#multi-loading').hidden = false;
+    $('#multi-generate').disabled = true;
+    for (const p of missing) statuses[p.filename] = 'waiting';
+    setProgress(job.defs, statuses);
+    $('#multi-status').textContent = `Generating ${missing.length} missing page${missing.length === 1 ? '' : 's'}…`;
+    const stopElapsed = startElapsed($('#multi-elapsed'));
+    const waiting = new AbortController();
+    $('#multi-cancel').onclick = () => waiting.abort();
+    try {
+      const again = await generatePages(job, missing, statuses, waiting.signal);
+      settleMultiJob(job, again.pages, again.failed, statuses);
+    } finally {
+      stopElapsed();
+      $('#multi-loading').hidden = true;
+      $('#multi-generate').disabled = false;
+    }
+  });
+}
+
   $('#multi-loading').hidden = false;
   $('#multi-generate').disabled = true;
 
@@ -903,54 +979,36 @@ async function generateMulti(prompt) {
   const stopElapsed = startElapsed($('#multi-elapsed'));
   const waiting = new AbortController();
   $('#multi-cancel').onclick = () => waiting.abort();
+  multiState.pages = {};
+  multiState.defs = [];
 
   try {
     // Pass 1 — one shared brand/style summary for the whole site.
     $('#multi-status').textContent = 'Locking the brand direction for the whole site…';
     const brandRes = await api('/api/generate', {
       method: 'POST',
-      body: { mode: 'brand', prompt, pages: defs },
+      body: { mode: 'brand', prompt: sitePrompt, pages: defs },
+    // One design direction for the whole site, chosen the same way a single
+    // page's is. Only the concept: the structure briefs describe one-page
+    // shapes, and a multi-page site divides its content across pages instead.
+    const concept = pickConcept(prompt, { placeId: prompt.slice(0, 80) });
+    const sitePrompt = `${prompt}\n\n${conceptInstruction(concept)}`;
+
       signal: waiting.signal,
     });
 
     // Pass 2 — every page gets the same brand brief, so styling/tone/nav
     // stay consistent across the site.
     $('#multi-status').textContent = `Generating ${defs.length} pages with a shared brand…`;
-    const context = extractKeywords(prompt);
-    const results = await Promise.allSettled(defs.map((page) =>
-      api('/api/generate', {
-        method: 'POST',
-        body: { mode: 'page', prompt, context, brand: brandRes.brand, page, pages: defs, notifyEmail, siteId },
-        signal: waiting.signal,
-      }).then((res) => {
-        statuses[page.filename] = 'done';
-        setProgress(defs, statuses);
-        return { page, html: res.html };
-      }).catch((err) => {
-        statuses[page.filename] = 'fail';
-        setProgress(defs, statuses);
-        throw Object.assign(err, { page });
-      })
-    ));
-
-    const failed = results.filter((r) => r.status === 'rejected');
-    const pages = {};
-    for (const r of results) {
-      if (r.status === 'fulfilled') pages[r.value.page.filename] = r.value.html;
+    const job = { prompt: sitePrompt, context: extractKeywords(prompt), brand: brandRes.brand, defs, notifyEmail, siteId };
+    const { pages, failed } = await generatePages(job, defs, statuses, waiting.signal);
+    if (!failed.length) {
+      rememberPick({ concept: concept.key, layout: 'multi', font: parseConcept(pages['index.html'])?.['display-font'] || '' });
     }
-
-    if (failed.length) {
-      const names = failed.map((r) => r.reason.page.title).join(', ');
-      throw new Error(`${failed.length} page(s) failed (${names}): ${failed[0].reason.message}`);
-    }
-
-    multiState.pages = pages;
-    multiState.defs = defs;
-    renderMultiResult();
-    toast('Site generated — all pages share one brand');
+    settleMultiJob(job, pages, failed, statuses);
   } catch (err) {
     errEl.textContent = err.cancelled
-      ? 'Stopped waiting. Pages the AI had already started on still used their credits.'
+      ? 'Stopped waiting. If the AI had already started, that credit was still used.'
       : err.message;
     errEl.hidden = false;
   } finally {
