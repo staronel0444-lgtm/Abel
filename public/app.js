@@ -655,7 +655,7 @@ async function generateSingle(prompt, placeId = null, direction = null) {
     // so "a plumber in Worcester MA" selects the plumbing concepts. Passing an
     // empty niche here used to hand manual builds a concept at random.
     const dir = direction
-      || { concept: pickConcept(prompt, { placeId: prompt.slice(0, 80) }), layout: nextLayout() };
+      || { concept: pickConcept(prompt, { placeId: prompt.slice(0, 80) }), layout: nextLayout({ placeId: prompt.slice(0, 80) }) };
     const fullPrompt = direction
       ? prompt
       : `${prompt}\n\n${conceptInstruction(dir.concept)}\n\n${layoutInstruction(dir.layout)}`;
@@ -1215,7 +1215,7 @@ const CONCEPTS = [
     brief: 'Off-white ground with labels styled like breaker-panel stickers and a numbered, circuit-style services list.' },
 
   { key: 'emergency-line', name: 'Emergency Line', match: /plumb|drain|septic|water|restoration/i,
-    brief: 'The phone number IS the hero, set enormous. Water-blue accent, bold condensed type, a stamped 24/7 mark. Built for somebody standing in a puddle.' },
+    brief: 'The phone number IS the hero, set enormous. Water-blue accent, bold condensed type, an ink-stamp mark carrying the town name. Built for somebody standing in a puddle. A 24-hour or emergency claim appears only if their listed hours show it.' },
   { key: 'old-school-trade', name: 'Old-School Trade', match: /plumb|lock|hardware|upholster|cobbler|tailor/i,
     brief: 'Cream and deep green, slab serif, copper-pipe line illustrations, the feel of a hand-painted shop sign that has been there forty years.' },
 
@@ -1226,15 +1226,15 @@ const CONCEPTS = [
 
   { key: 'garage-floor', name: 'Garage Floor Industrial', match: /auto|car|tire|mechanic|collision|body shop|transmission|muffler/i,
     brief: 'Concrete grey, safety yellow and black hazard striping, stencil or heavy condensed type, the phone number set on a license-plate graphic.' },
-  { key: 'before-after', name: 'Before / After', match: /auto|collision|body shop|detail|clean|pressure wash|restoration|landscap/i,
-    brief: 'A real before/after pair as the hero with a working drag divider. Only valid when real before and after photos were provided; otherwise pick another concept.' },
+  { key: 'before-after', name: 'Before / After', photos: true, match: /auto|collision|body shop|detail|clean|pressure wash|restoration|landscap/i,
+    brief: 'A real before/after pair as the hero with a working drag divider, built around the photo slots their own pictures will fill.' },
   { key: 'racing-livery', name: 'Racing Livery', match: /auto|car|tire|detail|performance|mechanic/i,
     brief: 'Bold diagonal colour bands, heavy italic type, a checker motif used once and sparingly.' },
 
   { key: 'field-guide', name: 'Field Guide', match: /landscap|lawn|tree|garden|nursery|snow/i,
     brief: 'Editorial serif, muted greens and soil browns, services laid out as a seasons timeline from spring cleanup through mowing, leaves and snow.' },
-  { key: 'full-bleed', name: 'Full Bleed', match: /landscap|lawn|pool|roof|paint|floor/i,
-    brief: 'Enormous real photographs with minimal text over them. Only valid with real, good photos provided; otherwise pick another concept.' },
+  { key: 'full-bleed', name: 'Full Bleed', photos: true, match: /landscap|lawn|pool|roof|paint|floor/i,
+    brief: 'Enormous photographs of their own work with minimal text over them, built around the photo slots their pictures will fill.' },
 
   { key: 'storm-ready', name: 'Storm Ready', match: /roof|gutter|siding|chimney|restoration/i,
     brief: 'Dark slate, one strong accent, copy built around storm damage and insurance claims when the business handles them.' },
@@ -1242,7 +1242,7 @@ const CONCEPTS = [
     brief: 'Overlapping offset blocks shaped like courses of shingles, used as the section shapes themselves.' },
 
   { key: 'crisp', name: 'Crisp', match: /clean|maid|janitor|pressure wash|window|carpet/i,
-    brief: 'Generous white space, one bright fresh accent, and a before/after wipe revealed on scroll.' },
+    brief: 'Generous white space, one bright fresh accent, and a single clean wipe transition revealed on scroll — drawn in colour and shape, not photographs.' },
   { key: 'checklist', name: 'Checklist', match: /clean|maid|janitor|inspect|move|handyman/i,
     brief: 'Services as a satisfying checklist that ticks itself off as the visitor scrolls.' },
 
@@ -1251,23 +1251,23 @@ const CONCEPTS = [
   { key: 'sunday-morning', name: 'Sunday Morning', match: /bakery|cafe|coffee|donut|ice cream|candy|brunch/i,
     brief: 'Warm cream ground, a soft serif, slightly hand-made shapes, and the hours set big because that is what visitors came to find.' },
   { key: 'neighborhood-spot', name: 'Neighborhood Spot', match: /restaurant|cafe|bar|deli|pizza|convenience|liquor|market/i,
-    brief: 'Street name and town in very large type, a photograph of the actual storefront, a come-by-and-see-us voice.' },
+    brief: 'Street name and town in very large type, like the lettering on an awning, and a come-by-and-see-us voice. Their address does the work a photograph would.' },
 
   { key: 'classic-barber', name: 'Classic Barber', match: /barber|salon|hair|nail|spa|lash|brow/i,
     brief: 'Red, white and navy stripe accents used sparingly, a serif with real personality, the price list presented as a framed sign.' },
-  { key: 'studio', name: 'Studio', match: /barber|salon|hair|nail|tattoo|photo|lash|brow|makeup/i,
-    brief: 'Monochrome with one bold colour, gallery-first layout, large real photographs of their work carrying the page.' },
+  { key: 'studio', name: 'Studio', photos: true, match: /barber|salon|hair|nail|tattoo|photo|lash|brow|makeup/i,
+    brief: 'Monochrome with one bold colour, large photographs of their own work carrying the page, built around the photo slots their pictures will fill.' },
 
   { key: 'poster', name: 'Poster', match: /gym|fitness|martial|boxing|yoga|crossfit|dance|climb/i,
     brief: 'Oversized type bleeding off the edges, hard contrast, the class schedule as a bold grid.' },
 
   { key: 'calm-clinic', name: 'Calm Clinic', match: /dentist|dental|chiro|medical|clinic|doctor|vet|therap|optom|podiat/i,
-    brief: 'Soft warm neutrals rather than cold hospital blue, a friendly rounded serif, booking up front. Real staff photos only, or none.' },
+    brief: 'Soft warm neutrals rather than cold hospital blue, a friendly rounded serif, booking up front. No photographs of people.' },
 
   { key: 'job-site', name: 'Job Site', match: /contractor|remodel|carpent|builder|kitchen|bath|deck|fence|concrete|mason|handyman/i,
-    brief: 'Kraft-paper and pencil tones, measurement marks, hand-written annotations over project photos.' },
-  { key: 'portfolio', name: 'Portfolio', match: /contractor|remodel|carpent|paint|floor|kitchen|bath|landscap|tile|cabinet/i,
-    brief: 'Project-first layout, each project labelled with its town and a single line about what was done.' },
+    brief: 'Kraft-paper and pencil tones, measurement marks and dimension lines, short hand-written annotations in the margins — a page that reads like the sketch a builder makes on site.' },
+  { key: 'portfolio', name: 'Portfolio', photos: true, match: /contractor|remodel|carpent|paint|floor|kitchen|bath|landscap|tile|cabinet/i,
+    brief: 'Project-first layout built around the photo slots their own pictures will fill, each with room for a town and a single line about what was done.' },
 
   // Cross-trade directions. Section 11 wants nothing repeating inside a window
   // of ten, but the niche-specific lists above are only two or three deep for
@@ -1277,7 +1277,7 @@ const CONCEPTS = [
   { key: 'work-order', name: 'Work Order', match: /./,
     brief: 'The page is laid out like one of their own work orders or invoices: ruled rows, a job-number header, monospace labels against a plain workhorse face. Services are line items.' },
   { key: 'night-shift', name: 'Night Shift', match: /./,
-    brief: 'A dark ground with one warm lit accent, as though the photo were taken at 11pm. For anyone who takes calls after hours — lead with the fact that somebody answers.' },
+    brief: 'A dark ground with one warm lit accent, like a shop window still lit after dark. The mood is visual only: say nothing about late or emergency hours unless their listed hours show them.' },
   { key: 'hand-painted', name: 'Hand Painted', match: /./,
     brief: 'Sign-painter lettering with slight irregularity, a two-colour palette like a window gilded forty years ago, and the town name given as much weight as the trade.' },
   { key: 'stamped', name: 'Stamped', match: /./,
@@ -1324,8 +1324,12 @@ function rememberPick(pick) {
 // Falls back to the least recently used candidate rather than refusing, so a
 // long run in one niche still rotates instead of stalling.
 function pickConcept(niche, lead, taken = []) {
-  const candidates = CONCEPTS.filter((c) => c.match.test(niche || ''));
-  const pool = candidates.length ? candidates : CONCEPTS;
+  // A direction that needs something this business cannot supply is never
+  // offered. Forge used to hand out photo-led concepts to leads with no
+  // photographs, which left the model to fake the pictures or ignore the brief.
+  const usable = CONCEPTS.filter((c) => fitsLead(c, lead));
+  const candidates = usable.filter((c) => c.match.test(niche || ''));
+  const pool = candidates.length ? candidates : usable;
   // `taken` holds the concepts already handed to other leads in this batch, so
   // two demos shown to two shops on the same street can't come out as twins.
   const recent = readRecent().map((p) => p.concept).concat(taken);
@@ -1369,8 +1373,8 @@ const LAYOUTS = [
   {
     key: 'split',
     name: 'Split screen',
-    blurb: 'Image locked on one side, content scrolls past it.',
-    brief: `Build a two-column split. On desktop, one half of the viewport holds a fixed, full-height image or solid colour panel that stays put; the other half scrolls through the content. The business name, tagline and phone live in the fixed panel and remain visible the whole way down. The scrolling half moves through short, generously spaced blocks — one idea per screen. Collapse to a single column on mobile with the panel becoming a tall hero. No card grids anywhere.`,
+    blurb: 'A panel locked on one side, content scrolls past it.',
+    brief: `Build a two-column split. On desktop, one half of the viewport holds a fixed, full-height panel of solid colour and type that stays put; the other half scrolls through the content. The business name, tagline and phone live in the fixed panel and remain visible the whole way down. The scrolling half moves through short, generously spaced blocks — one idea per screen. Collapse to a single column on mobile with the panel becoming a tall hero. No card grids anywhere.`,
   },
   {
     key: 'onescreen',
@@ -1388,13 +1392,13 @@ const LAYOUTS = [
     key: 'story',
     name: 'Long-form',
     blurb: 'One column, real writing, no cards at all.',
-    brief: `Write it as one continuous single-column page with a comfortable reading measure, like a well-set article. Real prose paragraphs with proper typography — no card grids, no icon rows, no three-across feature blocks anywhere on the page. Section breaks are typographic: a rule, a change in type size, generous white space. The story runs: who they are, what they do and how, who they do it for, what people say, then how to reach them. Pull-quotes for the reviews.`,
+    brief: `Write it as one continuous single-column page with a comfortable reading measure, like a well-set article. Real prose paragraphs with proper typography — no card grids, no icon rows, no three-across feature blocks anywhere on the page. Section breaks are typographic: a rule, a change in type size, generous white space. The story runs only on what you were given: what they do and where, what it is like to call them, what customers say in their own words, then how to reach them. No invented history, founders or milestones. Pull-quotes for the real reviews.`,
   },
   {
     key: 'booking',
     name: 'Booking-first',
     blurb: 'The form is the hero. Everything else supports it.',
-    brief: `The contact/quote form IS the hero — put it in the first screen, right-hand side on desktop, directly under a one-line headline on mobile. It should be the largest and most visually dominant element on the page. Everything below exists only to justify filling it in: a short trust band (rating, years, service area), a compact list of services, a few short reviews, hours. Repeat a smaller version of the form once more at the bottom. No FAQ accordion, no large photo galleries competing with the form.`,
+    brief: `The contact/quote form IS the hero — put it in the first screen, right-hand side on desktop, directly under a one-line headline on mobile. It should be the largest and most visually dominant element on the page. Everything below exists only to justify filling it in: a short band of the facts you were actually given (the rating if one was supplied, the town, the hours), a compact list of services, the real reviews if there are any. Repeat a smaller version of the form once more at the bottom. No FAQ accordion, no large photo galleries competing with the form.`,
   },
   {
     key: 'beforeafter',
@@ -1412,7 +1416,7 @@ const LAYOUTS = [
     key: 'magazine',
     name: 'Editorial grid',
     blurb: 'Asymmetric magazine layout, nothing centred.',
-    brief: `Lay the page out on an asymmetric editorial grid — uneven column widths, deliberate overlaps, content that starts off-centre and stays there. Nothing is centre-aligned. A large display headline breaks across the grid at the top. Blocks are different sizes on purpose: a wide image beside a narrow text column, a small caption block hanging in white space, a full-width band that interrupts. It should read like a spread, not a page of stacked sections.`,
+    brief: `Lay the page out on an asymmetric editorial grid — uneven column widths, deliberate overlaps, content that starts off-centre and stays there. Nothing is centre-aligned. A large display headline breaks across the grid at the top. Blocks are different sizes on purpose: a wide block of colour or an oversized numeral beside a narrow text column, a small caption block hanging in white space, a full-width band that interrupts. It should read like a spread, not a page of stacked sections.`,
   },
   {
     key: 'findus',
@@ -1425,23 +1429,38 @@ const LAYOUTS = [
     name: 'Poster',
     blurb: 'Type-driven. Almost no sections.',
     brief: `Treat the first screen as a poster: enormous display typography carrying the business name and what they do, minimal or no photography, one striking colour relationship. The type IS the design. Below the poster, only three things — a short service list, the phone as a large element, and a contact form. Four sections total on the entire page including the footer. Nothing else. Silence is part of the design; do not fill it.`,
+    photos: true,
   },
   {
     key: 'classic',
     name: 'Classic service page',
     blurb: 'The familiar one. Still right for some trades.',
-    brief: `A well-executed conventional service page: hero with a clear call to action, services, a short reasons-to-choose band, reviews, FAQ, then contact. Keep it tight and confident rather than long — this layout earns its place by being fast and familiar, not by having the most sections. Do not pad it out.`,
+    brief: `A well-executed conventional service page: an opening screen with a clear call to action, services, the real reviews if any were given, hours and where to find them, then contact. No "why choose us" band and no FAQ — both would have to be made up. Keep it tight and confident rather than long — this layout earns its place by being fast and familiar, not by having the most sections. Do not pad it out.`,
   },
 ];
 
 const LAYOUT_KEY = 'forge.layoutCursor';
 
-// Hand out a different archetype every time. The cursor persists, so the first
-// site of a new session doesn't repeat the last site of the previous one.
-function nextLayout() {
+// Whether a concept or layout can be built honestly for this business. Photo-led
+// ones need the owner's own pictures (ticked in "Their details"); a reviews-led
+// page needs real reviews and a rating worth leading with.
+function fitsLead(item, lead) {
+  if (item.photos && !leadExtras(lead?.placeId).photos) return false;
+  if (item.reviews && !(goodReviews(lead).length >= 2 && Number(lead?.rating) >= 4.5)) return false;
+  return true;
+}
+
+// Hand out a different archetype every time, skipping any this business cannot
+// fill. The cursor persists, so the first site of a new session doesn't repeat
+// the last site of the previous one.
+function nextLayout(lead = null) {
   let i = 0;
   try { i = parseInt(localStorage.getItem(LAYOUT_KEY) || '0', 10) || 0; } catch { /* ignore */ }
-  const layout = LAYOUTS[i % LAYOUTS.length];
+  let layout = LAYOUTS[i % LAYOUTS.length];
+  for (let step = 0; step < LAYOUTS.length; step++) {
+    layout = LAYOUTS[(i + step) % LAYOUTS.length];
+    if (fitsLead(layout, lead)) { i += step; break; }
+  }
   try { localStorage.setItem(LAYOUT_KEY, String((i + 1) % LAYOUTS.length)); } catch { /* ignore */ }
   return layout;
 }
@@ -1461,12 +1480,14 @@ const EXTRAS_KEY = 'forge.leadExtras';
 
 function readExtras() {
   try {
+    photos: true,
     const v = JSON.parse(localStorage.getItem(EXTRAS_KEY) || '{}');
     return v && typeof v === 'object' ? v : {};
   } catch {
     return {};
   }
 }
+    reviews: true,
 
 function leadExtras(placeId) {
   const all = readExtras();
@@ -1491,7 +1512,7 @@ function saveLeadExtras(placeId, extras) {
 
 function hasExtras(placeId) {
   const e = leadExtras(placeId);
-  return Boolean(e.colors || e.owner || e.distinctive || e.services);
+  return Boolean(e.colors || e.owner || e.distinctive || e.services || e.towns || e.photos);
 }
 
 // ---- Concept + layout, bound to one lead ------------------------------------
@@ -1503,7 +1524,7 @@ function directionForLead(lead, niche) {
     const taken = Array.from(leadDirections.values()).map((d) => d.concept.key);
     leadDirections.set(lead.placeId, {
       concept: pickConcept(niche, lead, taken),
-      layout: nextLayout(),   // the cursor rotates, so layouts never repeat inside 12
+      layout: nextLayout(lead),   // the cursor rotates, so layouts never repeat inside a run
     });
   }
   return leadDirections.get(lead.placeId);
@@ -1529,8 +1550,25 @@ function recentFonts() {
 
 // ---- The facts block (spec Section 3) ---------------------------------------
 // Everything true that Forge knows about this business, labelled, with nothing
-// implied and nothing padded. Missing lines are simply absent, which is what
-// lets the no-invention rule leave the matching section out.
+// implied and nothing padded. Where a fact is missing the block says so and
+// says what to do about it, because a model left to notice an absence fills it.
+
+// Reviews fit to put on the business's own website: four stars or better.
+// Google returns whichever reviews it finds most relevant, and that can include
+// a one-star complaint.
+function goodReviews(lead) {
+  return (Array.isArray(lead?.reviews) ? lead.reviews : [])
+    .filter((r) => r && r.text && r.author && (r.rating === null || r.rating === undefined || r.rating >= 4));
+}
+
+// Trades that go to the customer. Everyone else is somewhere people come to,
+// and "also serving Grafton" on a barbershop's site is nonsense.
+const TRAVELLING_TRADE = /plumb|electric|hvac|heating|cooling|air condition|furnace|boiler|roof|gutter|siding|landscap|lawn|tree|snow|paint|clean|maid|janitor|pressure wash|pest|contractor|remodel|carpent|builder|handyman|mason|concrete|paving|fence|deck|floor|tile|lock|tow|moving|mover|septic|drain|restoration|appliance|garage door|window|insulation|chimney|pool|irrigation|excavat|drywall|glass|junk|haul|mobile|inspect/i;
+
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function buildLeadPrompt(lead, niche) {
   const area = serviceAreaFor(lead.address);
   const extra = leadExtras(lead.placeId);
@@ -1538,15 +1576,31 @@ function buildLeadPrompt(lead, niche) {
 
   L.push(`Build the website for ${lead.name}, ${article(niche)} ${niche}${area.town ? ` in ${area.town}` : ''}.`);
   L.push('');
+    towns: e.towns || '',
+    photos: Boolean(e.photos),
   L.push('BUSINESS FACTS — use only these, invent nothing:');
   L.push(`- Name, exactly as it appears on their sign: ${lead.name}`);
-  L.push(`- Trade: ${niche}${lead.category && !new RegExp(niche, 'i').test(lead.category) ? ` (Google lists them as ${lead.category})` : ''}`);
-  if (extra.services) L.push(`- Services, in their words: ${extra.services}`);
+  // A custom niche is free text, so it is matched as text, not as a pattern.
+  const sameAsCategory = lead.category && new RegExp(escapeRegExp(niche), 'i').test(lead.category);
+  L.push(`- Trade: ${niche}${lead.category && !sameAsCategory ? ` (Google lists them as ${lead.category})` : ''}`);
+
+  if (extra.services) {
+    L.push(`- Services, in their words: ${extra.services}`);
+  } else {
+    L.push(`- Services: not confirmed with the owner. List only the plain, core jobs every ${niche} does — six at most, in everyday words. No specialties, brands, certifications or prices. Put <!-- CONFIRM: services --> directly above the list.`);
+  }
+
   if (lead.address) L.push(`- Address: ${lead.address}`);
   if (area.town) {
-    L.push(area.nearby.length
-      ? `- Town: ${area.town}. Also serves: ${area.nearby.join(', ')}. Name these towns on the page.`
-      : `- Town: ${area.town}. No surrounding towns confirmed — name only ${area.town}, do not guess at others.`);
+    if (extra.towns) {
+      L.push(`- Town: ${area.town}. Towns they serve, confirmed: ${extra.towns}. Name these on the page.`);
+    } else if (TRAVELLING_TRADE.test(niche)) {
+      L.push(area.nearby.length
+        ? `- Town: ${area.town}. Their service area is not confirmed. You may say "${area.town} and nearby towns" and, once, in small type, name these neighbours as nearby: ${area.nearby.join(', ')}. Do not call it a guaranteed service area. Put <!-- CONFIRM: service area --> beside it.`
+        : `- Town: ${area.town}. Their service area is not confirmed — say "${area.town} and nearby towns" and name no other town.`);
+    } else {
+      L.push(`- Town: ${area.town}. Customers come to them, so name ${area.town} only. Do not list other towns or a service area.`);
+    }
   }
   if (lead.phone) L.push(`- Phone: ${lead.phone}`);
   if (Array.isArray(lead.hours) && lead.hours.length) {
@@ -1554,23 +1608,37 @@ function buildLeadPrompt(lead, niche) {
   } else {
     L.push('- Hours: not known. Leave hours out entirely rather than guessing at them.');
   }
-  if (lead.rating && lead.reviewCount) {
-    L.push(`- Rating: ${lead.rating} stars from ${lead.reviewCount} Google reviews. Both numbers are real, use them.`);
+
+  const rating = Number(lead.rating) || 0;
+  if (rating >= 4.5 && lead.reviewCount) {
+    L.push(`- Rating: ${lead.rating} stars from ${lead.reviewCount} Google reviews. Both numbers are real; show them exactly.`);
+  } else if (rating >= 4 && lead.reviewCount) {
+    L.push(`- Rating: ${lead.rating} stars from ${lead.reviewCount} Google reviews. Both numbers are real. You may show them once, small; do not build the page around them.`);
+  } else {
+    L.push('- Rating: do not show a star rating or a review count anywhere on the page.');
   }
-  if (Array.isArray(lead.reviews) && lead.reviews.length) {
-    L.push('- Real Google reviews. Quote these word for word with the first name and star rating shown. Do not edit, polish or add to them:');
-    for (const r of lead.reviews) {
+
+  const reviews = goodReviews(lead);
+  if (reviews.length) {
+    L.push('- Real Google reviews. Quote these word for word, in the language they were written in, with the first name shown. Do not edit, shorten, polish, translate or add to them, and quote no one else:');
+    for (const r of reviews) {
       L.push(`    "${r.text}" — ${r.author}${r.rating ? `, ${r.rating} stars` : ''}`);
     }
-    L.push(`- What the reviews keep praising is the strongest thing you have. Read them and lead the page with it.`);
+    L.push('- What these reviews keep praising is the strongest thing you have. Read them and lead the page with it.');
   } else {
-    L.push('- Reviews: none available. Do NOT write testimonials. Leave a <!-- PLACEHOLDER: add real reviews --> comment and show nothing.');
+    L.push('- Reviews: none to use. Write no testimonials and no customer quotes. Leave <!-- PLACEHOLDER: add real reviews --> where they would go and show nothing.');
   }
   if (extra.colors) L.push(`- Their real brand colours, from their sign, truck or storefront: ${extra.colors}. Build the palette from these.`);
   else L.push('- Brand colours: unknown. Choose a palette from the trade and the concept, and avoid purple, violet and indigo entirely.');
   if (extra.owner) L.push(`- Owner's first name: ${extra.owner}. You may address the visitor in his voice, e.g. "Call ${extra.owner} directly".`);
   if (extra.distinctive) L.push(`- Distinctive, and worth building the concept around: ${extra.distinctive}`);
-  L.push('- Photos: none supplied. Use royalty-free stock sparingly, or design without photographs. Never imply a stock photo shows their actual work, premises or staff.');
+
+  if (extra.photos) {
+    L.push('- Photos: the owner\'s own photographs will be dropped in after you finish. Wherever the structure calls for a photograph, output an <img> with a descriptive alt, width and height attributes, and its src set to a plain inline SVG placeholder (a data: URI in a neutral tone from your palette, with the alt text lettered small in the middle). Use no stock photography at all.');
+  } else {
+    L.push('- Photos: none, and none are coming. Design without photographs: type, colour, shape and inline SVG drawing carry this page. Use no stock photography and no <img> elements.');
+  }
+  L.push('- Not stated above means not known: years in business, licences, insurance, certifications, awards, guarantees, prices, free estimates, emergency or 24-hour service, team size. Claim none of them.');
 
   return L.join('\n');
 }
@@ -1605,12 +1673,17 @@ function avoidFontsLine() {
 // opens the same card in full, with the prompt and the Generate button. Keeping
 // the whole prompt on every card made the grid enormous and hard to skim.
 function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {}) {
+  else L.push('- Address: not known. Show no address and no map.');
+
   const prompt = buildLeadPrompt(lead, niche);
   const dir = directionForLead(lead, niche);
   const layout = dir.layout;
   const rating = lead.rating
     ? `<div class="rating">★ ${escapeHtml(lead.rating)} · ${escapeHtml(lead.reviewCount)} reviews</div>`
+
     : '<div class="rating muted">No reviews yet</div>';
+  else L.push('- Phone: not known. Show no phone number and no call buttons; the contact form is the one call to action.');
+
   const badge = lead.website
     ? `<span class="badge badge-undecided">Has website</span>`
     : `<span class="badge">No website found</span>`;
@@ -1628,9 +1701,11 @@ function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {
         <label class="lead-select"><input type="checkbox" class="lead-select-cb" data-place-id="${escapeHtml(lead.placeId)}" aria-label="Select ${escapeHtml(lead.name)} for bulk demo generation"></label>
         <h3>${escapeHtml(lead.name)}</h3>
       </div>
+
       ${badge}
     </div>
     <div class="lead-meta">
+  else L.push('- Owner: not known. Name no owner, founder or staff member.');
       ${lead.category ? `<div>${escapeHtml(lead.category)}</div>` : ''}
       ${lead.address ? `<div>${escapeHtml(lead.address)}</div>` : ''}
       ${lead.phone ? `<div>${escapeHtml(lead.phone)}</div>` : ''}
@@ -1891,6 +1966,8 @@ function scanForSlop(html) {
   // not where the word happens to appear in copy.
   const fontContexts = (doc.match(/font-family\s*:[^;}]+/gi) || []).join(' ')
     + ' ' + (doc.match(/fonts\.googleapis\.com[^"')\s]*/gi) || []).join(' ');
+  $('#extras-towns').value = e.towns;
+  $('#extras-photos').checked = e.photos;
   for (const f of BANNED_FONTS) {
     if (new RegExp(f.replace(/\s+/g, '[\\s+]'), 'i').test(fontContexts)) found.fonts.push(f);
   }
@@ -1913,8 +1990,13 @@ function scanForSlop(html) {
   if (stats.length) found.invented.push(...stats.slice(0, 3).map((x) => x.trim()));
 
   const total = found.fonts.length + found.phrases.length + found.colors.length + found.invented.length;
+    towns: $('#extras-towns').value.trim(),
+    photos: $('#extras-photos').checked,
   return { ...found, total };
 }
+  // What the business can supply decides which directions are open to it, so
+  // the one chosen before is dropped and picked again.
+  leadDirections.delete(lead.placeId);
 
 function reportSlop(html, where) {
   const r = scanForSlop(html);
