@@ -7,6 +7,9 @@
 //   /api/login   the login endpoint itself
 //   /api/logout  clears the cookie
 //
+// A request that arrives on a client's own domain never reaches any of this:
+// it is answered with that client's site (see lib/domains.js).
+//
 // The gate fails CLOSED. If FORGE_PASSWORD is missing or too short, the app
 // shows a setup page instead of opening up: an unlocked Forge lets anyone on
 // the internet spend your AI credits and read your client list, and every
@@ -26,6 +29,7 @@
 import {
   verifyToken, parseCookies, passwordProblem, isLocalDev, requestTokenFor, timingSafeEqual, MIN_PASSWORD_LENGTH,
 } from '../lib/auth.js';
+import { isAppHost, siteForHost, serveLiveSite } from '../lib/domains.js';
 
 const PUBLIC_PREFIXES = ['/preview', '/api/pv', '/api/login', '/api/logout'];
 
@@ -159,6 +163,27 @@ async function appPage(request, next, token) {
 export const onRequest = async (context) => {
   const { request, env, next } = context;
   const url = new URL(request.url);
+
+  // A client's own domain, pointed at this project. It shows that client's
+  // site and nothing else: no app, no API, no other previews. Only the visit
+  // beacon is let through. A hostname Forge has no record of falls through to
+  // the app below (which is what you want if Forge itself is on a domain).
+  if (!isAppHost(url.hostname) && env.DB) {
+    let previewId = null;
+    try {
+      previewId = await siteForHost(env.DB, url.hostname);
+    } catch (err) {
+      console.error('domain lookup failed:', err && err.message);
+    }
+    if (previewId) {
+      if (url.pathname === '/api/pv') return next();
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return new Response('Method not allowed', { status: 405 });
+      }
+      return serveLiveSite(env.DB, previewId, url.pathname);
+    }
+  }
+
   if (isPublic(url.pathname)) return next();
 
   const isApi = url.pathname.startsWith('/api/');

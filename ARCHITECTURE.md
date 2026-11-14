@@ -20,6 +20,10 @@ schema.sql         D1 schema (every statement is IF NOT EXISTS)
 ## Request lifecycle
 
 1. `functions/_middleware.js` runs before everything.
+   A request arriving on a **client's own domain** (any hostname that is not
+   localhost or `*.pages.dev` and is listed in `domains`) is answered with
+   that client's saved site and nothing else — no app, no API, no previews;
+   only the visit beacon passes. Everything below is for the app's own address.
 2. Public paths pass straight through: `/preview/*`, `/api/pv`, `/api/login`,
    `/api/logout`.
 3. Everything else needs a valid `forge_auth` cookie. The gate fails closed:
@@ -59,7 +63,7 @@ page from a `data:` address, which gives it an origin of its own.
 | POST | `/api/leads/decision` | `api/leads/decision.js` | Dismiss / un-dismiss a lead. |
 | GET | `/api/leads/usage` | `api/leads/usage.js` | Places searches today / this month. |
 | GET | `/api/history` | `api/history.js` | Every business ever returned by a search. |
-| GET/POST | `/api/prospects` | `api/prospects/index.js` | Manual sales pipeline. |
+| GET/POST | `/api/prospects` | `api/prospects/index.js` | Sales pipeline. A generated demo files itself here with its link (one row per business). |
 | PUT/DELETE | `/api/prospects/:id` | `api/prospects/[id].js` | |
 | GET/POST | `/api/clients` | `api/clients/index.js` | Clients; creating one logs the upfront as income. |
 | PUT/DELETE | `/api/clients/:id` | `api/clients/[id].js` | Edits keep the client's upfront Money row in step; delete removes their payments and Money rows too. |
@@ -68,8 +72,10 @@ page from a `data:` address, which gives it an origin of its own.
 | GET/POST | `/api/income` | `api/income/index.js` | Money-tab ledger. |
 | DELETE | `/api/income/:id` | `api/income/[id].js` | Hand-typed entries only; a client's row is changed from Clients. |
 | GET/POST | `/api/previews` | `api/previews/index.js` | Save a generated site → `/preview/<id>`. |
-| GET/DELETE | `/api/previews/:id` | `api/previews/[id].js` | Load into the builder, or delete. |
+| GET/PUT/DELETE | `/api/previews/:id` | `api/previews/[id].js` | Load into the builder, replace the content behind the same link, or delete. |
 | GET | `/api/traffic` | `api/traffic.js` | Visit counts per site. |
+| GET/POST | `/api/domains` | `api/domains/index.js` | Client domains and the saved site each one shows. Refuses a site whose form is still a preview. |
+| DELETE | `/api/domains/:host` | `api/domains/[host].js` | Disconnect a domain. |
 | GET | `/api/pv` | `api/pv.js` | **Public.** Visit beacon. Can only add one to a site Forge registered, once per 10 s; never creates rows. |
 | GET | `/preview/<id>[/<page>.html]` | `preview/[[path]].js` | **Public.** A saved site. |
 
@@ -79,7 +85,7 @@ page from a `data:` address, which gives it an origin of its own.
 |---|---|
 | `view_history` | Every business a search returned, with a JSON snapshot. |
 | `dismissed_leads` | Place IDs hidden from future searches (`no` or `client`). |
-| `prospects` | Manual pipeline: new → contacted → follow_up → won / no. |
+| `prospects` | Pipeline: new → contacted → follow_up → won / no. `place_id` and `preview_url` tie a row to its demo. |
 | `clients` | Paying clients: upfront, monthly fee, status. |
 | `client_payments` | One row per paid month per client. |
 | `income` | Money-tab ledger. Rows logged by a client payment carry `client_id`, `kind` and `month`, and are updated or removed with it. |
@@ -88,6 +94,7 @@ page from a `data:` address, which gives it an origin of its own.
 | `places_usage` | Places searches per day (free-tier counter). |
 | `login_attempts` | Wrong-password counters for the login throttle. |
 | `ai_usage` | AI calls per UTC day, for the daily cap. |
+| `domains` | Client domain → saved site. |
 
 Tables and added columns are created on demand (`CREATE TABLE IF NOT EXISTS`,
 `lib/migrate.js`), so a deploy never needs a manual migration.
@@ -112,19 +119,27 @@ browser: facts + concept + layout  ──POST /api/generate──▶  lib/anthro
   is re-sent without them. Neither retry is billed.
 - `stop_reason: max_tokens` is retried once at a larger budget, then fails
   loudly — a cut-off page is never returned.
-- `lib/forminject.js` wires every `<form>` to FormSubmit when an owner email is
-  supplied; `lib/analytics.js` adds the visit beacon.
+- `lib/forminject.js` gives every `<form>` a handler: live (FormSubmit, with a
+  confirmed-delivery check and a mailto fallback) when an owner email is
+  known, preview mode when it is not. `lib/analytics.js` adds the visit
+  beacon and `lib/guard.js` hides any image that fails to load.
 
 ## User flows
 
 1. **Find** — Lead Finder → one Places search → businesses with no website.
 2. **Build** — "Generate site" on a lead, a batch of leads, or a typed prompt.
-3. **Pitch** — "Get preview link" → text the `/preview/<id>` URL.
-4. **Close** — Lead "Yes" or Prospect "Won" → client record.
-5. **Go live** — manual: download the HTML and upload it to a separate
-   Cloudflare Pages project with the client's domain.
-6. **Get paid** — Clients tab lists what's owed; marking a month paid logs it
-   to Money (tax/save split) and Revenue.
+   Each lead gets a concept and a layout it can actually fill, and a facts
+   block that states what is known and what is not.
+3. **Check** — every result is set against its facts (`checkSite` in
+   `public/app.js`): invented quotes, a wrong phone number, unbacked claims.
+4. **Pitch** — the demo is saved as `/preview/<id>` and filed under Prospects
+   with that link. Editing it later updates the same link.
+5. **Close** — Lead "Yes" or Prospect "Won" → client record, pre-filled with
+   your saved prices. Proposal / Invoice shows the deposit and how to pay.
+6. **Go live** — My Sites → Go live: add the domain to this Pages project in
+   Cloudflare, record it in Forge, and the domain shows that saved site.
+7. **Get paid** — Clients lists what's owed; marking a month paid logs it to
+   Money (tax/save split) and Revenue.
 
 ## External services
 

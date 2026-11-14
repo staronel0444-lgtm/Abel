@@ -608,6 +608,7 @@ async function loadSites() {
             <button class="btn btn-sm btn-primary" data-act="edit">Edit</button>
             <button class="btn btn-sm" data-act="view">View</button>
             <button class="btn btn-sm" data-act="copy">Copy link</button>
+            <button class="btn btn-sm" data-act="golive">Go live</button>
             <button class="btn btn-sm btn-danger" data-act="delete">Delete</button>
           </div>
         </div>
@@ -618,6 +619,7 @@ async function loadSites() {
       const { id, kind, url } = card.dataset;
       const full = location.origin + url;
       card.querySelector('[data-act="copy"]').addEventListener('click', () => copyText(full));
+      card.querySelector('[data-act="golive"]').addEventListener('click', () => openGoLive({ id, title: card.querySelector('.site-card-title').textContent }));
       card.querySelector('[data-act="delete"]').addEventListener('click', async () => {
         if (!confirm('Delete this saved site and its link? Anyone holding the link will lose access.')) return;
         try {
@@ -4387,7 +4389,7 @@ function buildHandoffDoc(businessName) {
   <h2>📬 Your contact form</h2>
   <p>When someone fills out the contact form on your site, the message is emailed straight to you — no app or login needed.</p>
   <div class="box">
-    <strong>One-time setup (important):</strong> the very first time your form is used, you'll get a single email titled <em>"Confirm your email"</em>. Click the button inside it once to switch your form on. After that, every message arrives automatically. If you don't see it, check your spam folder.
+    <strong>One-time setup (important):</strong> the very first time your form is used, you'll get a single email from <em>FormSubmit</em> asking you to activate the form. Click the button inside it once to switch your form on. After that, every message arrives automatically. If you don't see it, check your spam folder.
   </div>
 
   <h2>📱 Sharing your site</h2>
@@ -4421,17 +4423,80 @@ function openInfo(bodyHtml) {
   $('#info-body').innerHTML = bodyHtml;
   $('#info-modal').hidden = false;
 }
+// Going live happens in two places: Cloudflare has to be told the domain
+// belongs to this project, and Forge has to be told which saved site it shows.
+// The steps are written out for the one site in front of you, with its domain
+// filled in, because a generic list is where steps get skipped.
+function goLiveSteps(domain) {
+  const d = domain || 'theirdomain.com';
+  return `
+    <ol class="golive-steps">
+      <li><strong>Get the domain.</strong> Use the one they own, or buy one with an adult — Cloudflare sells them at cost under <em>Domain Registration</em>.</li>
+      <li><strong>Tell Cloudflare.</strong> Open <em>Workers &amp; Pages</em>, this project, then <em>Custom domains</em> and <em>Set up a custom domain</em>. Add <code>${escapeHtml(d)}</code>, then add <code>www.${escapeHtml(d)}</code> the same way. If the domain is registered somewhere else, Cloudflare shows a CNAME record to add there — only the <code>www</code> name can be connected that way.</li>
+      <li><strong>Tell Forge.</strong> Type the domain in the box above and press Connect.</li>
+      <li><strong>Switch the form on.</strong> Open the site on its domain and send a message through its contact form. The owner gets one email from FormSubmit asking him to activate the form. He clicks it once. Send a second message and check it reaches him.</li>
+    </ol>`;
+}
+
+async function openGoLive(site) {
+  let domains = [];
+  try {
+    domains = (await api('/api/domains')).domains.filter((d) => d.previewId === site.id);
+  } catch (err) {
+    toast(err.message, true);
+    return;
+  }
+  const render = () => {
+    openInfo(`
+      <h2>Put this site on its own domain</h2>
+      <p class="muted">${escapeHtml(site.title || 'This site')}</p>
+      <div class="golive-live">
+        ${domains.length ? domains.map((d) => `
+          <div class="golive-row">
+            <a href="https://${escapeHtml(d.host)}" target="_blank" rel="noopener">${escapeHtml(d.host)}</a>
+            <button type="button" class="btn btn-sm btn-danger" data-remove="${escapeHtml(d.host)}">Disconnect</button>
+          </div>`).join('') : '<p class="muted" style="margin:0">Not on a domain yet.</p>'}
+      </div>
+      <form class="golive-form" id="golive-form">
+        <input type="text" id="golive-host" placeholder="rayscollision.com" maxlength="200" autocomplete="off" required>
+        <button type="submit" class="btn btn-primary">Connect</button>
+      </form>
+      <p class="inline-error" id="golive-error" hidden></p>
+      ${goLiveSteps(domains[0]?.host)}
+      <p class="muted" style="margin-top:12px">After this, <em>Edit</em> then <em>Update the link</em> changes the live site too. Nothing has to be uploaded again.</p>`);
+    $('#golive-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = $('#golive-error');
+      errEl.hidden = true;
+      try {
+        const res = await api('/api/domains', { method: 'POST', body: { host: $('#golive-host').value, previewId: site.id } });
+        domains = [{ host: res.host, previewId: site.id }, ...domains.filter((d) => d.host !== res.host)];
+        render();
+        toast(`${res.host} now shows this site, once Cloudflare has the domain`);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.hidden = false;
+      }
+    });
+    $('#info-body').querySelectorAll('[data-remove]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Stop showing this site on ${btn.dataset.remove}?`)) return;
+        try {
+          await api(`/api/domains/${encodeURIComponent(btn.dataset.remove)}`, { method: 'DELETE' });
+          domains = domains.filter((d) => d.host !== btn.dataset.remove);
+          render();
+        } catch (err) { toast(err.message, true); }
+      });
+    });
+  };
+  render();
+}
+
 $('#golive-btn')?.addEventListener('click', () => openInfo(`
-  <h2>🚀 Putting a finished site online</h2>
-  <p class="muted">The 5 steps to take a site you've sold and make it live on the internet.</p>
-  <ol class="golive-steps">
-    <li><strong>Get the files.</strong> Open the site and click <em>Download HTML</em> (or <em>Download all (.zip)</em> for a multi-page site).</li>
-    <li><strong>Get the domain.</strong> Either use the client's existing domain, or buy one — easiest inside Cloudflare (Domain Registration), sold at cost.</li>
-    <li><strong>Upload the files.</strong> In Cloudflare → <em>Workers &amp; Pages</em> → <em>Create</em> → <em>Pages</em> → <em>Upload assets</em>. Drag the file(s) in and deploy — it goes live on a free <em>*.pages.dev</em> link.</li>
-    <li><strong>Connect the domain.</strong> In that project → <em>Custom domains</em> → <em>Set up a domain</em> → type the client's domain. If it was bought at Cloudflare, this is basically one click.</li>
-    <li><strong>Done.</strong> It's on the real internet. Each new client = repeat these 5 steps in a new project.</li>
-  </ol>
-  <p class="muted" style="margin-top:14px">Stuck on a real one? Come back and I'll walk you through it screen by screen.</p>
+  <h2>Putting a sold site online</h2>
+  <p class="muted">Open <strong>My Sites</strong> and press <strong>Go live</strong> on the site. The same four steps appear there with its domain filled in.</p>
+  ${goLiveSteps('')}
+  <p class="muted" style="margin-top:14px">Before any of this, open the site with <em>Edit</em>, type the owner's email, press <em>Set email</em>, then <em>Update the link</em>. Forge will not connect a domain to a site whose form is still a preview.</p>
 `));
 $('#info-close')?.addEventListener('click', () => { $('#info-modal').hidden = true; });
 $('#info-modal')?.addEventListener('click', (e) => {

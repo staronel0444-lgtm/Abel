@@ -131,6 +131,14 @@ CREATE TABLE IF NOT EXISTS places_usage (
   searches INTEGER NOT NULL DEFAULT 0
 );
 
+-- Client domains. A hostname listed here, once it is also added to the Pages
+-- project in Cloudflare, shows the saved site it points at (lib/domains.js).
+CREATE TABLE IF NOT EXISTS domains (
+  host       TEXT PRIMARY KEY,
+  preview_id TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- AI calls per UTC day. /api/generate takes one from the day's allowance
 -- before every call to the model (lib/usage.js) and refuses past the cap.
 CREATE TABLE IF NOT EXISTS ai_usage (
