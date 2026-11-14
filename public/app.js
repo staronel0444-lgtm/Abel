@@ -606,10 +606,12 @@ async function loadSites() {
             toast('Opened in Multi-page — refine any page, flip to Mobile, then save a new link');
           } else {
             buildState.html = data.html;
+            buildState.facts = '';
             buildState.placeId = null;
             buildState.siteId = extractSiteId(data.html) || null;
             showInFrame($('#build-frame'), data.html);
             $('#build-frame').classList.remove('is-mobile');
+            reportSlop(data.html, '#build-slop', '');
             $('#build-device').querySelectorAll('button').forEach((x) => x.classList.toggle('is-active', x.dataset.device === 'desktop'));
             $('#build-result').hidden = false;
             $('#build-link-output').hidden = true;
@@ -630,7 +632,9 @@ $('#sites-refresh').addEventListener('click', loadSites);
 
 // ------------------------------------------------- Section 1: single page
 
-const buildState = { html: null, placeId: null, notifyEmail: '', siteId: null };
+// `facts` is the prompt the page was built from, kept so the pre-send check can
+// set the page against it. A site opened from My Sites has none.
+const buildState = { html: null, placeId: null, notifyEmail: '', siteId: null, facts: '' };
 
 // `direction` is passed in when the caller already fixed one (a lead card shows
 // its prompt before you click, so the promise has to match the page). A manual
@@ -677,9 +681,10 @@ async function generateSingle(prompt, placeId = null, direction = null) {
     buildState.placeId = placeId;
     buildState.notifyEmail = notifyEmail;
     buildState.siteId = siteId;
+    buildState.facts = fullPrompt;
     swapFrame($('#build-frame'), res.html);
     $('#build-result').hidden = false;
-    reportSlop(res.html, '#build-slop');
+    reportSlop(res.html, '#build-slop', fullPrompt);
     toast('Site generated');
   } catch (err) {
     errEl.textContent = err.cancelled
@@ -885,11 +890,6 @@ function openMultiInBuilder(pages) {
   switchTab('multi');
 }
 
-async function generateMulti(prompt) {
-  const errEl = $('#multi-error');
-  errEl.hidden = true;
-  $('#multi-result').hidden = true;
-  $('#multi-link-output').hidden = true;
 // Generate the given pages of a multi-page job. Returns what finished and what
 // did not; a failure on one page never discards the others.
 async function generatePages(job, targetDefs, statuses, signal) {
@@ -966,6 +966,11 @@ function settleMultiJob(job, pages, failed, statuses) {
   });
 }
 
+async function generateMulti(prompt) {
+  const errEl = $('#multi-error');
+  errEl.hidden = true;
+  $('#multi-result').hidden = true;
+  $('#multi-link-output').hidden = true;
   $('#multi-loading').hidden = false;
   $('#multi-generate').disabled = true;
 
@@ -974,26 +979,26 @@ function settleMultiJob(job, pages, failed, statuses) {
   setProgress(defs, statuses);
   const notifyEmail = ($('#multi-notify-email')?.value || '').trim();
   multiState.notifyEmail = notifyEmail;
+  multiState.pages = {};
+  multiState.defs = [];
   const siteId = newSiteId();
   multiState.siteId = siteId;
   const stopElapsed = startElapsed($('#multi-elapsed'));
   const waiting = new AbortController();
   $('#multi-cancel').onclick = () => waiting.abort();
-  multiState.pages = {};
-  multiState.defs = [];
 
   try {
-    // Pass 1 — one shared brand/style summary for the whole site.
-    $('#multi-status').textContent = 'Locking the brand direction for the whole site…';
-    const brandRes = await api('/api/generate', {
-      method: 'POST',
-      body: { mode: 'brand', prompt: sitePrompt, pages: defs },
     // One design direction for the whole site, chosen the same way a single
     // page's is. Only the concept: the structure briefs describe one-page
     // shapes, and a multi-page site divides its content across pages instead.
     const concept = pickConcept(prompt, { placeId: prompt.slice(0, 80) });
     const sitePrompt = `${prompt}\n\n${conceptInstruction(concept)}`;
 
+    // Pass 1 — one shared brand/style summary for the whole site.
+    $('#multi-status').textContent = 'Locking the brand direction for the whole site…';
+    const brandRes = await api('/api/generate', {
+      method: 'POST',
+      body: { mode: 'brand', prompt: sitePrompt, pages: defs },
       signal: waiting.signal,
     });
 
@@ -1424,6 +1429,7 @@ const LAYOUTS = [
   {
     key: 'gallery',
     name: 'Gallery-first',
+    photos: true,
     blurb: 'The work leads. Barely any text above the photos.',
     brief: `Structure the page around the WORK, not around words. Open with a full-bleed image grid or a large photo mosaic — the business name and phone sit over or beside it, small. No paragraph of intro copy before the images; the visitor should be looking at work within one second. Below the grid: a short band of what they do (a compact list, not cards), then reviews, then contact. Omit any "why choose us" section entirely — the photographs are the argument. Clicking a photo opens a lightbox.`,
   },
@@ -1460,12 +1466,14 @@ const LAYOUTS = [
   {
     key: 'beforeafter',
     name: 'Before & after',
+    photos: true,
     blurb: 'Transformation pairs carry the page.',
     brief: `Lead with transformation. The hero is a before/after pair — either side by side, or one image with a draggable divider that actually works. Follow with two or three more before/after pairs, each with a one-line caption saying what was done. Then a short process section — three steps, numbered, because the order genuinely matters here — then reviews, then contact. Omit a generic services grid; the pairs already show the services.`,
   },
   {
     key: 'proof',
     name: 'Reviews-led',
+    reviews: true,
     blurb: 'The rating and the reviews come first, not last.',
     brief: `Put the social proof at the very top instead of buried near the footer. Open with the star rating and review count set large and typographically, with two or three short review quotes immediately beneath — before any description of what the business does. Then what they do, kept brief. Then the phone and contact. This inverts the usual order on purpose: the visitor learns the business is trusted before they learn what it sells. No hero photograph competing with the rating.`,
   },
@@ -1486,7 +1494,6 @@ const LAYOUTS = [
     name: 'Poster',
     blurb: 'Type-driven. Almost no sections.',
     brief: `Treat the first screen as a poster: enormous display typography carrying the business name and what they do, minimal or no photography, one striking colour relationship. The type IS the design. Below the poster, only three things — a short service list, the phone as a large element, and a contact form. Four sections total on the entire page including the footer. Nothing else. Silence is part of the design; do not fill it.`,
-    photos: true,
   },
   {
     key: 'classic',
@@ -1537,14 +1544,12 @@ const EXTRAS_KEY = 'forge.leadExtras';
 
 function readExtras() {
   try {
-    photos: true,
     const v = JSON.parse(localStorage.getItem(EXTRAS_KEY) || '{}');
     return v && typeof v === 'object' ? v : {};
   } catch {
     return {};
   }
 }
-    reviews: true,
 
 function leadExtras(placeId) {
   const all = readExtras();
@@ -1554,6 +1559,8 @@ function leadExtras(placeId) {
     owner: e.owner || '',
     distinctive: e.distinctive || '',
     services: e.services || '',
+    towns: e.towns || '',
+    photos: Boolean(e.photos),
   };
 }
 
@@ -1633,8 +1640,6 @@ function buildLeadPrompt(lead, niche) {
 
   L.push(`Build the website for ${lead.name}, ${article(niche)} ${niche}${area.town ? ` in ${area.town}` : ''}.`);
   L.push('');
-    towns: e.towns || '',
-    photos: Boolean(e.photos),
   L.push('BUSINESS FACTS — use only these, invent nothing:');
   L.push(`- Name, exactly as it appears on their sign: ${lead.name}`);
   // A custom niche is free text, so it is matched as text, not as a pattern.
@@ -1648,6 +1653,8 @@ function buildLeadPrompt(lead, niche) {
   }
 
   if (lead.address) L.push(`- Address: ${lead.address}`);
+  else L.push('- Address: not known. Show no address and no map.');
+
   if (area.town) {
     if (extra.towns) {
       L.push(`- Town: ${area.town}. Towns they serve, confirmed: ${extra.towns}. Name these on the page.`);
@@ -1659,7 +1666,10 @@ function buildLeadPrompt(lead, niche) {
       L.push(`- Town: ${area.town}. Customers come to them, so name ${area.town} only. Do not list other towns or a service area.`);
     }
   }
+
   if (lead.phone) L.push(`- Phone: ${lead.phone}`);
+  else L.push('- Phone: not known. Show no phone number and no call buttons; the contact form is the one call to action.');
+
   if (Array.isArray(lead.hours) && lead.hours.length) {
     L.push(`- Hours, word for word from their Google listing:\n    ${lead.hours.join('\n    ')}`);
   } else {
@@ -1685,9 +1695,11 @@ function buildLeadPrompt(lead, niche) {
   } else {
     L.push('- Reviews: none to use. Write no testimonials and no customer quotes. Leave <!-- PLACEHOLDER: add real reviews --> where they would go and show nothing.');
   }
+
   if (extra.colors) L.push(`- Their real brand colours, from their sign, truck or storefront: ${extra.colors}. Build the palette from these.`);
   else L.push('- Brand colours: unknown. Choose a palette from the trade and the concept, and avoid purple, violet and indigo entirely.');
   if (extra.owner) L.push(`- Owner's first name: ${extra.owner}. You may address the visitor in his voice, e.g. "Call ${extra.owner} directly".`);
+  else L.push('- Owner: not known. Name no owner, founder or staff member.');
   if (extra.distinctive) L.push(`- Distinctive, and worth building the concept around: ${extra.distinctive}`);
 
   if (extra.photos) {
@@ -1730,17 +1742,12 @@ function avoidFontsLine() {
 // opens the same card in full, with the prompt and the Generate button. Keeping
 // the whole prompt on every card made the grid enormous and hard to skim.
 function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {}) {
-  else L.push('- Address: not known. Show no address and no map.');
-
   const prompt = buildLeadPrompt(lead, niche);
   const dir = directionForLead(lead, niche);
   const layout = dir.layout;
   const rating = lead.rating
     ? `<div class="rating">★ ${escapeHtml(lead.rating)} · ${escapeHtml(lead.reviewCount)} reviews</div>`
-
     : '<div class="rating muted">No reviews yet</div>';
-  else L.push('- Phone: not known. Show no phone number and no call buttons; the contact form is the one call to action.');
-
   const badge = lead.website
     ? `<span class="badge badge-undecided">Has website</span>`
     : `<span class="badge">No website found</span>`;
@@ -1758,11 +1765,9 @@ function leadCardHtml(lead, niche, status = 'undecided', { compact = false } = {
         <label class="lead-select"><input type="checkbox" class="lead-select-cb" data-place-id="${escapeHtml(lead.placeId)}" aria-label="Select ${escapeHtml(lead.name)} for bulk demo generation"></label>
         <h3>${escapeHtml(lead.name)}</h3>
       </div>
-
       ${badge}
     </div>
     <div class="lead-meta">
-  else L.push('- Owner: not known. Name no owner, founder or staff member.');
       ${lead.category ? `<div>${escapeHtml(lead.category)}</div>` : ''}
       ${lead.address ? `<div>${escapeHtml(lead.address)}</div>` : ''}
       ${lead.phone ? `<div>${escapeHtml(lead.phone)}</div>` : ''}
@@ -1961,6 +1966,8 @@ function openLeadExtras(lead, niche, cardEl) {
   $('#extras-owner').value = e.owner;
   $('#extras-services').value = e.services;
   $('#extras-distinctive').value = e.distinctive;
+  $('#extras-towns').value = e.towns;
+  $('#extras-photos').checked = e.photos;
   $('#extras-modal').hidden = false;
   $('#extras-colors').focus();
 }
@@ -1983,8 +1990,13 @@ $('#extras-save').addEventListener('click', () => {
     owner: $('#extras-owner').value.trim(),
     services: $('#extras-services').value.trim(),
     distinctive: $('#extras-distinctive').value.trim(),
+    towns: $('#extras-towns').value.trim(),
+    photos: $('#extras-photos').checked,
   });
   closeLeadExtras();
+  // What the business can supply decides which directions are open to it, so
+  // the one chosen before is dropped and picked again.
+  leadDirections.delete(lead.placeId);
 
   // Their details change the facts block, so the card has to be rebuilt or it
   // would still be advertising the old prompt.
@@ -1997,79 +2009,224 @@ $('#extras-save').addEventListener('click', () => {
   toast('Saved — the site will be built from these');
 });
 
-// ---- Banned-list scan (spec Section 15) -------------------------------------
-// Free: a string search over HTML Forge already has. It never regenerates on
-// its own, because that would spend a credit without being asked — it reports,
-// and refining is your call.
+// ---- Pre-send check (spec Section 15) ----------------------------------------
+// Free: a search over HTML Forge already has, set against the facts the page
+// was built from. It never regenerates on its own, because that would spend a
+// credit without being asked — it reports, and fixing is your call.
+//
+// Three kinds of finding:
+//   fix      wrong on its face (an invented quote, a wrong phone number, a
+//            banned font) and can be repaired with one refine
+//   confirm  might be true, but nothing Forge was told says so — ask the owner
+//   note     nothing wrong, just not finished (the form is still a preview)
 const BANNED_FONTS = [
   'Inter', 'Roboto', 'Open Sans', 'Lato', 'Poppins', 'Montserrat', 'Raleway',
   'Nunito', 'Space Grotesk', 'Plus Jakarta Sans', 'Manrope', 'DM Sans',
-  'Outfit', 'Sora', 'Playfair Display',
+  'Outfit', 'Sora', 'Playfair Display', 'Oswald', 'Bebas Neue',
 ];
 const BANNED_PHRASES = [
   'elevate', 'empower', 'unlock', 'seamless', 'cutting-edge', 'state-of-the-art',
   'innovative solutions', 'one-stop shop', 'trusted partner', 'pride ourselves',
-  'top-notch', 'second to none', 'excellence', 'look no further',
-  'quality you can trust', 'satisfaction is our priority', 'transforming',
+  'we take pride', 'top-notch', 'second to none', 'excellence', 'look no further',
+  'quality you can trust', 'satisfaction is our priority', 'transforming', 'journey',
   'tailored solutions', 'peace of mind', "we've got you covered",
-  'Get Started', 'Learn More',
+  'why choose us', 'what our customers say', 'Get Started', 'Learn More',
+];
+// Claims an owner has to stand behind. Each is fine when the facts say it.
+const CLAIMS = [
+  ['licensed', /\blicen[cs]ed\b/i],
+  ['insured', /\binsured\b/i],
+  ['bonded', /\bbonded\b/i],
+  ['certified', /\bcertifi(?:ed|cation)/i],
+  ['family-owned', /\bfamily[- ](?:owned|run|operated)\b/i],
+  ['locally owned', /\blocally[- ]owned\b/i],
+  ['"since" a year', /\b(?:since|est\.?|established)\s+(?:in\s+)?(?:19|20)\d{2}\b/i],
+  ['years in business', /\b\d{1,3}\+?\s*(?:years|yrs)\b/i],
+  ['free estimates', /\bfree\s+(?:estimates?|quotes?|consultations?|inspections?)\b/i],
+  ['24-hour or emergency service', /\b24\s*\/\s*7\b|\b24[- ]hours?\b|\baround the clock\b|\bemergency\b/i],
+  ['a guarantee or warranty', /\bguarantee[ds]?\b|\bwarrant(?:y|ies)\b/i],
+  ['an award or "best"', /\baward[- ]winning\b|\bbest of\b|#\s?1\b|\bnumber one\b/i],
+  ['"trusted"', /\btrusted\b/i],
 ];
 
-function scanForSlop(html) {
-  const doc = String(html || '');
-  const found = { fonts: [], phrases: [], colors: [], invented: [] };
+function looseText(text) {
+  return String(text || '').toLowerCase()
+    .replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/…/g, '...')
+    .replace(/[^a-z0-9]+/g, ' ').trim();
+}
 
-  // Only count a banned font where it is actually being applied as a typeface,
-  // not where the word happens to appear in copy.
+// The part of a prompt that states facts, with Forge's own instructions taken
+// out. Those instructions name the very things the check looks for ("claim no
+// free estimates"), and would otherwise read as the facts vouching for them.
+function factsOnly(prompt) {
+  let text = String(prompt || '');
+  for (const cut of ['DESIGN CONCEPT —', 'Page structure —', 'How to read them:']) {
+    const at = text.indexOf(cut);
+    if (at !== -1) text = text.slice(0, at);
+  }
+  return text.split('\n').filter((line) =>
+    !/^- (?:Not stated above|Services: not confirmed|Photos:|Rating: do not|Reviews: none|Hours: not known|Brand colours: unknown|Owner: not known|Phone: not known|Address: not known)/.test(line.trim())
+    && !/Their service area is not confirmed|Customers come to them/.test(line)
+  ).join('\n');
+}
+
+function checkSite(html, prompt = '') {
+  const doc = String(html || '');
+  const fix = [];
+  const confirm = [];
+  const note = [];
+  const hasFacts = Boolean(String(prompt || '').trim());
+  const facts = factsOnly(prompt);
+  const factsLoose = looseText(facts);
+
+  const visible = doc
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;|&apos;|&rsquo;|&lsquo;/g, "'")
+    .replace(/&ldquo;|&rdquo;/g, '"').replace(/&mdash;/g, '—').replace(/\s+/g, ' ');
+
+  // -- typefaces: only where one is actually applied, not where the word
+  // happens to appear in copy.
   const fontContexts = (doc.match(/font-family\s*:[^;}]+/gi) || []).join(' ')
     + ' ' + (doc.match(/fonts\.googleapis\.com[^"')\s]*/gi) || []).join(' ');
-  $('#extras-towns').value = e.towns;
-  $('#extras-photos').checked = e.photos;
-  for (const f of BANNED_FONTS) {
-    if (new RegExp(f.replace(/\s+/g, '[\\s+]'), 'i').test(fontContexts)) found.fonts.push(f);
+  const fonts = BANNED_FONTS.filter((f) => new RegExp(`(?:^|[^a-z])${f.replace(/\s+/g, '[\\s+]')}(?:[^a-z]|$)`, 'i').test(fontContexts));
+  if (fonts.length) {
+    fix.push({
+      text: `banned font: ${fonts.join(', ')}`,
+      ask: `Replace ${fonts.join(' and ')} — banned. Swap the Google Fonts link and the font-family for a face that suits this page's existing concept.`,
+    });
   }
 
-  const text = doc.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/gi, '');
-  for (const ph of BANNED_PHRASES) {
-    if (new RegExp(`\\b${ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)) found.phrases.push(ph);
+  // -- colour and effects
+  const effects = [];
+  if (/linear-gradient\([^)]*(#?(8b5cf6|a855f7|6366f1|7c3aed|818cf8|c084fc)|purple|violet|indigo)/i.test(doc)) effects.push('purple or indigo gradient');
+  if (/-webkit-background-clip\s*:\s*text/i.test(doc) && /linear-gradient/i.test(doc)) effects.push('gradient text');
+  if (/backdrop-filter\s*:\s*blur/i.test(doc)) effects.push('frosted-glass blur');
+  if (effects.length) {
+    fix.push({ text: effects.join(', '), ask: `Remove: ${effects.join(', ')}. Use flat, confident colour from the page's existing palette instead.` });
   }
 
-  if (/linear-gradient\([^)]*(#?(8b5cf6|a855f7|6366f1|7c3aed|818cf8|c084fc)|purple|violet|indigo)/i.test(doc)) {
-    found.colors.push('purple or indigo gradient');
+  // -- emoji standing in for icons. ©, ® and ™ are ordinary text.
+  const emoji = Array.from(new Set(visible.match(/\p{Extended_Pictographic}/gu) || [])).filter((c) => !'©®™'.includes(c));
+  if (emoji.length) {
+    fix.push({
+      text: `emoji used as icons: ${emoji.slice(0, 8).join(' ')}`,
+      ask: 'Remove every emoji. Where one was doing the job of an icon, draw a small inline SVG in the page\'s own line weight and colour, or use plain type.',
+    });
   }
-  if (/-webkit-background-clip\s*:\s*text/i.test(doc) && /linear-gradient/i.test(doc)) {
-    found.colors.push('gradient text');
+
+  // -- numbers that count up from zero
+  if (/data-(?:count|target|to|countup|num)\s*=\s*["']?\d/i.test(doc)) {
+    fix.push({
+      text: 'numbers that count up from zero',
+      ask: 'Remove the count-up animation: write each number into the HTML at its real value and delete the script and data attributes that animate it.',
+    });
   }
-  if (/backdrop-filter\s*:\s*blur/i.test(doc)) found.colors.push('glassmorphism blur');
 
-  // Numbers the spec treats as invented unless they came from the input.
-  const stats = text.match(/\b\d{2,5}\s*\+\s*(?:happy|satisfied|customers|clients|projects|jobs|years)/gi) || [];
-  if (stats.length) found.invented.push(...stats.slice(0, 3).map((x) => x.trim()));
+  // -- images loaded from somewhere else (stock photos)
+  const remote = new Set([
+    ...(doc.match(/<img\b[^>]*\bsrc\s*=\s*["']https?:\/\/[^"']+/gi) || []),
+    ...(doc.match(/url\(\s*["']?https?:\/\/(?!fonts\.(?:googleapis|gstatic)\.com)[^"')\s]+/gi) || []),
+  ]);
+  if (remote.size) {
+    fix.push({
+      text: `${remote.size} stock photo${remote.size === 1 ? '' : 's'} loaded from another site`,
+      ask: 'Remove every photograph loaded from another website, including background images. Redraw those areas with colour, type and inline SVG from the page\'s own palette so the layout still holds.',
+    });
+  }
+  const slots = (doc.match(/<img\b[^>]*\bsrc\s*=\s*["']data:image\/svg/gi) || []).length;
+  if (slots) note.push({ text: `${slots} photo slot${slots === 1 ? '' : 's'} still empty — add their pictures with Photos` });
 
-  const total = found.fonts.length + found.phrases.length + found.colors.length + found.invented.length;
-    towns: $('#extras-towns').value.trim(),
-    photos: $('#extras-photos').checked,
-  return { ...found, total };
+  // -- customer quotes that are not in the facts
+  if (hasFacts) {
+    const quotes = new Set();
+    for (const m of visible.matchAll(/[“"]\s*([^“”"]{40,500}?)\s*[”"]/g)) quotes.add(m[1]);
+    for (const m of doc.matchAll(/<blockquote[^>]*>([\s\S]*?)<\/blockquote>/gi)) {
+      const t = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (t.length >= 40) quotes.add(t.replace(/^[“"]|[”"]$/g, ''));
+    }
+    const made = Array.from(quotes).filter((q) => !factsLoose.includes(looseText(q)));
+    if (made.length) {
+      fix.push({
+        text: `${made.length} quote${made.length === 1 ? '' : 's'} not in the facts: “${made[0].slice(0, 60)}…”`,
+        ask: `Delete ${made.length === 1 ? 'this quote' : 'these quotes'} and the name attached, because ${made.length === 1 ? 'it was' : 'they were'} never said by a customer: ${made.map((q) => `"${q.slice(0, 80)}"`).join('; ')}. Do not write replacements.`,
+      });
+    }
+  }
+
+  // -- phone numbers
+  const digits = (t) => String(t).replace(/\D/g, '').slice(-10);
+  const telLinks = Array.from(new Set((doc.match(/href\s*=\s*["']tel:[^"']+/gi) || []).map((t) => digits(t.replace(/^[^:]*:/, ''))))).filter((d) => d.length === 10);
+  if (hasFacts) {
+    const known = new Set((facts.match(/\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/g) || []).map(digits));
+    const wrong = telLinks.filter((d) => !known.has(d));
+    if (wrong.length) {
+      fix.push({
+        text: `a phone number that is not theirs: ${wrong.map((d) => `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`).join(', ')}`,
+        ask: known.size
+          ? `Every phone number and tel: link must be ${Array.from(known).map((d) => `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`).join(' or ')}. Replace any other number.`
+          : 'No phone number is known for this business. Remove every phone number and tel: link; the contact form is the call to action.',
+      });
+    }
+    if (known.size && !telLinks.length) {
+      fix.push({ text: 'their phone number is not a tap-to-call link', ask: 'Make every appearance of the phone number a tel: link, and put one in the header and the opening screen.' });
+    }
+  }
+
+  // -- structure
+  const h1 = (doc.match(/<h1[\s>]/gi) || []).length;
+  if (h1 !== 1) fix.push({ text: h1 === 0 ? 'no main heading' : `${h1} main headings`, ask: 'The page must have exactly one h1. Demote or merge the others without changing how anything looks.' });
+  if (!/<form[\s>]/i.test(doc)) fix.push({ text: 'no contact form', ask: 'Add a contact form with fields named name, phone, email and message (a textarea) and a submit button, styled to match the page, with no action attribute.' });
+  if (!/<\/html>\s*$/i.test(doc.trim())) fix.push({ text: 'the page looks cut off', ask: null });
+
+  // -- wording
+  const phrases = BANNED_PHRASES.filter((ph) => new RegExp(`\\b${ph.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(visible));
+  if (phrases.length) {
+    fix.push({
+      text: `stock phrases: ${phrases.slice(0, 5).join(', ')}`,
+      ask: `Rewrite only the sentences or labels containing these, keeping the meaning in the owner's plain voice: ${phrases.join(', ')}. Add no new claims.`,
+    });
+  }
+
+  // -- claims nothing in the facts supports
+  const unbacked = CLAIMS.filter(([, re]) => re.test(visible) && !re.test(facts)).map(([label]) => label);
+  if (unbacked.length) confirm.push({ text: `says ${unbacked.join(', ')}` });
+  for (const m of doc.matchAll(/<!--\s*CONFIRM:\s*([^>]*?)\s*-->/gi)) {
+    confirm.push({ text: `${m[1].slice(0, 60)}` });
+  }
+  const seen = new Set();
+  const confirmUnique = confirm.filter((c) => (seen.has(c.text) ? false : seen.add(c.text)));
+
+  // -- not finished yet
+  if (/<!--forge-forms-start--><script>\(function\(\)\{var TO="",/.test(doc)) {
+    note.push({ text: 'contact form is in preview mode — set their email before this goes live' });
+  }
+
+  return { fix, confirm: confirmUnique, note, total: fix.length + confirmUnique.length };
 }
-  // What the business can supply decides which directions are open to it, so
-  // the one chosen before is dropped and picked again.
-  leadDirections.delete(lead.placeId);
 
-function reportSlop(html, where) {
-  const r = scanForSlop(html);
+// Kept for the callers that only want to know whether anything is wrong.
+function scanForSlop(html, prompt = '') {
+  return checkSite(html, prompt);
+}
+
+function reportSlop(html, where, prompt = '') {
+  const r = checkSite(html, prompt);
   const box = $(where);
   if (!box) return r;
-  if (!r.total) {
+  if (!r.total && !r.note.length) {
     box.hidden = true;
     return r;
   }
-  const bits = [];
-  if (r.fonts.length) bits.push(`banned heading font: ${r.fonts.join(', ')}`);
-  if (r.phrases.length) bits.push(`banned wording: ${r.phrases.slice(0, 5).join(', ')}`);
-  if (r.colors.length) bits.push(r.colors.join(', '));
-  if (r.invented.length) bits.push(`possibly invented stats: ${r.invented.join(', ')}`);
-  box.innerHTML = `<strong>${r.total} thing${r.total === 1 ? '' : 's'} to fix:</strong> ${escapeHtml(bits.join(' · '))}
-    <button type="button" class="btn btn-sm" data-act="fix-slop">Fix it with a refine</button>`;
+  const line = (label, items) => (items.length
+    ? `<div class="check-line"><strong>${label}</strong> ${items.map((i) => escapeHtml(i.text)).join(' · ')}</div>`
+    : '');
+  box.innerHTML =
+    line(`${r.fix.length} to fix:`, r.fix)
+    + line('Ask the owner:', r.confirm)
+    + line('Before it goes live:', r.note)
+    + (r.fix.some((f) => f.ask) ? '<button type="button" class="btn btn-sm" data-act="fix-slop">Fix these with one edit (1 credit)</button>' : '');
+  box.classList.toggle('is-clean', !r.fix.length);
   box.hidden = false;
   return r;
 }
@@ -2255,7 +2412,18 @@ async function runBatchGenerate(entries) {
         });
         const fullUrl = location.origin + prevRes.url;
         row.classList.add('is-done');
-        statusEl.textContent = 'Done ✓';
+        // Every demo is checked against the facts it was built from before you
+        // are handed a link to send.
+        const check = checkSite(genRes.html, prompt);
+        statusEl.textContent = check.fix.length ? `Done — ${check.fix.length} to fix first` : 'Done ✓';
+        if (check.total) {
+          row.classList.toggle('needs-look', check.fix.length > 0);
+          const bits = [
+            check.fix.length ? `Fix: ${check.fix.map((f) => f.text).join(' · ')}` : '',
+            check.confirm.length ? `Ask the owner: ${check.confirm.map((f) => f.text).join(' · ')}` : '',
+          ].filter(Boolean);
+          row.insertAdjacentHTML('beforeend', `<p class="br-check">${escapeHtml(bits.join('  —  '))}</p>`);
+        }
         const pitch = pitchTextFor(lead, fullUrl);
         row.insertAdjacentHTML('beforeend', `
           <a class="br-link" href="${escapeHtml(prevRes.url)}" target="_blank" rel="noopener">${escapeHtml(fullUrl)}</a>
@@ -3162,6 +3330,9 @@ const ENHANCE_INSTRUCTION =
 // specific fonts, colours, shapes and mood to produce a genuinely different
 // look. `swatch` is only for the picker's own thumbnail.
 
+// Six styles that used to be here asked for exactly what the design rules ban
+// (frosted-glass blur, neon glow, purple gradients, chrome gradient type, stock
+// photography) and so made the model choose between the two. They are gone.
 const ART_STYLES = [
   // ---- Clean ----
   { key: 'minimalist', name: 'Minimalist', group: 'Clean', blurb: 'Huge white space, almost no colour', swatch: ['#ffffff', '#111111', '#e5e5e5'],
@@ -3269,7 +3440,7 @@ async function runBuildRefine(instruction, btn, busyLabel) {
     const newHtml = buildState.notifyEmail ? res.html : preserveForms(buildState.html, res.html);
     buildState.html = newHtml;
     swapFrame($('#build-frame'), newHtml);
-    reportSlop(newHtml, '#build-slop');
+    reportSlop(newHtml, '#build-slop', buildState.facts);
     $('#build-link-output').hidden = true; // any earlier link now points at the old version
     toast('Change applied — save a new link to share this version');
     return true;
@@ -3285,22 +3456,10 @@ async function runBuildRefine(instruction, btn, busyLabel) {
 // Delegated so it keeps working after the warning box is rewritten.
 $('#build-slop').addEventListener('click', (e) => {
   if (!e.target.closest('[data-act="fix-slop"]')) return;
-  const r = scanForSlop(buildState.html);
-  if (!r.total) { $('#build-slop').hidden = true; return; }
-  const asks = [];
-  if (r.fonts.length) {
-    asks.push(`Replace the heading font — ${r.fonts.join(' and ')} is banned. Swap the Google Fonts link and the font-family for a display face that suits this page's existing concept, and leave the body font alone unless it is also on that list.`);
-  }
-  if (r.phrases.length) {
-    asks.push(`Rewrite only the sentences containing these words, keeping the same meaning in the owner's plain voice: ${r.phrases.join(', ')}. Do not add any new claims.`);
-  }
-  if (r.colors.length) {
-    asks.push(`Remove: ${r.colors.join(', ')}. Use flat, confident colour from the page's existing palette instead.`);
-  }
-  if (r.invented.length) {
-    asks.push(`Delete these numbers and whatever surrounds them, because they were never verified: ${r.invented.join(', ')}. Do not replace them with different numbers.`);
-  }
-  asks.push('Change nothing else. Keep the layout, the structure, every other word, all images, the contact form, the phone links and the head metadata exactly as they are.');
+  const r = checkSite(buildState.html, buildState.facts);
+  const asks = r.fix.map((f) => f.ask).filter(Boolean);
+  if (!asks.length) { reportSlop(buildState.html, '#build-slop', buildState.facts); return; }
+  asks.push('Change nothing else. Keep the layout, the structure, every other word, the contact form, the phone links and the head metadata exactly as they are.');
   runBuildRefine(asks.join(' '), e.target, 'Fixing…');
 });
 
@@ -3376,9 +3535,6 @@ ${info}
 """
 
 How to apply it:
-// Six styles that used to be here asked for exactly what the design rules ban
-// (frosted-glass blur, neon glow, purple gradients, chrome gradient type, stock
-// photography) and so made the model choose between the two. They are gone.
 - Use ONLY facts stated above. Do not invent, embellish, guess or infer anything that is not written there. If they did not mention it, do not add it.
 - Where the page currently shows placeholder, generic or guessed content that the text above corrects — services offered, opening hours, years in business, owner or staff names, service area, specialities, certifications, guarantees, pricing — replace it with what they actually said.
 - Work genuinely new information into the sections where it naturally belongs. Only add a brand-new section if something important has nowhere sensible to go.
