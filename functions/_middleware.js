@@ -185,6 +185,9 @@ export const onRequest = async (context) => {
   }
 
   if (isPublic(url.pathname)) return next();
+  // Fisc (Abel's money app) reads payments here. That route checks its own
+  // X-Fisc-Token header, so only this exact path, and only GET, skips the login.
+  if (url.pathname === '/api/fisc/payments' && request.method === 'GET') return next();
 
   const isApi = url.pathname.startsWith('/api/');
   const isAppPage = APP_PAGES.has(url.pathname) && request.method === 'GET';
